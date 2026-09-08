@@ -41,145 +41,152 @@
 
 ---
 
-## 1. 기술 스택 (제안)
+## 1. 기술 스택 (2026-09-08 팀 결정: 프론트+Supabase로 변경)
+
+> 원래 이 문서는 Node/Express 커스텀 백엔드를 전제로 쓰였으나, 팀이 1주 일정에 맞춰 **백엔드 서버를 직접 짜지 않고 Supabase(BaaS)로 대체**하기로 결정했다. 아래 표가 최종 기준이며, 이 문서 뒤쪽의 "2. 전체 아키텍처"·"Agent 프롬프트 예시"들은 여전히 Express+Prisma 기준으로 적혀 있어 Supabase 클라이언트 SDK 호출로 바꿔 읽어야 한다(추후 갱신 필요).
 
 | 영역 | 선택 | 비고 |
 |---|---|---|
 | 프론트엔드 | React + TypeScript + Vite | 팀원 다수가 익숙한 스택 우선 |
 | 스타일 | Tailwind CSS | 빠른 개발 속도 |
-| 백엔드 | Node.js (Express or NestJS) | REST API |
-| DB | PostgreSQL | 관계형 데이터(그룹/권한) 표현에 유리 |
-| ORM | Prisma | 스키마 관리 + 마이그레이션 자동화, Agent가 다루기 쉬움 |
-| 이미지 스토리지 | AWS S3 (or 로컬 개발시 MinIO) | 영수증/캡쳐 이미지 저장 |
-| OCR 엔진 | Naver Clova OCR 또는 Google Cloud Vision API | 직접 OCR 모델 구현 X, API 호출로 대체 |
-| 인증 | JWT (Access + Refresh Token) | 자체 구현, 간단한 이메일/비밀번호 |
-| 배포 | Vercel(프론트) + Railway/Render(백엔드+DB) | 팀프로젝트 규모에 적합 |
+| 백엔드 | **(없음) Supabase가 대체** | Express/NestJS 서버를 직접 짜지 않음 |
+| DB | **Supabase (PostgreSQL)** | 기존 Prisma 스키마(Group/GroupMember/Expense/ExpenseOcrRaw)를 그대로 SQL 테이블로 이관 |
+| 권한 | **Supabase RLS (Row Level Security)** | "본인 지출만 수정·삭제", "그룹 멤버만 피드 조회" 등 04-features.md·05-policy.md의 정책을 DB 레벨 정책으로 구현 |
+| 이미지 스토리지 | **Supabase Storage** | 영수증/캡쳐 이미지 저장 (AWS S3 대체) |
+| OCR 엔진 | Naver Clova OCR 또는 Google Cloud Vision API | 직접 OCR 모델 구현 X, API 호출로 대체. **키 노출 방지를 위해 Supabase Edge Function을 통해 호출**(프론트에서 직접 호출 금지) |
+| 인증 | **Supabase Auth (이메일/비밀번호)** | 자체 JWT 구현 대신 Supabase Auth 세션 토큰 사용 |
+| 배포 | Vercel(프론트) + Supabase(DB·Auth·Storage·Edge Function) | 별도 백엔드 서버 배포 불필요 |
 
-> 팀원 스택 숙련도에 따라 백엔드는 Django/Spring 등으로 대체 가능하나, 이후 Task 프롬프트는 Node+Prisma 기준으로 작성되어 있습니다.
+> 이 변경은 04-features.md·05-policy.md의 요구·정책 자체는 그대로 두고, "어떻게 구현하는지"만 바꾼 것이다 — 예를 들어 05-policy.md의 P4·P5·P6·P9(그룹 멤버·본인 소유 검증)는 백엔드 미들웨어 대신 Supabase RLS 정책으로 구현한다.
 
 ---
 
-## 2. 전체 아키텍처
+## 2. 전체 아키텍처 (Supabase 기준, 2026-09-08 갱신)
 
 ```
 [React SPA]
-    │  REST API (JWT Bearer)
-    ▼
-[Express/Nest API Server]
-    │            │
-    │            └── OCR Job ── (이미지 업로드) ──▶ [S3]
-    │                              │
-    │                              ▼
-    │                    [Clova/Vision OCR API 호출]
-    │                              │
-    │                              ▼
-    │                    파싱 결과 → expense_ocr_raw 저장
-    ▼
-[PostgreSQL]
-  - users / groups / group_members
-  - expenses / expense_ocr_raw
+    │  supabase-js SDK (Supabase Auth 세션)
+    ├──────────────▶ [Supabase Auth]  (회원가입/로그인)
+    ├──────────────▶ [Supabase Postgres DB]  (groups / group_members / expenses / expense_ocr_raw, RLS로 권한 강제)
+    ├──────────────▶ [Supabase Storage]  (영수증/캡쳐 이미지 저장)
+    └── 영수증 촬영 시 ──▶ [Supabase Edge Function: parse-receipt]
+                              │  (OCR 키를 여기 안에서만 사용 — 프론트에 노출 안 함)
+                              ▼
+                    [Clova/Vision OCR API 호출]
+                              │
+                              ▼
+                    파싱 결과를 Edge Function이 그대로 DB에 insert
+                    (expenses + expense_ocr_raw, sourceType=RECEIPT)
 ```
+별도 백엔드 서버(Express/Nest)는 두지 않는다. 프론트가 Supabase를 직접 호출하고, OCR처럼 비밀키가 필요한 부분만 Edge Function 하나로 처리한다.
 
 ---
 
-## 3. DB 스키마 (Prisma 기준 DDL 개념)
+## 3. DB 스키마 (Supabase/PostgreSQL SQL, 2026-09-08 갱신 — 그대로 SQL Editor에 붙여넣기 가능)
 
-```prisma
-model User {
-  id            String   @id @default(uuid())
-  email         String   @unique
-  passwordHash  String
-  name          String
-  createdAt     DateTime @default(now())
+`User`는 별도 테이블을 만들지 않는다 — Supabase Auth가 제공하는 `auth.users`를 그대로 쓴다.
 
-  memberships   GroupMember[]
-  expenses      Expense[]
-}
+```sql
+-- 1) enum 타입
+create type group_type as enum ('FAMILY','SIBLING','ROOMMATE','COUPLE','MARRIED_COUPLE','CLUB','OTHER');
+create type member_role as enum ('OWNER','MEMBER');
+create type source_type as enum ('MANUAL','RECEIPT','PAYMENT_CAPTURE');
 
-model Group {
-  id          String    @id @default(uuid())
-  name        String                // 사용자가 직접 짓는 그룹 이름 (예: "우리집", "삼형제", "자취팀")
-  groupType   GroupType @default(OTHER)  // 프리셋 유형 (표시/아이콘 용도, 로직 분기에는 쓰지 않음)
-  inviteCode  String    @unique      // 초대 링크에 쓰일 코드
-  createdAt   DateTime  @default(now())
+-- 2) 테이블
+create table groups (
+  id           uuid primary key default gen_random_uuid(),
+  name         text not null,                          -- 자유 텍스트 (예: "우리집", "204호 자취팀")
+  group_type   group_type not null default 'OTHER',     -- 표시용, 권한/로직에 관여 안 함
+  invite_code  text not null unique,
+  created_at   timestamptz not null default now()
+);
 
-  members     GroupMember[]
-}
+create table group_members (
+  id         uuid primary key default gen_random_uuid(),
+  user_id    uuid not null references auth.users(id),
+  group_id   uuid not null references groups(id) on delete cascade,
+  role       member_role not null default 'MEMBER',      -- OWNER | MEMBER (04 F18 그룹장 위임 시 이 값을 바꿔치기)
+  nickname   text,
+  joined_at  timestamptz not null default now(),
+  unique (user_id, group_id)
+);
 
-enum GroupType {
-  FAMILY          // 가족
-  SIBLING         // 형제자매
-  ROOMMATE        // 룸메이트
-  COUPLE          // 커플 (연애 중)
-  MARRIED_COUPLE  // 부부 (혼인 관계, 생활 공동체 성격)
-  CLUB            // 모임/동아리
-  OTHER           // 기타 (자유 명칭)
-}
+create table expenses (
+  id           uuid primary key default gen_random_uuid(),
+  user_id      uuid not null references auth.users(id),  -- 작성자 = 소유자, 수정 권한 판단 기준
+  group_id     uuid references groups(id) on delete set null,
+  amount       integer not null,
+  category     text not null,
+  memo         text,
+  date         date not null,
+  source_type  source_type not null default 'MANUAL',
+  image_url    text,
+  is_shared    boolean not null default false,           -- 그룹과 공유 토글 (R12)
+  created_at   timestamptz not null default now()
+);
 
-model GroupMember {
-  id         String   @id @default(uuid())
-  userId     String
-  groupId    String
-  role       Role     @default(MEMBER)  // OWNER | MEMBER
-  nickname   String?                    // 그룹 내에서만 쓰는 별명 (선택)
-  joinedAt   DateTime @default(now())
+create table expense_ocr_raw (
+  id           uuid primary key default gen_random_uuid(),
+  expense_id   uuid not null unique references expenses(id) on delete cascade,
+  raw_text     text,                                     -- OCR 원문 (디버깅/재파싱용)
+  parsed_json  jsonb,                                    -- 가맹점명·금액·날짜 등 파싱 결과
+  ocr_provider text,                                      -- 'clova' | 'google-vision'
+  confidence   real,
+  created_at   timestamptz not null default now()
+);
 
-  user       User     @relation(fields: [userId], references: [id])
-  group      Group    @relation(fields: [groupId], references: [id])
+-- 3) RLS 활성화 + 정책 (05-policy.md P1~P10을 DB 레벨로 구현)
+alter table groups enable row level security;
+alter table group_members enable row level security;
+alter table expenses enable row level security;
+alter table expense_ocr_raw enable row level security;
 
-  @@unique([userId, groupId])
-}
+-- groups: 멤버만 조회, 로그인 유저는 누구나 생성, 그룹명 변경은 OWNER만 (P2)
+create policy groups_select_member_only on groups for select
+  using (exists (select 1 from group_members gm where gm.group_id = groups.id and gm.user_id = auth.uid()));
+create policy groups_insert_any_authenticated on groups for insert
+  with check (auth.uid() is not null);
+create policy groups_update_owner_only on groups for update
+  using (exists (select 1 from group_members gm where gm.group_id = groups.id and gm.user_id = auth.uid() and gm.role = 'OWNER'));
 
-enum Role {
-  OWNER
-  MEMBER
-}
+-- group_members: 같은 그룹 멤버끼리만 목록 조회, 참여(insert)는 본인 것만, role 변경(위임)은 OWNER만 (P10)
+create policy members_select_same_group on group_members for select
+  using (exists (select 1 from group_members gm2 where gm2.group_id = group_members.group_id and gm2.user_id = auth.uid()));
+create policy members_insert_self on group_members for insert
+  with check (user_id = auth.uid());
+create policy members_update_owner_transfers_role on group_members for update
+  using (exists (select 1 from group_members gm where gm.group_id = group_members.group_id and gm.user_id = auth.uid() and gm.role = 'OWNER'));
 
-model Expense {
-  id          String       @id @default(uuid())
-  userId      String       // 작성자 = 소유자, 수정 권한 판단 기준
-  groupId     String?      // 어느 그룹 소속인지 (개인만 쓰면 null)
-  amount      Int
-  category    String
-  memo        String?
-  date        DateTime
-  sourceType  SourceType   @default(MANUAL) // MANUAL | RECEIPT | PAYMENT_CAPTURE
-  imageUrl    String?
-  isShared    Boolean      @default(false)  // 그룹과 공유 토글
-  createdAt   DateTime     @default(now())
+-- expenses: 본인 지출 전체 CRUD (P4·P6), 그룹 멤버는 공유된 지출만 조회 (P5)
+create policy expenses_select_own on expenses for select
+  using (user_id = auth.uid());
+create policy expenses_select_shared_group_feed on expenses for select
+  using (is_shared = true and group_id is not null and exists (
+    select 1 from group_members gm where gm.group_id = expenses.group_id and gm.user_id = auth.uid()
+  ));
+create policy expenses_insert_own_group_member_check on expenses for insert
+  with check (user_id = auth.uid() and (group_id is null or exists (
+    select 1 from group_members gm where gm.group_id = expenses.group_id and gm.user_id = auth.uid()
+  )));
+create policy expenses_update_own_only on expenses for update using (user_id = auth.uid());
+create policy expenses_delete_own_only on expenses for delete using (user_id = auth.uid());
 
-  user        User         @relation(fields: [userId], references: [id])
-  ocrRaw      ExpenseOcrRaw?
-}
-
-enum SourceType {
-  MANUAL
-  RECEIPT
-  PAYMENT_CAPTURE
-}
-
-model ExpenseOcrRaw {
-  id          String   @id @default(uuid())
-  expenseId   String   @unique
-  rawText     String   // OCR 원문 텍스트 (디버깅/재파싱용)
-  parsedJson  Json     // 파싱된 구조화 데이터 (가맹점명, 금액, 날짜 등)
-  ocrProvider String   // "clova" | "google-vision"
-  confidence  Float?
-  createdAt   DateTime @default(now())
-
-  expense     Expense  @relation(fields: [expenseId], references: [id])
-}
+-- expense_ocr_raw: 본인 지출에 딸린 것만 조회
+create policy ocr_raw_select_own on expense_ocr_raw for select
+  using (exists (select 1 from expenses e where e.id = expense_ocr_raw.expense_id and e.user_id = auth.uid()));
 ```
 
 **설계 포인트**
-- `Group.name`은 자유 텍스트라 "가족", "삼형제", "204호 자취팀" 등 뭐든 가능
-- `GroupType`은 순전히 표시(아이콘/색상)나 온보딩 문구 분기용이며, 권한이나 핵심 로직에는 전혀 관여하지 않음 → 나중에 유형이 늘어나도 스키마 변경 없이 enum 값만 추가하면 됨
-- 한 유저가 여러 그룹에 동시에 속할 수 있음 (`GroupMember`가 다대다 관계) → 이번 MVP에서는 "현재 활성 그룹" 하나를 프론트 상태로 선택해서 사용하는 방식으로 단순화 추천
+- `groups.name`은 자유 텍스트라 "가족", "삼형제", "204호 자취팀" 등 뭐든 가능
+- `group_type`은 순전히 표시(아이콘/색상)나 온보딩 문구 분기용이며, 권한이나 핵심 로직에는 전혀 관여하지 않음 → 나중에 유형이 늘어나도 스키마 변경 없이 enum 값만 추가하면 됨
+- 한 유저가 여러 그룹에 동시에 속할 수 있음(`group_members`가 다대다) → 이번 MVP에서는 "현재 활성 그룹" 하나를 프론트 상태로 선택해서 쓰는 방식으로 단순화 추천
+- **F18(그룹장 위임)**: 나가려는 OWNER가 다른 멤버의 `group_members.role`을 `'OWNER'`로 먼저 바꾼 뒤 본인 멤버십 행을 삭제하는 순서로 프론트에서 구현(트랜잭션처럼 두 쿼리를 순서대로 실행)
+- **그룹원이 OWNER 혼자뿐인 경우(05-policy.md 확정 규칙)**: 위임 없이 나가면서 `groups` 행 자체를 삭제 — `expenses.group_id`는 `on delete set null`이라 그 그룹 지출은 개인 지출로 남고, `group_members`는 `on delete cascade`라 자동으로 같이 삭제됨
 
-**권한 체크 핵심 로직 (모든 API에서 재사용)**
-- 본인 지출 수정/삭제: `expense.userId === currentUser.id` 인 경우만 허용
-- 그룹 피드 조회: `expense.groupId === 조회하려는 groupId` AND `expense.isShared === true` AND `currentUser가 해당 group의 멤버`
-- 그룹 전체 조회 권한: `group_members`에 속해있으면 role 무관하게 조회 가능 (수정은 불가)
+**권한 체크 핵심 로직 (위 RLS 정책과 1:1로 대응)**
+- 본인 지출 수정/삭제: `expenses.user_id = auth.uid()` 인 경우만 허용
+- 그룹 피드 조회: `expenses.group_id = 조회하려는 groupId` AND `is_shared = true` AND `auth.uid()가 해당 group의 멤버`
+- 그룹 전체 조회 권한: `group_members`에 속해있으면 role 무관하게 조회 가능(수정은 OWNER만)
 
 ---
 
@@ -190,45 +197,56 @@ model ExpenseOcrRaw {
 
 ### Phase 1. 프로젝트 셋업 & 인증/그룹
 
-#### Task 1-1. 프로젝트 초기 세팅
-- **목표:** 모노레포 또는 프론트/백 분리 구조로 프로젝트 뼈대 생성
-- **DoD:** `npm run dev`로 프론트/백 둘 다 로컬 구동, Prisma로 DB 연결 확인
+#### Task 1-1. 프로젝트 초기 세팅 (Supabase 기준, 2026-09-08 갱신)
+- **목표:** 프론트 전용 프로젝트 뼈대 생성 + Supabase 프로젝트 연결 (백엔드 폴더 없음)
+- **DoD:** `npm run dev`로 프론트 로컬 구동, `supabase.auth.getSession()` 호출이 에러 없이 응답 (연결 확인). Supabase 프로젝트의 SQL Editor에 위 "3. DB 스키마" SQL을 실행해 테이블·RLS까지 만들어둔 상태
+- **지금 바로 할 일 (코드 짜기 전에)**
+  1. supabase.com에서 새 프로젝트 생성
+  2. SQL Editor에 위 3번 섹션의 SQL 전체(테이블+enum+RLS 정책)를 붙여넣고 실행
+  3. Project Settings → API 에서 Project URL과 anon public key 복사해둠
 - **Agent 프롬프트 예시:**
   ```
-  Node.js + Express + TypeScript + Prisma(PostgreSQL) 백엔드와
-  React + TypeScript + Vite + Tailwind 프론트엔드로 구성된
-  프로젝트 뼈대를 만들어줘. 폴더 구조는 backend/, frontend/로 분리하고,
-  Prisma 스키마 파일에는 [여기에 위 3번 섹션 스키마 붙여넣기]를 그대로 반영해줘.
-  .env.example 파일도 만들어줘 (DATABASE_URL, JWT_SECRET, S3 관련 키).
+  React + TypeScript + Vite + Tailwind 프론트엔드 프로젝트 뼈대를 만들어줘.
+  백엔드 폴더는 만들지 않는다 — Supabase를 BaaS로 바로 쓸 것이다.
+  @supabase/supabase-js를 설치하고, src/lib/supabaseClient.ts에서
+  import.meta.env.VITE_SUPABASE_URL, import.meta.env.VITE_SUPABASE_ANON_KEY로
+  createClient()해서 export하는 코드를 만들어줘.
+  .env.example 파일도 만들어줘 (VITE_SUPABASE_URL, VITE_SUPABASE_ANON_KEY).
   ```
 
-#### Task 1-2. 회원가입/로그인 (JWT)
-- **목표:** 이메일/비밀번호 회원가입, 로그인, JWT 발급/검증 미들웨어
-- **DoD:** Postman/Thunder Client로 회원가입→로그인→토큰으로 보호된 라우트 접근 테스트 통과
+#### Task 1-2. 회원가입/로그인 (Supabase Auth, 2026-09-08 갱신)
+- **목표:** 이메일/비밀번호 회원가입·로그인 화면, Supabase Auth 세션으로 로그인 상태 유지
+- **DoD:** 회원가입→로그인→새로고침해도 로그인 상태 유지→로그아웃까지 화면에서 테스트 통과
 - **Agent 프롬프트 예시:**
   ```
-  User 모델 기준으로 회원가입(POST /auth/signup), 로그인(POST /auth/login) API를 만들어줘.
-  - 비밀번호는 bcrypt로 해싱
-  - 로그인 성공 시 accessToken(JWT, 유효기간 1시간)과 refreshToken(유효기간 14일) 발급
-  - JWT 검증 미들웨어(authMiddleware)를 만들어서 이후 모든 API에 재사용할 수 있게 해줘
-  - req.user에 { id, email }가 들어가도록 구현해줘
+  Task 1-1에서 만든 supabaseClient를 사용해서 로그인/회원가입 화면을 만들어줘.
+  - 회원가입: supabase.auth.signUp({ email, password })
+  - 로그인: supabase.auth.signInWithPassword({ email, password })
+  - 로그아웃: supabase.auth.signOut()
+  - 로그인 상태는 supabase.auth.onAuthStateChange로 구독해서 전역 상태(Context 또는 zustand)에 반영
+  - JWT나 자체 미들웨어는 필요 없다 — Supabase 세션이 이미 그 역할을 한다
+  - 로그인 안 한 상태에서는 보호된 화면(그룹·지출) 대신 로그인 화면으로 리다이렉트
   ```
 
-#### Task 1-3. 그룹 생성 & 초대 코드 (그룹명/유형 사용자 설정)
+#### Task 1-3. 그룹 생성 & 초대 코드 (Supabase 클라이언트 직접 호출, 2026-09-08 갱신)
 - **목표:** 그룹 생성 시 이름과 유형을 사용자가 직접 지정, OWNER로 등록, 랜덤 초대 코드 발급, 초대 코드로 그룹 참여
-- **DoD:** "가족"이 아닌 임의의 이름("자취팀" 등)과 유형으로 그룹 생성 → 초대코드 확인 → 다른 계정으로 로그인해서 코드 입력 → 멤버 목록에 추가 확인
+- **DoD:** "가족"이 아닌 임의의 이름("자취팀" 등)과 유형으로 그룹 생성 → 초대코드 확인 → 다른 계정으로 로그인해서 코드 입력 → 멤버 목록에 추가 확인 (백엔드 API 없이 프론트에서 supabase-js로 직접 확인)
 - **Agent 프롬프트 예시:**
   ```
-  Group, GroupMember 모델 기준으로 다음 API를 구현해줘:
-  - POST /groups : body로 name(자유 텍스트, 필수), groupType(FAMILY|SIBLING|ROOMMATE|COUPLE|MARRIED_COUPLE|CLUB|OTHER, 기본 OTHER)을 받아
-    로그인한 유저가 새 그룹 생성, 자동으로 role=OWNER 멤버 등록,
-    inviteCode는 8자리 랜덤 영숫자로 생성
-  - POST /groups/join : body로 inviteCode를 받아서 해당 유저를 role=MEMBER로 등록
-    (이미 가입된 경우 409 에러 반환)
-  - GET /groups/mine : 로그인한 유저가 속한 모든 그룹 목록 조회 (name, groupType, role 포함)
-  - GET /groups/:id/members : 해당 그룹의 멤버 목록 조회 (본인이 멤버인 경우만 접근 허용)
-  - PATCH /groups/:id : 그룹명 변경 (role=OWNER인 경우만 허용)
-  모든 API는 이전에 만든 authMiddleware를 사용해줘.
+  supabaseClient를 사용해서 다음을 구현하는 함수들을 만들어줘(src/api/groups.ts):
+  - createGroup(name, groupType): 8자리 랜덤 영숫자 inviteCode를 만들어
+    groups 테이블에 insert한 뒤, 반환된 group.id로 group_members에
+    { user_id: 현재 로그인 유저, role: 'OWNER' } 행을 insert
+  - joinGroup(inviteCode): invite_code로 groups를 조회해 group.id를 찾고,
+    group_members에 { user_id: 현재 유저, role: 'MEMBER' } insert
+    (이미 멤버면 unique 제약 위반 에러가 나므로 그 에러를 잡아서
+    "이미 참여한 그룹입니다" 메시지로 바꿔줘)
+  - getMyGroups(): 현재 유저가 속한 group_members를 groups와 join해서
+    (name, group_type, role) 목록으로 반환
+  - getGroupMembers(groupId): 해당 그룹의 group_members 목록 반환
+    (RLS가 이미 "같은 그룹 멤버만 조회 가능"을 강제하니 별도 권한 체크 코드는 필요 없음)
+  - renameGroup(groupId, newName): groups.update — RLS가 OWNER만 허용하므로
+    OWNER가 아니면 자동으로 실패함(그 에러를 화면에서 안내만 해주면 됨)
   ```
 
 #### Task 1-4. 프론트 - 그룹 생성/참여 화면 (온보딩)
@@ -243,8 +261,11 @@ model ExpenseOcrRaw {
         예: 가족 선택 시 "우리집", 룸메이트 선택 시 "204호 자취팀", 커플 선택 시 "우리 둘",
         부부 선택 시 "OO네 살림")
   3단계: 생성 완료 화면 + 초대 코드/링크 공유 버튼(클립보드 복사)
-  기존에 만든 POST /groups API를 호출해줘. 그룹 참여(코드 입력) 화면도 별도로 만들어줘.
+  Task 1-3에서 만든 createGroup() 함수를 호출해줘. 그룹 참여(코드 입력) 화면도
+  별도로 만들어서 joinGroup()을 호출해줘.
   ```
+
+> **Phase 2·3·5의 "Agent 프롬프트 예시"는 아직 Express API(`POST /expenses` 등) 기준으로 적혀 있다.** 실제로 쓸 때는 "이 API를 만들어줘" 대신 "Task 1-3처럼 supabaseClient로 이 기능을 하는 함수를 만들어줘"로 바꿔 읽으면 된다 — 테이블 이름과 필드명은 위 3번 섹션 SQL과 그대로 대응된다(예: `POST /expenses`→`expenses` 테이블 insert, `PATCH /expenses/:id`→`expenses` update, 권한 체크는 이미 RLS가 강제하므로 별도 코드 불필요).
 
 ---
 
