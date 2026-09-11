@@ -1,0 +1,92 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Nunito:wght@500;600;700;800&display=swap">
+  <style>
+    body { margin: 0; }
+    @keyframes spin360 { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+  </style>
+</helmet>
+<div style="width:340px;height:734px;overflow:hidden;">
+<div style="height:100%;box-sizing:border-box;background:#F6F5FC;display:flex;flex-direction:column;">
+          <div style="flex:1;overflow:auto;padding:60px 20px 20px;display:flex;flex-direction:column;">
+          <div style="display:flex;align-items:center;justify-content:space-between;">
+            <div style="font-size:22px;font-weight:800;color:#2D2A3E;">마이페이지</div>
+            <a href="#settings-mvp" style="width:36px;height:36px;border-radius:50%;background:#fff;border:1px solid #E8E4F4;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+              <svg width="17" height="17" sc-camel-view-box="0 0 24 24" fill="none" stroke="#6B6980" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"></path></svg>
+            </a>
+          </div>
+
+          <div style="margin-top:18px;background:#fff;border-radius:20px;padding:20px;display:flex;align-items:center;gap:14px;border:1px solid #E8E4F4;">
+            <div style="width:56px;height:56px;border-radius:50%;background:#F0EEFF;display:flex;align-items:center;justify-content:center;font-size:20px;font-weight:800;color:#6A5ECF;flex-shrink:0;">{{ initial }}</div>
+            <div style="flex:1;min-width:0;">
+              <div style="font-size:17px;font-weight:800;color:#2D2A3E;">{{ givenName }}</div>
+              <div style="font-size:13px;color:#6B6980;font-weight:600;margin-top:2px;">seoyeon@email.com</div>
+            </div>
+          </div>
+
+          <div style="margin-top:16px;background:#fff;border-radius:20px;border:1px solid #E8E4F4;overflow:hidden;">
+            <div style="padding:16px 18px;display:flex;align-items:center;gap:12px;cursor:pointer;">
+              <div style="width:34px;height:34px;border-radius:10px;background:#F0EEFF;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+                <svg width="16" height="16" sc-camel-view-box="0 0 24 24" fill="none" stroke="#6A5ECF" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M22 21v-2a4 4 0 0 0-3-3.87"></path><path d="M16 3.13a4 4 0 0 1 0 7.75"></path></svg>
+              </div>
+              <a href="#my-groups-manage" style="flex:1;font-size:14px;font-weight:800;color:#2D2A3E;text-decoration:none;">내 그룹 관리</a>
+              <svg width="16" height="16" sc-camel-view-box="0 0 24 24" fill="none" stroke="#A9A2B8" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m9 18 6-6-6-6"></path></svg>
+            </div>
+          </div>
+
+          <div style="flex:1;"></div>
+
+          <div style="height:48px;border-radius:16px;background:#fff;border:1.5px solid #E8B4B4;color:#B23B3B;display:flex;align-items:center;justify-content:center;font-size:14px;font-weight:800;">로그아웃</div>
+          </div>
+
+          <div style="flex-shrink:0;padding:10px 12px 20px;background:#fff;border-top:1px solid #ECE9E3;display:flex;align-items:center;">
+            <div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:3px;">
+              <svg width="19" height="19" sc-camel-view-box="0 0 24 24" fill="none" stroke="#A9A2B8" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m3 9 9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path><polyline points="9 22 9 12 15 12 15 22"></polyline></svg>
+              <div style="font-size:10px;font-weight:700;color:#A9A2B8;">홈</div>
+            </div>
+            <div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:3px;">
+              <svg width="19" height="19" sc-camel-view-box="0 0 24 24" fill="none" stroke="#A9A2B8" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M22 21v-2a4 4 0 0 0-3-3.87"></path><path d="M16 3.13a4 4 0 0 1 0 7.75"></path></svg>
+              <div style="font-size:10px;font-weight:700;color:#A9A2B8;">그룹</div>
+            </div>
+            <div style="flex:1;display:flex;align-items:center;justify-content:center;">
+              <div style="width:38px;height:38px;border-radius:50%;background:linear-gradient(135deg,#8C81E0 0%,#6A5ECF 100%);display:flex;align-items:center;justify-content:center;">
+                <svg width="17" height="17" sc-camel-view-box="0 0 24 24" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14.5 4h-5L7 7H4a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-3l-2.5-3z"></path><circle cx="12" cy="13" r="3"></circle></svg>
+              </div>
+            </div>
+            <div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:3px;">
+              <svg width="19" height="19" sc-camel-view-box="0 0 24 24" fill="none" stroke="#A9A2B8" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="8" x2="21" y1="6" y2="6"></line><line x1="8" x2="21" y1="12" y2="12"></line><line x1="8" x2="21" y1="18" y2="18"></line><line x1="3" x2="3.01" y1="6" y2="6"></line><line x1="3" x2="3.01" y1="12" y2="12"></line><line x1="3" x2="3.01" y1="18" y2="18"></line></svg>
+              <div style="font-size:10px;font-weight:700;color:#A9A2B8;">지출내역</div>
+            </div>
+            <div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:3px;">
+              <svg width="19" height="19" sc-camel-view-box="0 0 24 24" fill="none" stroke="#6A5ECF" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="4"></circle><path d="M20 21a8 8 0 0 0-16 0"></path></svg>
+              <div style="font-size:10px;font-weight:700;color:#6A5ECF;">마이페이지</div>
+            </div>
+          </div>
+        </div>
+</div>
+</x-dc>
+<script data-dc-script data-props='{"fullName":{"editor":"text","default":"김서연","section":"프로필"}}'>
+const COMPOUND_SURNAMES = ['남궁', '황보', '제갈', '사공', '선우', '서문', '독고', '동방'];
+function stripSurname(fullName) {
+  const twoChar = COMPOUND_SURNAMES.find((s) => fullName.startsWith(s));
+  if (twoChar && fullName.length > twoChar.length) return fullName.slice(twoChar.length);
+  return fullName.length > 1 ? fullName.slice(1) : fullName;
+}
+class Component extends DCLogic {
+  renderVals() {
+    const fullName = this.props.fullName ?? '김서연';
+    // 성을 뗀 이름만 보여준다 (예: 김서연 -> 서연, 남궁민 -> 민 — 두 글자 성 목록에 있으면 두 글자를 뗀다)
+    const givenName = stripSurname(fullName);
+    return { givenName, initial: givenName.charAt(0) };
+  }
+}
+</script>
+</body>
+</html>

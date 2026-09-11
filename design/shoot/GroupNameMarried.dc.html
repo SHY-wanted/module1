@@ -1,0 +1,43 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Nunito:wght@500;600;700;800&display=swap">
+  <style>
+    body { margin: 0; }
+    @keyframes spin360 { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+  </style>
+</helmet>
+<div style="width:340px;height:734px;overflow:hidden;">
+<div style="height:100%;box-sizing:border-box;padding:60px 24px 28px;background:#F6F5FC;display:flex;flex-direction:column;">
+          <div style="display:flex;gap:6px;margin-bottom:14px;">
+            <div style="height:4px;flex:1;border-radius:2px;background:#6A5ECF;"></div>
+            <div style="height:4px;flex:1;border-radius:2px;background:#6A5ECF;"></div>
+            <div style="height:4px;flex:1;border-radius:2px;background:#E8E4F4;"></div>
+          </div>
+          <div style="font-size:21px;font-weight:800;color:#2D2A3E;">그룹 이름을 지어주세요</div>
+          <div style="display:inline-flex;align-items:center;gap:7px;background:#F0EEFF;border-radius:10px;padding:6px 12px;margin-top:10px;width:fit-content;">
+            <svg width="13" height="13" sc-camel-view-box="0 0 24 24" fill="none" stroke="#C24C77" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 3h12l4 6-10 12L2 9Z"></path><path d="M11 3 8 9l4 12 4-12-3-6"></path><path d="M2 9h20"></path></svg>
+            <span style="font-size:12px;font-weight:800;color:#A03A61;">부부</span>
+          </div>
+          <div style="margin-top:40px;">
+            <input type="text" placeholder="우리 신혼집" style="width:100%;box-sizing:border-box;height:52px;border-radius:16px;border:2px solid #6A5ECF;background:#fff;padding:0 18px;font-size:16px;font-weight:800;color:#2D2A3E;text-align:center;">
+          </div>
+          <div style="font-size:12px;color:#6B6980;font-weight:700;margin-top:16px;">이런 이름 어때요?</div>
+          <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:8px;">
+            <div style="font-size:12px;font-weight:700;color:#2D2A3E;background:#F0EEFF;padding:6px 12px;border-radius:10px;">우리 신혼집</div>
+            <div style="font-size:12px;font-weight:700;color:#2D2A3E;background:#F0EEFF;padding:6px 12px;border-radius:10px;">부부 살림</div>
+            <div style="font-size:12px;font-weight:700;color:#2D2A3E;background:#F0EEFF;padding:6px 12px;border-radius:10px;">함께 모으기</div>
+          </div>
+          <div style="flex:1;"></div>
+          <div style="height:50px;border-radius:16px;background:linear-gradient(135deg,#E3DFFB 0%,#BDB2F2 100%);color:#3F3480;display:flex;align-items:center;justify-content:center;font-size:15px;font-weight:800;box-shadow:0 8px 18px rgba(106,94,207,0.3);">그룹 만들기</div>
+        </div>
+</div>
+</x-dc>
+</body>
+</html>

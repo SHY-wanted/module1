@@ -1,0 +1,89 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Nunito:wght@500;600;700;800&display=swap">
+  <style>
+    body { margin: 0; }
+    @keyframes spin360 { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+  </style>
+</helmet>
+<div style="width:340px;height:734px;overflow:hidden;">
+<div style="height:100%;box-sizing:border-box;background:#F6F5FC;display:flex;flex-direction:column;">
+          <div style="padding:60px 20px 12px;flex-shrink:0;display:flex;align-items:center;gap:10px;">
+            <svg width="18" height="18" sc-camel-view-box="0 0 24 24" fill="none" stroke="#2D2A3E" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m15 18-6-6 6-6"/></svg>
+            <div style="font-size:18px;font-weight:800;color:#2D2A3E;">이번 달 수입</div>
+          </div>
+
+          <div style="flex:1;overflow:auto;padding:10px 20px 24px;display:flex;flex-direction:column;">
+            <div style="background:#fff;border:1.5px solid #E8E4F4;border-radius:20px;padding:22px 20px;text-align:center;">
+              <div style="font-size:12px;font-weight:700;color:#6B6980;">2026년 9월 수입</div>
+              <div style="display:flex;align-items:baseline;justify-content:center;gap:4px;margin-top:8px;">
+                <span style="font-size:20px;font-weight:800;color:#8B8378;">₩</span>
+                <span style="font-size:34px;font-weight:800;color:#1D7A69;letter-spacing:-1px;">{{ incomeAmountLabel }}</span>
+              </div>
+            </div>
+
+            <div style="margin-top:14px;">
+              <input type="number" placeholder="직접 입력" value="{{ incomeAmountValue }}" onChange="{{ onIncomeAmountChange }}" style="width:100%;box-sizing:border-box;height:46px;border-radius:14px;border:2px solid #E8E4F4;background:#fff;padding:0 16px;font-size:14px;color:#2D2A3E;font-weight:600;text-align:center;"/>
+            </div>
+
+            <div style="display:flex;gap:8px;margin-top:10px;">
+              <div onClick="{{ onIncomeAdd10k }}" style="flex:1;height:38px;border-radius:12px;background:#fff;border:1.5px solid #E8E4F4;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;color:#6B6980;cursor:pointer;">+1만</div>
+              <div onClick="{{ onIncomeAdd100k }}" style="flex:1;height:38px;border-radius:12px;background:#fff;border:1.5px solid #E8E4F4;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;color:#6B6980;cursor:pointer;">+10만</div>
+              <div onClick="{{ onIncomeAdd1m }}" style="flex:1;height:38px;border-radius:12px;background:#fff;border:1.5px solid #E8E4F4;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;color:#6B6980;cursor:pointer;">+100만</div>
+              <div onClick="{{ onIncomeReset }}" style="flex:1;height:38px;border-radius:12px;background:#fff;border:1.5px solid #E8E4F4;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;color:#B23B3B;cursor:pointer;">초기화</div>
+            </div>
+
+            <div style="margin-top:20px;">
+              <div style="font-size:13px;font-weight:700;color:#2D2A3E;margin-bottom:8px;">수입 항목</div>
+              <select style="width:100%;box-sizing:border-box;height:46px;border-radius:14px;border:2px solid #E8E4F4;background:#fff;padding:0 14px;font-size:14px;font-weight:600;color:#2D2A3E;">
+                <option>급여</option>
+                <option>용돈</option>
+                <option>부수입</option>
+                <option>기타</option>
+              </select>
+            </div>
+
+            <div style="margin-top:14px;">
+              <div style="font-size:13px;font-weight:700;color:#2D2A3E;margin-bottom:8px;">메모</div>
+              <input type="text" placeholder="예) 9월 월급" style="width:100%;box-sizing:border-box;height:46px;border-radius:14px;border:2px solid #E8E4F4;background:#fff;padding:0 16px;font-size:14px;color:#2D2A3E;font-weight:600;"/>
+            </div>
+
+            <div style="margin-top:14px;background:#fff;border:1.5px solid #E8E4F4;border-radius:14px;padding:14px;display:flex;align-items:center;gap:10px;">
+              <svg width="17" height="17" sc-camel-view-box="0 0 24 24" fill="none" stroke="#6B6980" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a9 9 0 1 1-6.219-8.56"/></svg>
+              <div style="flex:1;font-size:13px;font-weight:700;color:#2D2A3E;">매달 자동으로 반복</div>
+              <div style="width:42px;height:24px;border-radius:12px;background:#6A5ECF;position:relative;flex-shrink:0;"><div style="width:18px;height:18px;border-radius:50%;background:#fff;position:absolute;top:3px;left:21px;box-shadow:0 2px 5px rgba(0,0,0,0.2);"></div></div>
+            </div>
+
+            <div style="flex:1;"></div>
+            <div style="margin-top:22px;height:50px;border-radius:16px;background:linear-gradient(135deg,#E3DFFB 0%,#BDB2F2 100%);color:#3F3480;display:flex;align-items:center;justify-content:center;font-size:15px;font-weight:800;box-shadow:0 8px 18px rgba(106,94,207,0.3);">추가하기</div>
+          </div>
+        </div>
+</div>
+</x-dc>
+<script data-dc-script data-props='{"initialAmount":{"editor":"number","default":2400000,"section":"수입"}}'>
+class Component extends DCLogic {
+  state = {
+    incomeAmount: this.props.initialAmount ?? 2400000,
+  };
+  renderVals() {
+    return {
+      incomeAmountLabel: this.state.incomeAmount.toLocaleString('ko-KR'),
+      incomeAmountValue: this.state.incomeAmount,
+      onIncomeAmountChange: e => this.setState({ incomeAmount: Number(e.target.value) || 0 }),
+      onIncomeAdd10k: () => this.setState(s => ({ incomeAmount: s.incomeAmount + 10000 })),
+      onIncomeAdd100k: () => this.setState(s => ({ incomeAmount: s.incomeAmount + 100000 })),
+      onIncomeAdd1m: () => this.setState(s => ({ incomeAmount: s.incomeAmount + 1000000 })),
+      onIncomeReset: () => this.setState({ incomeAmount: 0 }),
+    };
+  }
+}
+</script>
+</body>
+</html>
