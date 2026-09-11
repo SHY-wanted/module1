@@ -1,0 +1,108 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Nunito:wght@500;600;700;800&display=swap">
+  <style>
+    body { margin: 0; }
+    @keyframes spin360 { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+  </style>
+</helmet>
+<div style="width:340px;height:734px;overflow:hidden;">
+<div style="height:100%;box-sizing:border-box;padding:60px 20px 28px;background:#F6F5FC;display:flex;flex-direction:column;">
+          <div style="display:flex;gap:6px;margin-bottom:14px;">
+            <div style="height:4px;flex:1;border-radius:2px;background:#6A5ECF;"></div>
+            <div style="height:4px;flex:1;border-radius:2px;background:#E8E4F4;"></div>
+            <div style="height:4px;flex:1;border-radius:2px;background:#E8E4F4;"></div>
+          </div>
+          <div style="font-size:21px;font-weight:800;color:#2D2A3E;">어떤 모임인가요?</div>
+          <div style="font-size:13px;color:#6B6980;margin-top:5px;font-weight:600;">모임 성격에 맞는 유형을 선택해주세요</div>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:18px;">
+
+            <div onClick="{{ familyOnSelect }}" style="border-radius:16px;padding:14px 10px;background:{{ familyBg }};border:2px solid {{ familyBorder }};cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:8px;box-shadow:{{ familyShadow }};">
+              <div style="width:32px;height:32px;border-radius:10px;background:{{ familyIconBg }};display:flex;align-items:center;justify-content:center;">
+                <svg width="17" height="17" sc-camel-view-box="0 0 24 24" fill="none" stroke="{{ familyIconColor }}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M22 21v-2a4 4 0 0 0-3-3.87"></path><path d="M16 3.13a4 4 0 0 1 0 7.75"></path></svg>
+              </div>
+              <div style="font-size:13px;font-weight:800;color:{{ familyLabelColor }};">가족</div>
+            </div>
+
+            <div onClick="{{ marriageOnSelect }}" style="border-radius:16px;padding:14px 10px;background:{{ marriageBg }};border:2px solid {{ marriageBorder }};cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:8px;box-shadow:{{ marriageShadow }};">
+              <div style="width:32px;height:32px;border-radius:10px;background:{{ marriageIconBg }};display:flex;align-items:center;justify-content:center;">
+                <svg width="17" height="17" sc-camel-view-box="0 0 24 24" fill="none" stroke="{{ marriageIconColor }}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 3h12l4 6-10 12L2 9Z"></path><path d="M11 3 8 9l4 12 4-12-3-6"></path><path d="M2 9h20"></path></svg>
+              </div>
+              <div style="font-size:13px;font-weight:800;color:{{ marriageLabelColor }};">부부</div>
+            </div>
+
+            <div onClick="{{ coupleOnSelect }}" style="border-radius:16px;padding:14px 10px;background:{{ coupleBg }};border:2px solid {{ coupleBorder }};cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:8px;box-shadow:{{ coupleShadow }};">
+              <div style="width:32px;height:32px;border-radius:10px;background:{{ coupleIconBg }};display:flex;align-items:center;justify-content:center;">
+                <svg width="17" height="17" sc-camel-view-box="0 0 24 24" fill="none" stroke="{{ coupleIconColor }}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 14c1.49-1.46 3-3.21 3-5.5A5.5 5.5 0 0 0 16.5 3c-1.76 0-3 .5-4.5 2-1.5-1.5-2.74-2-4.5-2A5.5 5.5 0 0 0 2 8.5c0 2.3 1.5 4.05 3 5.5l7 7Z"></path></svg>
+              </div>
+              <div style="font-size:13px;font-weight:800;color:{{ coupleLabelColor }};">커플</div>
+            </div>
+
+            <div onClick="{{ roommateOnSelect }}" style="border-radius:16px;padding:14px 10px;background:{{ roommateBg }};border:2px solid {{ roommateBorder }};cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:8px;box-shadow:{{ roommateShadow }};">
+              <div style="width:32px;height:32px;border-radius:10px;background:{{ roommateIconBg }};display:flex;align-items:center;justify-content:center;">
+                <svg width="17" height="17" sc-camel-view-box="0 0 24 24" fill="none" stroke="{{ roommateIconColor }}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m3 9 9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path><polyline points="9 22 9 12 15 12 15 22"></polyline></svg>
+              </div>
+              <div style="font-size:13px;font-weight:800;color:{{ roommateLabelColor }};">룸메이트</div>
+            </div>
+
+            <div onClick="{{ clubOnSelect }}" style="border-radius:16px;padding:14px 10px;background:{{ clubBg }};border:2px solid {{ clubBorder }};cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:8px;box-shadow:{{ clubShadow }};">
+              <div style="width:32px;height:32px;border-radius:10px;background:{{ clubIconBg }};display:flex;align-items:center;justify-content:center;">
+                <svg width="17" height="17" sc-camel-view-box="0 0 24 24" fill="none" stroke="{{ clubIconColor }}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z"></path><line x1="4" x2="4" y1="22" y2="15"></line></svg>
+              </div>
+              <div style="font-size:13px;font-weight:800;color:{{ clubLabelColor }};">모임·동아리</div>
+            </div>
+
+            <div onClick="{{ etcOnSelect }}" style="border-radius:16px;padding:14px 10px;background:{{ etcBg }};border:2px solid {{ etcBorder }};cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:8px;box-shadow:{{ etcShadow }};">
+              <div style="width:32px;height:32px;border-radius:10px;background:{{ etcIconBg }};display:flex;align-items:center;justify-content:center;">
+                <svg width="17" height="17" sc-camel-view-box="0 0 24 24" fill="none" stroke="{{ etcIconColor }}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m12 3-1.9 5.8a2 2 0 0 1-1.287 1.288L3 12l5.8 1.9a2 2 0 0 1 1.288 1.287L12 21l1.9-5.8a2 2 0 0 1 1.287-1.288L21 12l-5.8-1.9a2 2 0 0 1-1.288-1.287Z"></path></svg>
+              </div>
+              <div style="font-size:13px;font-weight:800;color:{{ etcLabelColor }};">기타</div>
+            </div>
+
+          </div>
+          <div style="flex:1;"></div>
+          <div style="height:50px;border-radius:16px;background:linear-gradient(135deg,#E3DFFB 0%,#BDB2F2 100%);color:#3F3480;display:flex;align-items:center;justify-content:center;font-size:15px;font-weight:800;box-shadow:0 8px 18px rgba(106,94,207,0.3);">다음으로</div>
+        </div>
+</div>
+</x-dc>
+<script data-dc-script>
+const TYPE_ACCENTS = {
+  family: { accent: '#279E88', light: '#E8F9F7' },
+  marriage: { accent: '#C24C77', light: '#FFF0F6' },
+  couple: { accent: '#6A5ECF', light: '#F0EEFF' },
+  roommate: { accent: '#2E7AB8', light: '#EBF5FF' },
+  club: { accent: '#8A6A12', light: '#FFFBE8' },
+  etc: { accent: '#2E8B57', light: '#EDFAF3' },
+};
+class Component extends DCLogic {
+  state = {
+    selectedGroupType: 'family',
+  };
+  buildTypeVals(id) {
+    const { accent, light } = TYPE_ACCENTS[id];
+    const sel = this.state.selectedGroupType === id;
+    const out = {};
+    out[id + 'Bg'] = sel ? accent : '#FFFFFF';
+    out[id + 'Border'] = sel ? accent : '#E8E4F4';
+    out[id + 'IconBg'] = sel ? 'rgba(255,255,255,0.22)' : light;
+    out[id + 'IconColor'] = sel ? '#FFFFFF' : accent;
+    out[id + 'LabelColor'] = sel ? '#FFFFFF' : '#2D2A3E';
+    out[id + 'Shadow'] = sel ? '0 6px 16px ' + accent + '55' : '0 2px 6px rgba(45,42,62,0.06)';
+    out[id + 'OnSelect'] = () => this.setState({ selectedGroupType: id });
+    return out;
+  }
+  renderVals() {
+    const typeVals = Object.assign({}, ...Object.keys(TYPE_ACCENTS).map(id => this.buildTypeVals(id)));
+    return { ...typeVals };
+  }
+}
+</script>
+</body>
+</html>

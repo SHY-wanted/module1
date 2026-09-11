@@ -1,0 +1,216 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Nunito:wght@500;600;700;800&display=swap">
+  <style>
+    body { margin: 0; }
+    @keyframes spin360 { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+  </style>
+</helmet>
+<div style="width:340px;height:734px;overflow:hidden;">
+<div style="height:100%;box-sizing:border-box;background:#F6F5FC;display:flex;flex-direction:column;">
+          <div style="padding:60px 20px 0;flex-shrink:0;display:flex;align-items:center;justify-content:space-between;gap:8px;">
+            <div style="font-size:18px;font-weight:800;color:#2D2A3E;flex:1;min-width:0;">{{ givenName }}님<br>안녕하세요</div>
+            <div style="position:relative;flex-shrink:0;">
+              <select value="{{ homeGroupValue }}" onChange="{{ onHomeGroupChange }}" style="appearance:none;-webkit-appearance:none;background:#F0EEFF;border:none;border-radius:20px;padding:9px 30px 9px 34px;font-size:12px;font-weight:800;color:#6A5ECF;">
+                <option value="me">나 (개인)</option>
+                <option value="couple">민준 &amp; 서연</option>
+                <option value="family">행복한 우리집</option>
+                <option value="roommate">전세 405호</option>
+              </select>
+              <svg width="14" height="14" sc-camel-view-box="0 0 24 24" fill="none" stroke="#6A5ECF" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="position:absolute;left:10px;top:50%;transform:translateY(-50%);pointer-events:none;"><path d="M19 14c1.49-1.46 3-3.21 3-5.5A5.5 5.5 0 0 0 16.5 3c-1.76 0-3 .5-4.5 2-1.5-1.5-2.74-2-4.5-2A5.5 5.5 0 0 0 2 8.5c0 2.3 1.5 4.05 3 5.5l7 7Z"></path></svg>
+              <svg width="10" height="10" sc-camel-view-box="0 0 24 24" fill="none" stroke="#6A5ECF" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="position:absolute;right:10px;top:50%;transform:translateY(-50%);pointer-events:none;"><path d="m6 9 6 6 6-6"></path></svg>
+            </div>
+          </div>
+
+          <div style="flex:1;overflow:auto;padding:0 20px 20px;">
+          <a href="#income-list" style="margin-top:18px;background:#fff;border:1.5px solid #E8E4F4;border-radius:22px;padding:18px 20px;display:flex;align-items:center;gap:12px;text-decoration:none;">
+            <div style="width:36px;height:36px;border-radius:12px;background:#E8F9F7;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+              <svg width="17" height="17" sc-camel-view-box="0 0 24 24" fill="none" stroke="#1D7A69" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" x2="12" y1="19" y2="5"></line><polyline points="5 12 12 5 19 12"></polyline></svg>
+            </div>
+            <div style="flex:1;min-width:0;">
+              <div style="font-size:12px;font-weight:700;color:#6B6980;">이번 달 총 수입</div>
+              <div style="font-size:22px;font-weight:800;color:#1D7A69;margin-top:2px;letter-spacing:-0.4px;">{{ homeIncomeLabel }}</div>
+            </div>
+            <svg width="16" height="16" sc-camel-view-box="0 0 24 24" fill="none" stroke="#A9A2B8" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m9 18 6-6-6-6"></path></svg>
+          </a>
+
+          <div style="margin-top:12px;background:linear-gradient(135deg,#8C81E0 0%,#6A5ECF 100%);border-radius:22px;padding:20px;box-shadow:0 10px 26px rgba(106,94,207,0.32);">
+            <div style="font-size:12px;font-weight:700;color:rgba(255,255,255,0.85);">이번 달 총 지출</div>
+            <div style="font-size:30px;font-weight:800;color:#fff;margin-top:6px;letter-spacing:-0.5px;">{{ homeExpenseLabel }}</div>
+            <div style="display:flex;flex-direction:column;gap:8px;margin-top:16px;">
+              <div>
+                <div style="display:flex;justify-content:space-between;font-size:11px;font-weight:700;color:rgba(255,255,255,0.9);margin-bottom:4px;"><span>식비</span><span>42%</span></div>
+                <div style="height:5px;border-radius:3px;background:rgba(255,255,255,0.25);"><div style="width:42%;height:100%;border-radius:3px;background:#fff;"></div></div>
+              </div>
+              <div>
+                <div style="display:flex;justify-content:space-between;font-size:11px;font-weight:700;color:rgba(255,255,255,0.9);margin-bottom:4px;"><span>생활</span><span>28%</span></div>
+                <div style="height:5px;border-radius:3px;background:rgba(255,255,255,0.25);"><div style="width:28%;height:100%;border-radius:3px;background:#fff;"></div></div>
+              </div>
+              <div>
+                <div style="display:flex;justify-content:space-between;font-size:11px;font-weight:700;color:rgba(255,255,255,0.9);margin-bottom:4px;"><span>문화</span><span>17%</span></div>
+                <div style="height:5px;border-radius:3px;background:rgba(255,255,255,0.25);"><div style="width:17%;height:100%;border-radius:3px;background:#fff;"></div></div>
+              </div>
+            </div>
+          </div>
+
+          <a href="#group-create-3a" style="margin-top:16px;height:48px;border-radius:16px;background:#fff;border:1.5px dashed #6A5ECF;display:flex;align-items:center;justify-content:center;gap:8px;text-decoration:none;">
+            <svg width="16" height="16" sc-camel-view-box="0 0 24 24" fill="none" stroke="#6A5ECF" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" x2="12" y1="5" y2="19"></line><line x1="5" x2="19" y1="12" y2="12"></line></svg>
+            <span style="font-size:14px;font-weight:800;color:#6A5ECF;">그룹 만들기</span>
+          </a>
+
+          <div style="display:flex;align-items:baseline;justify-content:space-between;margin-top:22px;">
+            <div style="font-size:15px;font-weight:800;color:#2D2A3E;">최근 지출</div>
+            <div style="font-size:12px;font-weight:700;color:#6A5ECF;">전체보기</div>
+          </div>
+          <div style="display:flex;flex-direction:column;gap:8px;margin-top:10px;">
+            <div style="background:#fff;border-radius:16px;padding:12px 14px;display:flex;align-items:center;gap:12px;border:1px solid #E8E4F4;">
+              <div style="width:34px;height:34px;border-radius:12px;background:#FFF2EC;display:flex;align-items:center;justify-content:center;flex-shrink:0;"><svg width="16" height="16" sc-camel-view-box="0 0 24 24" fill="none" stroke="#A15A1E" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 8h1a4 4 0 1 1 0 8h-1"></path><path d="M3 8h14v9a4 4 0 0 1-4 4H7a4 4 0 0 1-4-4Z"></path></svg></div>
+              <div style="flex:1;min-width:0;">
+                <div style="font-size:13px;font-weight:800;color:#2D2A3E;">스타벅스 강남점</div>
+                <div style="font-size:11px;color:#6B6980;font-weight:600;">식비 · 오늘 08:32</div>
+              </div>
+              <div style="font-size:14px;font-weight:800;color:#2D2A3E;">5,800원</div>
+            </div>
+            <div style="background:#fff;border-radius:16px;padding:12px 14px;display:flex;align-items:center;gap:12px;border:1px solid #E8E4F4;">
+              <div style="width:34px;height:34px;border-radius:12px;background:#F0EEFF;display:flex;align-items:center;justify-content:center;flex-shrink:0;"><svg width="16" height="16" sc-camel-view-box="0 0 24 24" fill="none" stroke="#6A5ECF" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 9a3 3 0 1 0 0 6v2a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-2a3 3 0 1 1 0-6V7a2 2 0 0 0-2-2H4a2 2 0 0 0-2 2Z"></path></svg></div>
+              <div style="flex:1;min-width:0;">
+                <div style="font-size:13px;font-weight:800;color:#2D2A3E;">CGV 왕십리</div>
+                <div style="font-size:11px;color:#6B6980;font-weight:600;">문화 · 9월 6일</div>
+              </div>
+              <div style="font-size:14px;font-weight:800;color:#2D2A3E;">28,000원</div>
+            </div>
+            <div style="background:#fff;border-radius:16px;padding:12px 14px;display:flex;align-items:center;gap:12px;border:1px solid #E8E4F4;">
+              <div style="width:34px;height:34px;border-radius:12px;background:#E8F9F7;display:flex;align-items:center;justify-content:center;flex-shrink:0;"><svg width="16" height="16" sc-camel-view-box="0 0 24 24" fill="none" stroke="#1D7A69" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 2 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4Z"></path><path d="M3 6h18"></path></svg></div>
+              <div style="flex:1;min-width:0;">
+                <div style="font-size:13px;font-weight:800;color:#2D2A3E;">GS25</div>
+                <div style="font-size:11px;color:#6B6980;font-weight:600;">생활 · 9월 8일</div>
+              </div>
+              <div style="font-size:14px;font-weight:800;color:#2D2A3E;">12,300원</div>
+            </div>
+          </div>
+
+          <div style="margin-top:24px;">
+            <div style="font-size:15px;font-weight:800;color:#2D2A3E;margin-bottom:10px;">9월 캘린더</div>
+            <div style="background:#fff;border-radius:18px;border:1px solid #E8E4F4;padding:14px;">
+              <div style="display:grid;grid-template-columns:repeat(7,1fr);gap:4px;font-size:11px;font-weight:700;color:#A9A2B8;text-align:center;margin-bottom:6px;">
+                <div>일</div><div>월</div><div>화</div><div>수</div><div>목</div><div>금</div><div>토</div>
+              </div>
+              <div style="display:grid;grid-template-columns:repeat(7,1fr);gap:4px;">
+                <sc-for list="{{ calendarDays }}" as="d" hint-placeholder-count="35">
+                  <div style="min-height:52px;border-radius:10px;background:{{ d.bg }};padding:4px 2px;display:flex;flex-direction:column;align-items:center;">
+                    <div style="font-size:11px;font-weight:700;color:{{ d.numColor }};">{{ d.num }}</div>
+                    <sc-if value="{{ d.hasExpense }}" hint-placeholder-val="{{ false }}">
+                      <div style="font-size:9px;font-weight:800;color:#B23B3B;margin-top:2px;">-{{ d.expenseLabel }}</div>
+                    </sc-if>
+                    <sc-if value="{{ d.hasIncome }}" hint-placeholder-val="{{ false }}">
+                      <div style="font-size:9px;font-weight:800;color:#1D7A69;margin-top:1px;">+{{ d.incomeLabel }}</div>
+                    </sc-if>
+                  </div>
+                </sc-for>
+              </div>
+            </div>
+          </div>
+          </div>
+
+          <div style="flex-shrink:0;padding:10px 12px 20px;background:#fff;border-top:1px solid #ECE9E3;display:flex;align-items:center;">
+            <div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:3px;">
+              <svg width="19" height="19" sc-camel-view-box="0 0 24 24" fill="none" stroke="#6A5ECF" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m3 9 9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path><polyline points="9 22 9 12 15 12 15 22"></polyline></svg>
+              <div style="font-size:10px;font-weight:700;color:#6A5ECF;">홈</div>
+            </div>
+            <div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:3px;">
+              <svg width="19" height="19" sc-camel-view-box="0 0 24 24" fill="none" stroke="#A9A2B8" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M22 21v-2a4 4 0 0 0-3-3.87"></path><path d="M16 3.13a4 4 0 0 1 0 7.75"></path></svg>
+              <div style="font-size:10px;font-weight:700;color:#A9A2B8;">그룹</div>
+            </div>
+            <div style="flex:1;display:flex;align-items:center;justify-content:center;">
+              <div style="width:38px;height:38px;border-radius:50%;background:linear-gradient(135deg,#8C81E0 0%,#6A5ECF 100%);display:flex;align-items:center;justify-content:center;">
+                <svg width="17" height="17" sc-camel-view-box="0 0 24 24" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14.5 4h-5L7 7H4a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-3l-2.5-3z"></path><circle cx="12" cy="13" r="3"></circle></svg>
+              </div>
+            </div>
+            <div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:3px;">
+              <svg width="19" height="19" sc-camel-view-box="0 0 24 24" fill="none" stroke="#A9A2B8" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="8" x2="21" y1="6" y2="6"></line><line x1="8" x2="21" y1="12" y2="12"></line><line x1="8" x2="21" y1="18" y2="18"></line><line x1="3" x2="3.01" y1="6" y2="6"></line><line x1="3" x2="3.01" y1="12" y2="12"></line><line x1="3" x2="3.01" y1="18" y2="18"></line></svg>
+              <div style="font-size:10px;font-weight:700;color:#A9A2B8;">지출내역</div>
+            </div>
+            <div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:3px;">
+              <svg width="19" height="19" sc-camel-view-box="0 0 24 24" fill="none" stroke="#A9A2B8" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="4"></circle><path d="M20 21a8 8 0 0 0-16 0"></path></svg>
+              <div style="font-size:10px;font-weight:700;color:#A9A2B8;">마이페이지</div>
+            </div>
+          </div>
+        </div>
+</div>
+</x-dc>
+<script data-dc-script data-props='{"fullName":{"editor":"text","default":"이민준","section":"프로필"}}'>
+const COMPOUND_SURNAMES = ['남궁', '황보', '제갈', '사공', '선우', '서문', '독고', '동방'];
+function stripSurname(fullName) {
+  const twoChar = COMPOUND_SURNAMES.find((s) => fullName.startsWith(s));
+  if (twoChar && fullName.length > twoChar.length) return fullName.slice(twoChar.length);
+  return fullName.length > 1 ? fullName.slice(1) : fullName;
+}
+
+const CALENDAR_DATA = {
+  5: { expense: 34500 },
+  6: { expense: 28000 },
+  8: { expense: 12300 },
+  9: { expense: 5800 },
+  1: { income: 2400000 },
+};
+
+const HOME_TOTALS = {
+  me: { income: 0, expense: 47300 },
+  couple: { income: 2400000, expense: 850000 },
+  family: { income: 4200000, expense: 1284300 },
+  roommate: { income: 600000, expense: 210500 },
+};
+
+class Component extends DCLogic {
+  state = {
+    homeGroup: 'me',
+  };
+
+  buildCalendarDays() {
+    const startWeekday = 2; // 2026-09-01 is Tuesday
+    const daysInMonth = 30;
+    const today = 9;
+    const days = [];
+    for (let i = 0; i < startWeekday; i++) days.push(null);
+    for (let n = 1; n <= daysInMonth; n++) days.push(n);
+    return days.map(n => {
+      if (n === null) return { num: '', bg: 'transparent', numColor: '#fff', hasExpense: false, hasIncome: false };
+      const data = CALENDAR_DATA[n] || {};
+      const isToday = n === today;
+      return {
+        num: n,
+        bg: isToday ? '#F0EEFF' : '#F9F8FC',
+        numColor: isToday ? '#6A5ECF' : '#8B8378',
+        hasExpense: !!data.expense,
+        hasIncome: !!data.income,
+        expenseLabel: data.expense ? (data.expense / 1000).toFixed(0) + '천' : '',
+        incomeLabel: data.income ? (data.income / 10000).toFixed(0) + '만' : '',
+      };
+    });
+  }
+
+  renderVals() {
+    const fullName = this.props.fullName ?? '이민준';
+    // 성을 뗀 이름만 보여준다 (예: 이민준 -> 민준, 남궁민 -> 민 — 두 글자 성 목록에 있으면 두 글자를 뗀다)
+    const givenName = stripSurname(fullName);
+    const homeTotals = HOME_TOTALS[this.state.homeGroup] || HOME_TOTALS.me;
+    return {
+      givenName,
+      homeGroupValue: this.state.homeGroup,
+      onHomeGroupChange: e => this.setState({ homeGroup: e.target.value }),
+      homeIncomeLabel: homeTotals.income.toLocaleString('ko-KR') + '원',
+      homeExpenseLabel: homeTotals.expense.toLocaleString('ko-KR') + '원',
+      calendarDays: this.buildCalendarDays(),
+    };
+  }
+}
+</script>
+</body>
+</html>

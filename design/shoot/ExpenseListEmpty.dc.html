@@ -1,0 +1,58 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Nunito:wght@500;600;700;800&display=swap">
+  <style>
+    body { margin: 0; }
+    @keyframes spin360 { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+  </style>
+</helmet>
+<div style="width:340px;height:734px;overflow:hidden;">
+<div style="height:100%;box-sizing:border-box;background:#F6F5FC;display:flex;flex-direction:column;">
+          <div style="padding:60px 20px 0;flex-shrink:0;font-size:22px;font-weight:800;color:#2D2A3E;">지출 내역</div>
+          <div style="flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:0 20px;">
+            <div style="width:72px;height:72px;border-radius:50%;background:#F0EEFF;display:flex;align-items:center;justify-content:center;">
+              <svg width="30" height="30" sc-camel-view-box="0 0 24 24" fill="none" stroke="#6A5ECF" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="8" x2="21" y1="6" y2="6"></line><line x1="8" x2="21" y1="12" y2="12"></line><line x1="8" x2="21" y1="18" y2="18"></line><line x1="3" x2="3.01" y1="6" y2="6"></line><line x1="3" x2="3.01" y1="12" y2="12"></line><line x1="3" x2="3.01" y1="18" y2="18"></line></svg>
+            </div>
+            <div style="font-size:16px;font-weight:800;color:#2D2A3E;margin-top:18px;">아직 지출 내역이 없어요</div>
+            <div style="font-size:13px;color:#6B6980;margin-top:8px;font-weight:600;line-height:1.5;">영수증을 촬영하면 AI가 금액과<br>항목을 자동으로 채워드려요</div>
+            <div style="margin-top:22px;height:48px;padding:0 22px;border-radius:16px;background:linear-gradient(135deg,#E3DFFB 0%,#BDB2F2 100%);color:#3F3480;display:flex;align-items:center;justify-content:center;gap:8px;font-size:14px;font-weight:800;box-shadow:0 8px 18px rgba(106,94,207,0.3);">
+              <svg width="16" height="16" sc-camel-view-box="0 0 24 24" fill="none" stroke="#3F3480" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14.5 4h-5L7 7H4a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-3l-2.5-3z"></path><circle cx="12" cy="13" r="3"></circle></svg>
+              영수증으로 기록하기
+            </div>
+          </div>
+
+          <div style="flex-shrink:0;padding:10px 12px 20px;background:#fff;border-top:1px solid #ECE9E3;display:flex;align-items:center;">
+            <div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:3px;">
+              <svg width="19" height="19" sc-camel-view-box="0 0 24 24" fill="none" stroke="#A9A2B8" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m3 9 9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path><polyline points="9 22 9 12 15 12 15 22"></polyline></svg>
+              <div style="font-size:10px;font-weight:700;color:#A9A2B8;">홈</div>
+            </div>
+            <div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:3px;">
+              <svg width="19" height="19" sc-camel-view-box="0 0 24 24" fill="none" stroke="#A9A2B8" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M22 21v-2a4 4 0 0 0-3-3.87"></path><path d="M16 3.13a4 4 0 0 1 0 7.75"></path></svg>
+              <div style="font-size:10px;font-weight:700;color:#A9A2B8;">그룹</div>
+            </div>
+            <div style="flex:1;display:flex;align-items:center;justify-content:center;">
+              <div style="width:38px;height:38px;border-radius:50%;background:linear-gradient(135deg,#8C81E0 0%,#6A5ECF 100%);display:flex;align-items:center;justify-content:center;">
+                <svg width="17" height="17" sc-camel-view-box="0 0 24 24" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14.5 4h-5L7 7H4a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-3l-2.5-3z"></path><circle cx="12" cy="13" r="3"></circle></svg>
+              </div>
+            </div>
+            <div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:3px;">
+              <svg width="19" height="19" sc-camel-view-box="0 0 24 24" fill="none" stroke="#6A5ECF" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="8" x2="21" y1="6" y2="6"></line><line x1="8" x2="21" y1="12" y2="12"></line><line x1="8" x2="21" y1="18" y2="18"></line><line x1="3" x2="3.01" y1="6" y2="6"></line><line x1="3" x2="3.01" y1="12" y2="12"></line><line x1="3" x2="3.01" y1="18" y2="18"></line></svg>
+              <div style="font-size:10px;font-weight:700;color:#6A5ECF;">지출내역</div>
+            </div>
+            <div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:3px;">
+              <svg width="19" height="19" sc-camel-view-box="0 0 24 24" fill="none" stroke="#A9A2B8" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="4"></circle><path d="M20 21a8 8 0 0 0-16 0"></path></svg>
+              <div style="font-size:10px;font-weight:700;color:#A9A2B8;">마이페이지</div>
+            </div>
+          </div>
+        </div>
+</div>
+</x-dc>
+</body>
+</html>

@@ -1,0 +1,135 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Nunito:wght@500;600;700;800&display=swap">
+  <style>
+    body { margin: 0; }
+    @keyframes spin360 { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+  </style>
+</helmet>
+<div style="width:340px;height:734px;overflow:hidden;">
+<div style="height:100%;box-sizing:border-box;background:#F6F5FC;display:flex;flex-direction:column;">
+          <div style="padding:60px 20px 20px;background:#F0EEFF;flex-shrink:0;">
+            <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;">
+              <div style="display:flex;align-items:center;gap:12px;">
+                <div style="width:50px;height:50px;border-radius:14px;background:#6A5ECF;display:flex;align-items:center;justify-content:center;">
+                  <svg width="22" height="22" sc-camel-view-box="0 0 24 24" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 14c1.49-1.46 3-3.21 3-5.5A5.5 5.5 0 0 0 16.5 3c-1.76 0-3 .5-4.5 2-1.5-1.5-2.74-2-4.5-2A5.5 5.5 0 0 0 2 8.5c0 2.3 1.5 4.05 3 5.5l7 7Z"></path></svg>
+                </div>
+                <div>
+                  <div style="font-size:19px;font-weight:800;color:#2D2A3E;">민재 &amp; 서연</div>
+                  <span style="font-size:11px;font-weight:800;color:#6A5ECF;background:#fff;padding:3px 10px;border-radius:10px;">커플</span>
+                </div>
+              </div>
+              <div onClick="{{ onToggleGroupDetailPanel }}" style="width:38px;height:38px;border-radius:50%;background:#fff;display:flex;align-items:center;justify-content:center;flex-shrink:0;cursor:pointer;">
+                <svg width="18" height="18" sc-camel-view-box="0 0 24 24" fill="none" stroke="#6A5ECF" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M22 21v-2a4 4 0 0 0-3-3.87"></path><path d="M16 3.13a4 4 0 0 1 0 7.75"></path></svg>
+              </div>
+            </div>
+          </div>
+          <div style="flex:1;overflow:auto;padding:18px 20px;">
+            <sc-if value="{{ groupDetailPanel }}" hint-placeholder-val="{{ false }}">
+              <div style="font-size:13px;font-weight:800;color:#6B6980;margin-bottom:10px;">멤버 목록</div>
+              <div style="display:flex;flex-direction:column;gap:10px;">
+                <sc-for list="{{ members }}" as="m" hint-placeholder-count="2">
+                  <div style="background:#fff;border-radius:16px;padding:12px 14px;display:flex;align-items:center;gap:12px;box-shadow:0 2px 8px rgba(45,42,62,0.05);">
+                    <div style="width:38px;height:38px;border-radius:50%;background:{{ m.bg }};display:flex;align-items:center;justify-content:center;font-size:14px;font-weight:800;color:#2D2A3E;">{{ m.initial }}</div>
+                    <div style="flex:1;">
+                      <div style="font-size:14px;font-weight:800;color:#2D2A3E;">{{ m.name }}</div>
+                      <div style="font-size:12px;color:#6B6980;font-weight:600;">{{ m.role }}</div>
+                    </div>
+                  </div>
+                </sc-for>
+              </div>
+              <div style="margin-top:18px;background:#F5F3FF;border:2px dashed rgba(106,94,207,0.35);border-radius:18px;padding:16px;margin-bottom:18px;">
+                <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px;">
+                  <div style="font-size:12px;font-weight:700;color:#6B6980;">초대 코드</div>
+                  <div style="display:flex;align-items:center;gap:5px;font-size:12px;font-weight:800;color:#4B3F94;background:#fff;padding:5px 12px;border-radius:8px;">
+                    <svg width="12" height="12" sc-camel-view-box="0 0 24 24" fill="none" stroke="#4B3F94" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="18" cy="5" r="3"></circle><circle cx="6" cy="12" r="3"></circle><circle cx="18" cy="19" r="3"></circle><line x1="8.59" x2="15.42" y1="13.51" y2="17.49"></line><line x1="15.41" x2="8.59" y1="6.51" y2="10.49"></line></svg>
+                    공유
+                  </div>
+                </div>
+                <div style="font-size:26px;font-weight:800;color:#2D2A3E;letter-spacing:4px;font-family:'Courier New',monospace;">CP-4K9X</div>
+              </div>
+            </sc-if>
+
+            <div style="font-size:13px;font-weight:800;color:#6B6980;margin-bottom:10px;">지출·저금 피드</div>
+            <div style="display:flex;flex-direction:column;gap:10px;">
+              <sc-for list="{{ feedItems }}" as="f" hint-placeholder-count="3">
+                <div style="background:#fff;border-radius:16px;padding:12px 14px;display:flex;align-items:center;gap:12px;box-shadow:0 2px 8px rgba(45,42,62,0.05);">
+                  <div style="width:34px;height:34px;border-radius:12px;background:{{ f.avatarBg }};display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:800;color:#2D2A3E;flex-shrink:0;">{{ f.initial }}</div>
+                  <div style="flex:1;min-width:0;">
+                    <div style="font-size:13px;font-weight:800;color:#2D2A3E;">{{ f.merchant }}</div>
+                    <div style="font-size:11px;color:#6B6980;font-weight:600;">{{ f.category }} · {{ f.time }}</div>
+                  </div>
+                  <div style="font-size:14px;font-weight:800;color:{{ f.amountColor }};">{{ f.amountLabel }}</div>
+                </div>
+              </sc-for>
+            </div>
+          </div>
+
+          <div style="flex-shrink:0;padding:10px 12px 20px;background:#fff;border-top:1px solid #ECE9E3;display:flex;align-items:center;">
+            <div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:3px;">
+              <svg width="19" height="19" sc-camel-view-box="0 0 24 24" fill="none" stroke="#A9A2B8" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m3 9 9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path><polyline points="9 22 9 12 15 12 15 22"></polyline></svg>
+              <div style="font-size:10px;font-weight:700;color:#A9A2B8;">홈</div>
+            </div>
+            <div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:3px;">
+              <svg width="19" height="19" sc-camel-view-box="0 0 24 24" fill="none" stroke="#A9A2B8" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M22 21v-2a4 4 0 0 0-3-3.87"></path><path d="M16 3.13a4 4 0 0 1 0 7.75"></path></svg>
+              <div style="font-size:10px;font-weight:700;color:#A9A2B8;">그룹</div>
+            </div>
+            <div style="flex:1;display:flex;align-items:center;justify-content:center;">
+              <div style="width:38px;height:38px;border-radius:50%;background:linear-gradient(135deg,#8C81E0 0%,#6A5ECF 100%);display:flex;align-items:center;justify-content:center;">
+                <svg width="17" height="17" sc-camel-view-box="0 0 24 24" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14.5 4h-5L7 7H4a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-3l-2.5-3z"></path><circle cx="12" cy="13" r="3"></circle></svg>
+              </div>
+            </div>
+            <div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:3px;">
+              <svg width="19" height="19" sc-camel-view-box="0 0 24 24" fill="none" stroke="#A9A2B8" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="8" x2="21" y1="6" y2="6"></line><line x1="8" x2="21" y1="12" y2="12"></line><line x1="8" x2="21" y1="18" y2="18"></line><line x1="3" x2="3.01" y1="6" y2="6"></line><line x1="3" x2="3.01" y1="12" y2="12"></line><line x1="3" x2="3.01" y1="18" y2="18"></line></svg>
+              <div style="font-size:10px;font-weight:700;color:#A9A2B8;">지출내역</div>
+            </div>
+            <div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:3px;">
+              <svg width="19" height="19" sc-camel-view-box="0 0 24 24" fill="none" stroke="#A9A2B8" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="4"></circle><path d="M20 21a8 8 0 0 0-16 0"></path></svg>
+              <div style="font-size:10px;font-weight:700;color:#A9A2B8;">마이페이지</div>
+            </div>
+          </div>
+        </div>
+</div>
+</x-dc>
+<script data-dc-script>
+const MEMBERS_BASE = [
+  { name: '김서연', role: '나', initial: '서', bg: '#FFF0F6' },
+  { name: '이민준', role: '파트너', initial: '민', bg: '#F0EEFF' },
+];
+
+const FEED_ITEMS_BASE = [
+  { initial: '민', avatarBg: '#F0EEFF', merchant: '파스타집', amount: 32000, category: '문화', time: '오늘 19:04', isIncome: false },
+  { initial: '서', avatarBg: '#FFF0F6', merchant: '9월 저금', amount: 100000, category: '저금', time: '오늘 10:00', isIncome: true },
+  { initial: '서', avatarBg: '#FFF0F6', merchant: 'CGV', amount: 28000, category: '문화', time: '오늘 14:20', isIncome: false },
+  { initial: '민', avatarBg: '#F0EEFF', merchant: '스타벅스', amount: 5800, category: '식비', time: '어제 08:32', isIncome: false },
+];
+
+class Component extends DCLogic {
+  state = {
+    groupDetailPanel: null,
+  };
+
+  renderVals() {
+    const feedItems = FEED_ITEMS_BASE.map(f => ({
+      ...f,
+      amountLabel: (f.isIncome ? '+' : '-') + f.amount.toLocaleString('ko-KR') + '원',
+      amountColor: f.isIncome ? '#1D7A69' : '#B23B3B',
+    }));
+    return {
+      members: MEMBERS_BASE,
+      feedItems,
+      groupDetailPanel: this.state.groupDetailPanel,
+      onToggleGroupDetailPanel: () => this.setState(s => ({ groupDetailPanel: s.groupDetailPanel ? null : 'open' })),
+    };
+  }
+}
+</script>
+</body>
+</html>

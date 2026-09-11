@@ -1,0 +1,247 @@
+{
+  "artboards": [
+    {
+      "file": "Main.dc.html",
+      "x": 0,
+      "y": 0,
+      "w": 340,
+      "h": 734
+    },
+    {
+      "file": "SignupInput.dc.html",
+      "x": 460,
+      "y": 0,
+      "w": 340,
+      "h": 734
+    },
+    {
+      "file": "SignupSuccess.dc.html",
+      "x": 920,
+      "y": 0,
+      "w": 340,
+      "h": 734
+    },
+    {
+      "file": "LoginInput.dc.html",
+      "x": 1380,
+      "y": 0,
+      "w": 340,
+      "h": 734
+    },
+    {
+      "file": "LoginSuccess.dc.html",
+      "x": 1840,
+      "y": 0,
+      "w": 340,
+      "h": 734
+    },
+    {
+      "file": "Home.dc.html",
+      "x": 0,
+      "y": 924,
+      "w": 340,
+      "h": 734
+    },
+    {
+      "file": "Settings.dc.html",
+      "x": 460,
+      "y": 924,
+      "w": 340,
+      "h": 734
+    },
+    {
+      "file": "GroupCreateType.dc.html",
+      "x": 920,
+      "y": 924,
+      "w": 340,
+      "h": 734
+    },
+    {
+      "file": "GroupNameFamily.dc.html",
+      "x": 1380,
+      "y": 924,
+      "w": 340,
+      "h": 734
+    },
+    {
+      "file": "GroupNameMarried.dc.html",
+      "x": 1840,
+      "y": 924,
+      "w": 340,
+      "h": 734
+    },
+    {
+      "file": "GroupNameCouple.dc.html",
+      "x": 0,
+      "y": 1848,
+      "w": 340,
+      "h": 734
+    },
+    {
+      "file": "GroupNameRoommate.dc.html",
+      "x": 460,
+      "y": 1848,
+      "w": 340,
+      "h": 734
+    },
+    {
+      "file": "GroupNameClub.dc.html",
+      "x": 920,
+      "y": 1848,
+      "w": 340,
+      "h": 734
+    },
+    {
+      "file": "GroupNameOther.dc.html",
+      "x": 1380,
+      "y": 1848,
+      "w": 340,
+      "h": 734
+    },
+    {
+      "file": "GroupCreateDone.dc.html",
+      "x": 1840,
+      "y": 1848,
+      "w": 340,
+      "h": 734
+    },
+    {
+      "file": "GroupJoin.dc.html",
+      "x": 0,
+      "y": 2772,
+      "w": 340,
+      "h": 734
+    },
+    {
+      "file": "GroupList.dc.html",
+      "x": 460,
+      "y": 2772,
+      "w": 340,
+      "h": 734
+    },
+    {
+      "file": "GroupDetail.dc.html",
+      "x": 920,
+      "y": 2772,
+      "w": 340,
+      "h": 734
+    },
+    {
+      "file": "ExpenseInput.dc.html",
+      "x": 1380,
+      "y": 2772,
+      "w": 340,
+      "h": 734
+    },
+    {
+      "file": "ExpenseList.dc.html",
+      "x": 1840,
+      "y": 2772,
+      "w": 340,
+      "h": 734
+    },
+    {
+      "file": "ExpenseListEmpty.dc.html",
+      "x": 0,
+      "y": 3696,
+      "w": 340,
+      "h": 734
+    },
+    {
+      "file": "ReceiptCapture.dc.html",
+      "x": 460,
+      "y": 3696,
+      "w": 340,
+      "h": 734
+    },
+    {
+      "file": "ReceiptProcessing.dc.html",
+      "x": 920,
+      "y": 3696,
+      "w": 340,
+      "h": 734
+    },
+    {
+      "file": "GroupFeed.dc.html",
+      "x": 1380,
+      "y": 3696,
+      "w": 340,
+      "h": 734
+    },
+    {
+      "file": "MyPage.dc.html",
+      "x": 1840,
+      "y": 3696,
+      "w": 340,
+      "h": 734
+    },
+    {
+      "file": "IncomeList.dc.html",
+      "x": 0,
+      "y": 4620,
+      "w": 340,
+      "h": 734
+    },
+    {
+      "file": "IncomeEdit.dc.html",
+      "x": 460,
+      "y": 4620,
+      "w": 340,
+      "h": 734
+    },
+    {
+      "file": "MyGroupsManage.dc.html",
+      "x": 920,
+      "y": 4620,
+      "w": 340,
+      "h": 734
+    }
+  ],
+  "annotations": [
+    {
+      "id": "row-0",
+      "x": -160,
+      "y": 347,
+      "w": 140,
+      "text": "온보딩 · 회원가입 · 로그인"
+    },
+    {
+      "id": "row-1",
+      "x": -160,
+      "y": 1271,
+      "w": 140,
+      "text": "홈·설정 / 그룹 생성 시작"
+    },
+    {
+      "id": "row-2",
+      "x": -160,
+      "y": 2195,
+      "w": 140,
+      "text": "그룹 이름 입력 · 생성 완료"
+    },
+    {
+      "id": "row-3",
+      "x": -160,
+      "y": 3119,
+      "w": 140,
+      "text": "그룹 참여·목록·상세 / 지출 입력"
+    },
+    {
+      "id": "row-4",
+      "x": -160,
+      "y": 4043,
+      "w": 140,
+      "text": "지출 목록·영수증 / 피드·마이페이지"
+    },
+    {
+      "id": "row-5",
+      "x": -160,
+      "y": 4967,
+      "w": 140,
+      "text": "수입 입력/내역 · 내 그룹 관리"
+    }
+  ],
+  "launch": {
+    "view": "canvas"
+  }
+}

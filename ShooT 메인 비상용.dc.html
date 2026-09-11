@@ -1,0 +1,664 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+  <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@500;600;700;800&amp;display=swap" rel="stylesheet">
+  <style>
+    body { margin: 0; }
+    @keyframes spin360 { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+  </style>
+</helmet>
+<div style="background:#F0EDF9;min-height:100vh;padding:56px 40px 100px;font-family:'Nunito',sans-serif;box-sizing:border-box;">
+  <div style="max-width:1200px;margin:0 auto 48px;">
+    <div style="font-size:14px;font-weight:700;color:#9089AE;letter-spacing:2px;text-transform:uppercase;">MOBILE APP UI</div>
+    <div style="font-size: 34px; font-weight: 800; color: #2D2A3E; margin-top: 6px">ShooT</div>
+    <div style="font-size:16px;color:#6B6980;margin-top:8px;max-width:560px;line-height:1.5;">가족, 커플, 룸메이트, 우리만의 방식으로 — 원하는 그룹을 만들어 지출을 함께 관리하는 공유 가계부</div>
+  </div>
+
+  <div style="display:flex;flex-wrap:wrap;gap:44px;align-items:flex-start;">
+
+    <div style="display:flex;flex-direction:column;gap:14px;">
+      <div style="font-size:13px;font-weight:700;color:#6A5ECF;">0. 스플래시 (앱 실행)</div>
+      <x-import component-from-global-scope="IOSDevice" from="./ios-frame.jsx" width="{{ frameW }}" height="{{ frameH }}" hint-size="340,734">
+        
+      <div style="height:100%;box-sizing:border-box;background:#5A4EBD;display:flex;flex-direction:column;align-items:center;justify-content:center;position:relative;">
+          <div style="width:96px;height:96px;border-radius:30px;background:#FFFFFF;display:flex;align-items:center;justify-content:center;box-shadow:0 14px 34px rgba(31,24,80,0.28);">
+            <img src="uploads/pasted-1788939919215-0.png" alt="logo" style="width: 110px; height: 110px; object-fit: contain">
+          </div>
+          
+          <div style="font-size: 30px; font-weight: 800; color: #FFFFFF; margin-top: 22px; letter-spacing: -0.3px">ShooT</div><div style="font-size:14px;font-weight:600;color:#FFFFFF;margin-top:8px;">우리가 정한 방식대로, 함께</div>
+          <div style="position:absolute;bottom:52px;display:flex;flex-direction:column;align-items:center;gap:14px;">
+            <div style="width:34px;height:34px;border-radius:50%;border:3px solid rgba(255,255,255,0.25);border-top-color:#FFFFFF;animation:spin360 0.9s linear infinite;"></div>
+            <div style="font-size:12px;font-weight:700;color:#FFFFFF;">함께 쓰고, 함께 확인해요</div>
+          </div>
+        </div></x-import>
+    </div>
+
+    <div style="display:flex;flex-direction:column;gap:14px;">
+      <div style="font-size:13px;font-weight:700;color:#6A5ECF;">1. 회원가입</div>
+      <x-import component-from-global-scope="IOSDevice" from="./ios-frame.jsx" width="{{ frameW }}" height="{{ frameH }}" hint-size="340,734">
+        <div style="height:100%;box-sizing:border-box;background:#F6F5FC;display:flex;flex-direction:column;">
+          <div style="padding:60px 24px 26px;text-align:center;background:#F0EEFF;">
+            <div style="width:56px;height:56px;border-radius:16px;background:linear-gradient(135deg,#8C81E0 0%,#6A5ECF 100%);display:flex;align-items:center;justify-content:center;margin:0 auto 14px;">
+              <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12V7H5a2 2 0 0 1 0-4h14v4"></path><path d="M3 5v14a2 2 0 0 0 2 2h16v-5"></path><path d="M18 12a2 2 0 0 0 0 4h4v-4Z"></path></svg>
+            </div>
+            <div style="font-size:22px;font-weight:800;color:#2D2A3E;">시작해볼까요?</div>
+            <div style="font-size:13px;color:#6B6980;margin-top:6px;font-weight:600;">함께 쓰고, 함께 확인해요</div>
+          </div>
+          <div style="flex:1;padding:24px 24px 32px;display:flex;flex-direction:column;">
+            <div style="display:flex;flex-direction:column;gap:14px;">
+              <div>
+                <div style="font-size:13px;font-weight:700;color:#2D2A3E;margin-bottom:7px;">이메일</div>
+                <input type="email" placeholder="you@email.com" style="width:100%;box-sizing:border-box;height:48px;border-radius:14px;border:2px solid #E8E4F4;background:#fff;padding:0 16px;font-size:14px;font-weight:600;color:#2D2A3E;">
+              </div>
+              <div>
+                <div style="font-size:13px;font-weight:700;color:#2D2A3E;margin-bottom:7px;">비밀번호</div>
+                <input type="password" placeholder="8자 이상" style="width:100%;box-sizing:border-box;height:48px;border-radius:14px;border:2px solid #E8E4F4;background:#fff;padding:0 16px;font-size:14px;font-weight:600;color:#2D2A3E;">
+              </div>
+            </div>
+            <div style="margin-top:22px;height:50px;border-radius:16px;background:linear-gradient(135deg,#E3DFFB 0%,#BDB2F2 100%);color:#3F3480;display:flex;align-items:center;justify-content:center;font-size:15px;font-weight:800;box-shadow:0 8px 18px rgba(106,94,207,0.3);">가입하기</div>
+            <div style="flex:1;"></div>
+            <div style="text-align:center;font-size:13px;color:#6B6980;font-weight:600;">이미 계정이 있으신가요? <span style="color:#6A5ECF;font-weight:800;">로그인</span></div>
+          </div>
+        </div>
+      </x-import>
+    </div>
+
+    <div style="display:flex;flex-direction:column;gap:14px;">
+      <div style="font-size:13px;font-weight:700;color:#6A5ECF;">2. 로그인</div>
+      <x-import component-from-global-scope="IOSDevice" from="./ios-frame.jsx" width="{{ frameW }}" height="{{ frameH }}" hint-size="340,734">
+        <div style="height:100%;box-sizing:border-box;background:#F6F5FC;display:flex;flex-direction:column;">
+          <div style="padding:60px 24px 26px;text-align:center;background:#F0EEFF;">
+            <div style="width:56px;height:56px;border-radius:16px;background:#6A5ECF;display:flex;align-items:center;justify-content:center;margin:0 auto 14px;">
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4"></path><polyline points="10 17 15 12 10 7"></polyline><line x1="15" x2="3" y1="12" y2="12"></line></svg>
+            </div>
+            <div style="font-size:20px;font-weight:800;color:#2D2A3E;">다시 만나서 반가워요</div>
+            <div style="font-size:13px;color:#6B6980;margin-top:6px;font-weight:600;">로그인하고 가계부를 확인해보세요</div>
+          </div>
+          <div style="flex:1;padding:24px 24px 32px;display:flex;flex-direction:column;">
+            <div style="display:flex;flex-direction:column;gap:14px;">
+              <div>
+                <div style="font-size:13px;font-weight:700;color:#2D2A3E;margin-bottom:7px;">이메일</div>
+                <input type="email" placeholder="you@email.com" style="width:100%;box-sizing:border-box;height:48px;border-radius:14px;border:2px solid #E8E4F4;background:#fff;padding:0 16px;font-size:14px;font-weight:600;color:#2D2A3E;">
+              </div>
+              <div>
+                <div style="font-size:13px;font-weight:700;color:#2D2A3E;margin-bottom:7px;">비밀번호</div>
+                <input type="password" placeholder="비밀번호" style="width:100%;box-sizing:border-box;height:48px;border-radius:14px;border:2px solid #E8E4F4;background:#fff;padding:0 16px;font-size:14px;font-weight:600;color:#2D2A3E;">
+              </div>
+            </div>
+            <div onClick="{{ toggleKeepLoggedIn }}" style="display:flex;align-items:center;gap:10px;margin-top:18px;cursor:pointer;">
+              <div style="width:42px;height:24px;border-radius:12px;background:{{ keepLoggedInTrackColor }};position:relative;transition:background 0.15s;">
+                <div style="width:18px;height:18px;border-radius:50%;background:#fff;position:absolute;top:3px;left:{{ keepLoggedInThumbPos }};box-shadow:0 2px 5px rgba(0,0,0,0.2);transition:left 0.15s;"></div>
+              </div>
+              <div style="font-size:13px;color:#2D2A3E;font-weight:700;">로그인 상태 유지</div>
+            </div>
+            <div style="margin-top:20px;height:50px;border-radius:16px;background:linear-gradient(135deg,#E3DFFB 0%,#BDB2F2 100%);color:#3F3480;display:flex;align-items:center;justify-content:center;font-size:15px;font-weight:800;box-shadow:0 8px 18px rgba(106,94,207,0.3);">로그인</div>
+            <div style="flex:1;"></div>
+            <div style="text-align:center;font-size:13px;color:#6B6980;font-weight:600;">계정이 없으신가요? <span style="color:#6A5ECF;font-weight:800;">회원가입</span></div>
+          </div>
+        </div>
+      </x-import>
+    </div>
+
+    <div style="display:flex;flex-direction:column;gap:14px;">
+      <div style="font-size:13px;font-weight:700;color:#6A5ECF;">3a. 그룹 생성 — 모임 선택</div>
+      <x-import component-from-global-scope="IOSDevice" from="./ios-frame.jsx" width="{{ frameW }}" height="{{ frameH }}" hint-size="340,734">
+        <div style="height:100%;box-sizing:border-box;padding:60px 20px 28px;background:#F6F5FC;display:flex;flex-direction:column;">
+          <div style="display:flex;gap:6px;margin-bottom:14px;">
+            <div style="height:4px;flex:1;border-radius:2px;background:#6A5ECF;"></div>
+            <div style="height:4px;flex:1;border-radius:2px;background:#E8E4F4;"></div>
+            <div style="height:4px;flex:1;border-radius:2px;background:#E8E4F4;"></div>
+          </div>
+          <div style="font-size:21px;font-weight:800;color:#2D2A3E;">어떤 모임인가요?</div>
+          <div style="font-size:13px;color:#6B6980;margin-top:5px;font-weight:600;">모임 성격에 맞는 유형을 선택해주세요</div>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:18px;">
+
+            <div onClick="{{ familyOnSelect }}" style="border-radius:16px;padding:14px 10px;background:{{ familyBg }};border:2px solid {{ familyBorder }};cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:8px;box-shadow:{{ familyShadow }};">
+              <div style="width:32px;height:32px;border-radius:10px;background:{{ familyIconBg }};display:flex;align-items:center;justify-content:center;">
+                <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="{{ familyIconColor }}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M22 21v-2a4 4 0 0 0-3-3.87"></path><path d="M16 3.13a4 4 0 0 1 0 7.75"></path></svg>
+              </div>
+              <div style="font-size:13px;font-weight:800;color:{{ familyLabelColor }};">가족</div>
+            </div>
+
+            <div onClick="{{ marriageOnSelect }}" style="border-radius:16px;padding:14px 10px;background:{{ marriageBg }};border:2px solid {{ marriageBorder }};cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:8px;box-shadow:{{ marriageShadow }};">
+              <div style="width:32px;height:32px;border-radius:10px;background:{{ marriageIconBg }};display:flex;align-items:center;justify-content:center;">
+                <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="{{ marriageIconColor }}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 3h12l4 6-10 12L2 9Z"></path><path d="M11 3 8 9l4 12 4-12-3-6"></path><path d="M2 9h20"></path></svg>
+              </div>
+              <div style="font-size:13px;font-weight:800;color:{{ marriageLabelColor }};">부부</div>
+            </div>
+
+            <div onClick="{{ coupleOnSelect }}" style="border-radius:16px;padding:14px 10px;background:{{ coupleBg }};border:2px solid {{ coupleBorder }};cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:8px;box-shadow:{{ coupleShadow }};">
+              <div style="width:32px;height:32px;border-radius:10px;background:{{ coupleIconBg }};display:flex;align-items:center;justify-content:center;">
+                <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="{{ coupleIconColor }}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 14c1.49-1.46 3-3.21 3-5.5A5.5 5.5 0 0 0 16.5 3c-1.76 0-3 .5-4.5 2-1.5-1.5-2.74-2-4.5-2A5.5 5.5 0 0 0 2 8.5c0 2.3 1.5 4.05 3 5.5l7 7Z"></path></svg>
+              </div>
+              <div style="font-size:13px;font-weight:800;color:{{ coupleLabelColor }};">커플</div>
+            </div>
+
+            <div onClick="{{ roommateOnSelect }}" style="border-radius:16px;padding:14px 10px;background:{{ roommateBg }};border:2px solid {{ roommateBorder }};cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:8px;box-shadow:{{ roommateShadow }};">
+              <div style="width:32px;height:32px;border-radius:10px;background:{{ roommateIconBg }};display:flex;align-items:center;justify-content:center;">
+                <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="{{ roommateIconColor }}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m3 9 9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path><polyline points="9 22 9 12 15 12 15 22"></polyline></svg>
+              </div>
+              <div style="font-size:13px;font-weight:800;color:{{ roommateLabelColor }};">룸메이트</div>
+            </div>
+
+            <div onClick="{{ siblingsOnSelect }}" style="border-radius:16px;padding:14px 10px;background:{{ siblingsBg }};border:2px solid {{ siblingsBorder }};cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:8px;box-shadow:{{ siblingsShadow }};">
+              <div style="width:32px;height:32px;border-radius:10px;background:{{ siblingsIconBg }};display:flex;align-items:center;justify-content:center;">
+                <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="{{ siblingsIconColor }}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>
+              </div>
+              <div style="font-size:13px;font-weight:800;color:{{ siblingsLabelColor }};">형제자매</div>
+            </div>
+
+            <div onClick="{{ clubOnSelect }}" style="border-radius:16px;padding:14px 10px;background:{{ clubBg }};border:2px solid {{ clubBorder }};cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:8px;box-shadow:{{ clubShadow }};">
+              <div style="width:32px;height:32px;border-radius:10px;background:{{ clubIconBg }};display:flex;align-items:center;justify-content:center;">
+                <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="{{ clubIconColor }}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z"></path><line x1="4" x2="4" y1="22" y2="15"></line></svg>
+              </div>
+              <div style="font-size:13px;font-weight:800;color:{{ clubLabelColor }};">모임·동아리</div>
+            </div>
+
+            <div onClick="{{ etcOnSelect }}" style="border-radius:16px;padding:14px 10px;background:{{ etcBg }};border:2px solid {{ etcBorder }};cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:8px;box-shadow:{{ etcShadow }};">
+              <div style="width:32px;height:32px;border-radius:10px;background:{{ etcIconBg }};display:flex;align-items:center;justify-content:center;">
+                <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="{{ etcIconColor }}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m12 3-1.9 5.8a2 2 0 0 1-1.287 1.288L3 12l5.8 1.9a2 2 0 0 1 1.288 1.287L12 21l1.9-5.8a2 2 0 0 1 1.287-1.288L21 12l-5.8-1.9a2 2 0 0 1-1.288-1.287Z"></path></svg>
+              </div>
+              <div style="font-size:13px;font-weight:800;color:{{ etcLabelColor }};">기타</div>
+            </div>
+
+          </div>
+          <div style="flex:1;"></div>
+          <div style="height:50px;border-radius:16px;background:linear-gradient(135deg,#E3DFFB 0%,#BDB2F2 100%);color:#3F3480;display:flex;align-items:center;justify-content:center;font-size:15px;font-weight:800;box-shadow:0 8px 18px rgba(106,94,207,0.3);">다음으로</div>
+        </div>
+      </x-import>
+    </div>
+
+    <div style="display:flex;flex-direction:column;gap:14px;">
+      <div style="font-size:13px;font-weight:700;color:#6A5ECF;">3b. 그룹 생성 — 이름 입력</div>
+      <x-import component-from-global-scope="IOSDevice" from="./ios-frame.jsx" width="{{ frameW }}" height="{{ frameH }}" hint-size="340,734">
+        <div style="height:100%;box-sizing:border-box;padding:60px 24px 28px;background:#F6F5FC;display:flex;flex-direction:column;">
+          <div style="display:flex;gap:6px;margin-bottom:14px;">
+            <div style="height:4px;flex:1;border-radius:2px;background:#6A5ECF;"></div>
+            <div style="height:4px;flex:1;border-radius:2px;background:#6A5ECF;"></div>
+            <div style="height:4px;flex:1;border-radius:2px;background:#E8E4F4;"></div>
+          </div>
+          <div style="font-size:21px;font-weight:800;color:#2D2A3E;">그룹 이름을 지어주세요</div>
+          <div style="display:inline-flex;align-items:center;gap:7px;background:#F0EEFF;border-radius:10px;padding:6px 12px;margin-top:10px;width:fit-content;">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#6A5ECF" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 14c1.49-1.46 3-3.21 3-5.5A5.5 5.5 0 0 0 16.5 3c-1.76 0-3 .5-4.5 2-1.5-1.5-2.74-2-4.5-2A5.5 5.5 0 0 0 2 8.5c0 2.3 1.5 4.05 3 5.5l7 7Z"></path></svg>
+            <span style="font-size:12px;font-weight:800;color:#2D2A3E;">커플</span>
+          </div>
+          <div style="margin-top:40px;">
+            <input type="text" value="{{ groupNameValue }}" onChange="{{ onGroupNameChange }}" style="width:100%;box-sizing:border-box;height:52px;border-radius:16px;border:2px solid #6A5ECF;background:#fff;padding:0 18px;font-size:16px;font-weight:800;color:#2D2A3E;text-align:center;">
+          </div>
+          <div style="font-size:12px;color:#6B6980;font-weight:700;margin-top:16px;">이런 이름 어때요?</div>
+          <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:8px;">
+            <div style="font-size:12px;font-weight:700;color:#2D2A3E;background:#F0EEFF;padding:6px 12px;border-radius:10px;">우리 커플</div>
+            <div style="font-size:12px;font-weight:700;color:#2D2A3E;background:#F0EEFF;padding:6px 12px;border-radius:10px;">행복한 커플</div>
+            <div style="font-size:12px;font-weight:700;color:#2D2A3E;background:#F0EEFF;padding:6px 12px;border-radius:10px;">함께 가계부</div>
+          </div>
+          <div style="flex:1;"></div>
+          <div style="height:50px;border-radius:16px;background:linear-gradient(135deg,#E3DFFB 0%,#BDB2F2 100%);color:#3F3480;display:flex;align-items:center;justify-content:center;font-size:15px;font-weight:800;box-shadow:0 8px 18px rgba(106,94,207,0.3);">그룹 만들기</div>
+        </div>
+      </x-import>
+    </div>
+
+    <div style="display:flex;flex-direction:column;gap:14px;">
+      <div style="font-size:13px;font-weight:700;color:#6A5ECF;">3c. 그룹 생성 — 완료</div>
+      <x-import component-from-global-scope="IOSDevice" from="./ios-frame.jsx" width="{{ frameW }}" height="{{ frameH }}" hint-size="340,734">
+        <div style="height:100%;box-sizing:border-box;padding:60px 24px 28px;background:#F6F5FC;display:flex;flex-direction:column;align-items:center;text-align:center;">
+          <div style="display:flex;gap:6px;width:100%;margin-bottom:8px;">
+            <div style="height:4px;flex:1;border-radius:2px;background:#6A5ECF;"></div>
+            <div style="height:4px;flex:1;border-radius:2px;background:#6A5ECF;"></div>
+            <div style="height:4px;flex:1;border-radius:2px;background:#6A5ECF;"></div>
+          </div>
+          <div style="width:76px;height:76px;border-radius:50%;background:#F0EEFF;display:flex;align-items:center;justify-content:center;margin-top:22px;">
+            <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="#6A5ECF" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>
+          </div>
+          <div style="font-size:21px;font-weight:800;color:#2D2A3E;margin-top:18px;">그룹이 만들어졌어요!</div>
+          <div style="font-size:13px;color:#6B6980;margin-top:6px;font-weight:600;">"민준 &amp; 서연"을(를) 시작해볼까요?</div>
+          <div style="margin-top:24px;width:100%;background:#F5F3FF;border:2px dashed rgba(106,94,207,0.35);border-radius:18px;padding:20px;">
+            <div style="font-size:12px;color:#6B6980;font-weight:700;">초대 코드</div>
+            <div style="font-size:32px;font-weight:800;color:#2D2A3E;letter-spacing:5px;margin-top:8px;font-family:'Courier New',monospace;">CP-4K9X</div>
+            <div style="font-size:11px;color:#6B6980;margin-top:8px;line-height:1.5;">이 코드를 공유해서 멤버를 초대하세요</div>
+          </div>
+          <div style="width:100%;height:48px;border-radius:16px;background:#F0EEFF;border:2px solid rgba(106,94,207,0.4);color:#6A5ECF;display:flex;align-items:center;justify-content:center;gap:8px;font-size:14px;font-weight:800;margin-top:14px;">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#6A5ECF" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="18" cy="5" r="3"></circle><circle cx="6" cy="12" r="3"></circle><circle cx="18" cy="19" r="3"></circle><line x1="8.59" x2="15.42" y1="13.51" y2="17.49"></line><line x1="15.41" x2="8.59" y1="6.51" y2="10.49"></line></svg>
+            초대 코드 공유하기
+          </div>
+          <div style="flex:1;"></div>
+          <div style="width:100%;height:50px;border-radius:16px;background:linear-gradient(135deg,#E3DFFB 0%,#BDB2F2 100%);color:#3F3480;display:flex;align-items:center;justify-content:center;font-size:15px;font-weight:800;box-shadow:0 8px 18px rgba(106,94,207,0.3);">홈으로 가기</div>
+        </div>
+      </x-import>
+    </div>
+
+    <div style="display:flex;flex-direction:column;gap:14px;">
+      <div style="font-size:13px;font-weight:700;color:#6A5ECF;">4. 그룹 참여</div>
+      <x-import component-from-global-scope="IOSDevice" from="./ios-frame.jsx" width="{{ frameW }}" height="{{ frameH }}" hint-size="340,734">
+        <div style="height:100%;box-sizing:border-box;background:#F6F5FC;display:flex;flex-direction:column;">
+          <div style="padding:60px 24px 32px;text-align:center;background:#F0EEFF;">
+            <div style="width:56px;height:56px;border-radius:16px;background:#6A5ECF;display:flex;align-items:center;justify-content:center;margin:0 auto 14px;">
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#ffffff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 17H7A5 5 0 0 1 7 7h2"></path><path d="M15 7h2a5 5 0 1 1 0 10h-2"></path><line x1="8" x2="16" y1="12" y2="12"></line></svg>
+            </div>
+            <div style="font-size:20px;font-weight:800;color:#2D2A3E;">그룹에 참여하기</div>
+            <div style="font-size:13px;color:#6B6980;margin-top:6px;font-weight:600;line-height:1.5;">초대 코드를 입력하면<br>바로 참여할 수 있어요</div>
+          </div>
+          <div style="flex:1;padding:28px 24px 32px;display:flex;flex-direction:column;">
+            <input type="text" placeholder="코드 입력 (예: CP-4K9X)" style="width:100%;box-sizing:border-box;height:54px;border-radius:16px;border:2px solid #E8E4F4;background:#fff;padding:0 18px;font-size:16px;font-weight:800;color:#2D2A3E;text-align:center;letter-spacing:2px;font-family:'Courier New',monospace;">
+            <div style="flex:1;"></div>
+            <div style="height:50px;border-radius:16px;background:linear-gradient(135deg,#E3DFFB 0%,#BDB2F2 100%);color:#3F3480;display:flex;align-items:center;justify-content:center;font-size:15px;font-weight:800;box-shadow:0 8px 18px rgba(106,94,207,0.3);">참여하기</div>
+          </div>
+        </div>
+      </x-import>
+    </div>
+
+    <div style="display:flex;flex-direction:column;gap:14px;">
+      <div style="font-size:13px;font-weight:700;color:#6A5ECF;">5a. 그룹 목록</div>
+      <x-import component-from-global-scope="IOSDevice" from="./ios-frame.jsx" width="{{ frameW }}" height="{{ frameH }}" hint-size="340,734">
+        <div style="height:100%;box-sizing:border-box;padding:60px 20px 28px;background:#F6F5FC;">
+          <div style="font-size:22px;font-weight:800;color:#2D2A3E;">내 그룹</div>
+          <div style="display:flex;flex-direction:column;gap:10px;margin-top:18px;">
+
+            <div style="background:#fff;border-radius:18px;padding:14px;display:flex;align-items:center;gap:12px;border:2px solid #6A5ECF;box-shadow:0 2px 10px rgba(45,42,62,0.05);">
+              <div style="width:44px;height:44px;border-radius:14px;background:#6A5ECF;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 14c1.49-1.46 3-3.21 3-5.5A5.5 5.5 0 0 0 16.5 3c-1.76 0-3 .5-4.5 2-1.5-1.5-2.74-2-4.5-2A5.5 5.5 0 0 0 2 8.5c0 2.3 1.5 4.05 3 5.5l7 7Z"></path></svg>
+              </div>
+              <div style="flex:1;min-width:0;">
+                <div style="font-size:15px;font-weight:800;color:#2D2A3E;">민준 &amp; 서연</div>
+                <div style="display:flex;align-items:center;gap:6px;margin-top:4px;">
+                  <span style="font-size:11px;font-weight:800;color:#6A5ECF;background:#F0EEFF;padding:2px 8px;border-radius:8px;">커플</span>
+                  <span style="font-size:12px;color:#6B6980;font-weight:600;">멤버 2명</span>
+                </div>
+              </div>
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#6B6980" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m9 18 6-6-6-6"></path></svg>
+            </div>
+
+            <div style="background:#fff;border-radius:18px;padding:14px;display:flex;align-items:center;gap:12px;border:2px solid #E8E4F4;box-shadow:0 2px 10px rgba(45,42,62,0.05);">
+              <div style="width:44px;height:44px;border-radius:14px;background:#279E88;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M22 21v-2a4 4 0 0 0-3-3.87"></path><path d="M16 3.13a4 4 0 0 1 0 7.75"></path></svg>
+              </div>
+              <div style="flex:1;min-width:0;">
+                <div style="font-size:15px;font-weight:800;color:#2D2A3E;">행복한 우리집</div>
+                <div style="display:flex;align-items:center;gap:6px;margin-top:4px;">
+                  <span style="font-size:11px;font-weight:800;color:#1D7A69;background:#E8F9F7;padding:2px 8px;border-radius:8px;">가족</span>
+                  <span style="font-size:12px;color:#6B6980;font-weight:600;">멤버 4명</span>
+                </div>
+              </div>
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#6B6980" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m9 18 6-6-6-6"></path></svg>
+            </div>
+
+            <div style="background:#fff;border-radius:18px;padding:14px;display:flex;align-items:center;gap:12px;border:2px solid #E8E4F4;box-shadow:0 2px 10px rgba(45,42,62,0.05);">
+              <div style="width:44px;height:44px;border-radius:14px;background:#2E7AB8;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m3 9 9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path><polyline points="9 22 9 12 15 12 15 22"></polyline></svg>
+              </div>
+              <div style="flex:1;min-width:0;">
+                <div style="font-size:15px;font-weight:800;color:#2D2A3E;">전세 405호</div>
+                <div style="display:flex;align-items:center;gap:6px;margin-top:4px;">
+                  <span style="font-size:11px;font-weight:800;color:#26689C;background:#EBF5FF;padding:2px 8px;border-radius:8px;">룸메이트</span>
+                  <span style="font-size:12px;color:#6B6980;font-weight:600;">멤버 3명</span>
+                </div>
+              </div>
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#6B6980" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m9 18 6-6-6-6"></path></svg>
+            </div>
+
+          </div>
+          <div style="margin-top:16px;border:2px dashed rgba(106,94,207,0.4);border-radius:18px;padding:14px;font-size:13px;font-weight:800;color:#2D2A3E;background:#F0EEFF;text-align:center;">초대 코드로 참여하기</div>
+        </div>
+      </x-import>
+    </div>
+
+    <div style="display:flex;flex-direction:column;gap:14px;">
+      <div style="font-size:13px;font-weight:700;color:#6A5ECF;">5b. 그룹 상세</div>
+      <x-import component-from-global-scope="IOSDevice" from="./ios-frame.jsx" width="{{ frameW }}" height="{{ frameH }}" hint-size="340,734">
+        <div style="height:100%;box-sizing:border-box;background:#F6F5FC;">
+          <div style="padding:60px 20px 20px;background:#F0EEFF;">
+            <div style="display:flex;align-items:center;gap:12px;">
+              <div style="width:50px;height:50px;border-radius:14px;background:#6A5ECF;display:flex;align-items:center;justify-content:center;">
+                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 14c1.49-1.46 3-3.21 3-5.5A5.5 5.5 0 0 0 16.5 3c-1.76 0-3 .5-4.5 2-1.5-1.5-2.74-2-4.5-2A5.5 5.5 0 0 0 2 8.5c0 2.3 1.5 4.05 3 5.5l7 7Z"></path></svg>
+              </div>
+              <div>
+                <div style="font-size:19px;font-weight:800;color:#2D2A3E;">민준 &amp; 서연</div>
+                <span style="font-size:11px;font-weight:800;color:#6A5ECF;background:#fff;padding:3px 10px;border-radius:10px;">커플</span>
+              </div>
+            </div>
+          </div>
+          <div style="padding:18px 20px;">
+            <div style="font-size:13px;font-weight:800;color:#6B6980;margin-bottom:10px;">멤버 목록</div>
+            <div style="display:flex;flex-direction:column;gap:10px;">
+              <sc-for list="{{ members }}" as="m" hint-placeholder-count="2">
+                <div style="background:#fff;border-radius:16px;padding:12px 14px;display:flex;align-items:center;gap:12px;box-shadow:0 2px 8px rgba(45,42,62,0.05);">
+                  <div style="width:38px;height:38px;border-radius:50%;background:{{ m.bg }};display:flex;align-items:center;justify-content:center;font-size:14px;font-weight:800;color:#2D2A3E;">{{ m.initial }}</div>
+                  <div style="flex:1;">
+                    <div style="font-size:14px;font-weight:800;color:#2D2A3E;">{{ m.name }}</div>
+                    <div style="font-size:12px;color:#6B6980;font-weight:600;">{{ m.role }}</div>
+                  </div>
+                </div>
+              </sc-for>
+            </div>
+            <div style="margin-top:18px;background:#F5F3FF;border:2px dashed rgba(106,94,207,0.35);border-radius:18px;padding:16px;">
+              <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px;">
+                <div style="font-size:12px;font-weight:700;color:#6B6980;">초대 코드</div>
+                <div style="display:flex;align-items:center;gap:5px;font-size:12px;font-weight:800;color:#4B3F94;background:#fff;padding:5px 12px;border-radius:8px;">
+                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#4B3F94" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="18" cy="5" r="3"></circle><circle cx="6" cy="12" r="3"></circle><circle cx="18" cy="19" r="3"></circle><line x1="8.59" x2="15.42" y1="13.51" y2="17.49"></line><line x1="15.41" x2="8.59" y1="6.51" y2="10.49"></line></svg>
+                  공유
+                </div>
+              </div>
+              <div style="font-size:26px;font-weight:800;color:#2D2A3E;letter-spacing:4px;font-family:'Courier New',monospace;">CP-4K9X</div>
+            </div>
+          </div>
+        </div>
+      </x-import>
+    </div>
+
+    <div style="display:flex;flex-direction:column;gap:14px;">
+      <div style="font-size:13px;font-weight:700;color:#6A5ECF;">6. 지출 입력</div>
+      <x-import component-from-global-scope="IOSDevice" from="./ios-frame.jsx" width="{{ frameW }}" height="{{ frameH }}" hint-size="340,734">
+        <div style="height:100%;box-sizing:border-box;background:#F6F5FC;overflow:auto;">
+          <div style="padding:60px 20px 20px;text-align:center;background:#F0EEFF;">
+            <div style="font-size:12px;font-weight:700;color:#6B6980;">지출 금액</div>
+            <div style="display:flex;align-items:baseline;justify-content:center;gap:4px;margin-top:6px;">
+              <span style="font-size:22px;font-weight:800;color:#6B6980;">₩</span>
+              <span style="font-size:36px;font-weight:800;color:#2D2A3E;letter-spacing:-1px;">12,500</span>
+            </div>
+          </div>
+          <div style="padding:18px 20px 28px;">
+            <div style="font-size:13px;font-weight:700;color:#2D2A3E;margin-bottom:8px;">카테고리</div>
+            <div style="display:flex;flex-wrap:wrap;gap:8px;">
+
+              <div onClick="{{ foodOnSelect }}" style="padding:9px 13px;border-radius:14px;font-size:13px;font-weight:800;background:{{ foodBg }};color:{{ foodColor }};border:2px solid {{ foodBorder }};cursor:pointer;display:flex;align-items:center;gap:6px;box-shadow:{{ foodShadow }};">
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="{{ foodColor }}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 8h1a4 4 0 1 1 0 8h-1"></path><path d="M3 8h14v9a4 4 0 0 1-4 4H7a4 4 0 0 1-4-4Z"></path><line x1="6" x2="6" y1="2" y2="4"></line><line x1="10" x2="10" y1="2" y2="4"></line><line x1="14" x2="14" y1="2" y2="4"></line></svg>
+                식비
+              </div>
+              <div onClick="{{ transportOnSelect }}" style="padding:9px 13px;border-radius:14px;font-size:13px;font-weight:800;background:{{ transportBg }};color:{{ transportColor }};border:2px solid {{ transportBorder }};cursor:pointer;display:flex;align-items:center;gap:6px;box-shadow:{{ transportShadow }};">
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="{{ transportColor }}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 17h2c.6 0 1-.4 1-1v-3c0-.9-.7-1.7-1.5-1.9C18.7 10.6 16 10 16 10s-1.3-1.4-2.2-2.3c-.5-.4-1.1-.7-1.8-.7H5c-.6 0-1.1.4-1.4.9l-1.4 2.9A3.7 3.7 0 0 0 2 12v4c0 .6.4 1 1 1h2"></path><circle cx="7" cy="17" r="2"></circle><path d="M9 17h6"></path><circle cx="17" cy="17" r="2"></circle></svg>
+                교통
+              </div>
+              <div onClick="{{ livingOnSelect }}" style="padding:9px 13px;border-radius:14px;font-size:13px;font-weight:800;background:{{ livingBg }};color:{{ livingColor }};border:2px solid {{ livingBorder }};cursor:pointer;display:flex;align-items:center;gap:6px;box-shadow:{{ livingShadow }};">
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="{{ livingColor }}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 2 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4Z"></path><path d="M3 6h18"></path><path d="M16 10a4 4 0 0 1-8 0"></path></svg>
+                생활
+              </div>
+              <div onClick="{{ cultureOnSelect }}" style="padding:9px 13px;border-radius:14px;font-size:13px;font-weight:800;background:{{ cultureBg }};color:{{ cultureColor }};border:2px solid {{ cultureBorder }};cursor:pointer;display:flex;align-items:center;gap:6px;box-shadow:{{ cultureShadow }};">
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="{{ cultureColor }}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 9a3 3 0 1 0 0 6v2a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-2a3 3 0 1 1 0-6V7a2 2 0 0 0-2-2H4a2 2 0 0 0-2 2Z"></path><path d="M13 5v2"></path><path d="M13 17v2"></path><path d="M13 11v2"></path></svg>
+                문화
+              </div>
+              <div onClick="{{ medicalOnSelect }}" style="padding:9px 13px;border-radius:14px;font-size:13px;font-weight:800;background:{{ medicalBg }};color:{{ medicalColor }};border:2px solid {{ medicalBorder }};cursor:pointer;display:flex;align-items:center;gap:6px;box-shadow:{{ medicalShadow }};">
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="{{ medicalColor }}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m10.5 20.5 10-10a4.95 4.95 0 1 0-7-7l-10 10a4.95 4.95 0 1 0 7 7Z"></path><path d="m8.5 8.5 7 7"></path></svg>
+                의료
+              </div>
+              <div onClick="{{ etc2OnSelect }}" style="padding:9px 13px;border-radius:14px;font-size:13px;font-weight:800;background:{{ etc2Bg }};color:{{ etc2Color }};border:2px solid {{ etc2Border }};cursor:pointer;display:flex;align-items:center;gap:6px;box-shadow:{{ etc2Shadow }};">
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="{{ etc2Color }}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="1"></circle><circle cx="19" cy="12" r="1"></circle><circle cx="5" cy="12" r="1"></circle></svg>
+                기타
+              </div>
+            </div>
+            <div style="margin-top:18px;">
+              <div style="font-size:13px;font-weight:700;color:#2D2A3E;margin-bottom:8px;">메모</div>
+              <input type="text" placeholder="예) 스타벅스 카페라떼" style="width:100%;box-sizing:border-box;height:46px;border-radius:14px;border:2px solid #E8E4F4;background:#fff;padding:0 16px;font-size:14px;color:#2D2A3E;font-weight:600;">
+            </div>
+            <div style="margin-top:14px;">
+              <div style="font-size:13px;font-weight:700;color:#2D2A3E;margin-bottom:8px;">날짜</div>
+              <div style="height:46px;border-radius:14px;border:2px solid #E8E4F4;background:#fff;display:flex;align-items:center;padding:0 16px;font-size:14px;font-weight:600;color:#2D2A3E;">2026년 9월 9일</div>
+            </div>
+            <div style="margin-top:14px;">
+              <div style="font-size:13px;font-weight:700;color:#2D2A3E;margin-bottom:8px;">어느 그룹과 공유할까요?</div>
+              <select style="width:100%;box-sizing:border-box;height:46px;border-radius:14px;border:2px solid #E8E4F4;background:#fff;padding:0 14px;font-size:14px;font-weight:600;color:#2D2A3E;">
+                <option>공유 안 함</option>
+                <option>민준 &amp; 서연</option>
+                <option>행복한 우리집</option>
+                <option>전세 405호</option>
+              </select>
+            </div>
+            <div style="margin-top:22px;height:50px;border-radius:16px;background:linear-gradient(135deg,#E3DFFB 0%,#BDB2F2 100%);color:#3F3480;display:flex;align-items:center;justify-content:center;font-size:15px;font-weight:800;box-shadow:0 8px 18px rgba(106,94,207,0.3);">저장하기</div>
+          </div>
+        </div>
+      </x-import>
+    </div>
+
+    <div style="display:flex;flex-direction:column;gap:14px;">
+      <div style="font-size:13px;font-weight:700;color:#6A5ECF;">7. 지출 목록</div>
+      <x-import component-from-global-scope="IOSDevice" from="./ios-frame.jsx" width="{{ frameW }}" height="{{ frameH }}" hint-size="340,734">
+        <div style="height:100%;box-sizing:border-box;padding:60px 20px 28px;background:#F6F5FC;overflow:auto;">
+          <div style="font-size:22px;font-weight:800;color:#2D2A3E;">지출 내역</div>
+          <sc-for list="{{ expenseMonths }}" as="mo" hint-placeholder-count="2">
+            <div style="margin-top:18px;">
+              <div style="font-size:13px;font-weight:800;color:#6B6980;margin-bottom:8px;">{{ mo.month }}</div>
+              <div style="display:flex;flex-direction:column;gap:8px;">
+                <sc-for list="{{ mo.items }}" as="it" hint-placeholder-count="3">
+                  <div style="background:#fff;border-radius:16px;padding:12px 14px;display:flex;align-items:center;gap:12px;border:{{ it.rowBorder }};box-shadow:{{ it.rowShadow }};">
+                    <div style="width:36px;height:36px;border-radius:12px;background:{{ it.catAccent }};display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+                      <sc-if value="{{ it.isFood }}" hint-placeholder-val="{{ false }}"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 8h1a4 4 0 1 1 0 8h-1"></path><path d="M3 8h14v9a4 4 0 0 1-4 4H7a4 4 0 0 1-4-4Z"></path><line x1="6" x2="6" y1="2" y2="4"></line><line x1="10" x2="10" y1="2" y2="4"></line><line x1="14" x2="14" y1="2" y2="4"></line></svg></sc-if>
+                      <sc-if value="{{ it.isTransport }}" hint-placeholder-val="{{ false }}"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 17h2c.6 0 1-.4 1-1v-3c0-.9-.7-1.7-1.5-1.9C18.7 10.6 16 10 16 10s-1.3-1.4-2.2-2.3c-.5-.4-1.1-.7-1.8-.7H5c-.6 0-1.1.4-1.4.9l-1.4 2.9A3.7 3.7 0 0 0 2 12v4c0 .6.4 1 1 1h2"></path><circle cx="7" cy="17" r="2"></circle><path d="M9 17h6"></path><circle cx="17" cy="17" r="2"></circle></svg></sc-if>
+                      <sc-if value="{{ it.isLiving }}" hint-placeholder-val="{{ false }}"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 2 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4Z"></path><path d="M3 6h18"></path><path d="M16 10a4 4 0 0 1-8 0"></path></svg></sc-if>
+                      <sc-if value="{{ it.isCulture }}" hint-placeholder-val="{{ false }}"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 9a3 3 0 1 0 0 6v2a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-2a3 3 0 1 1 0-6V7a2 2 0 0 0-2-2H4a2 2 0 0 0-2 2Z"></path><path d="M13 5v2"></path><path d="M13 17v2"></path><path d="M13 11v2"></path></svg></sc-if>
+                    </div>
+                    <div style="flex:1;min-width:0;">
+                      <div style="display:flex;align-items:center;gap:6px;min-width:0;">
+                        <div style="font-size:14px;font-weight:800;color:#2D2A3E;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0;">{{ it.merchant }}</div>
+                        <sc-if value="{{ it.needsReview }}" hint-placeholder-val="{{ false }}">
+                          <div style="font-size:10px;font-weight:800;color:#A15A1E;background:#FFF2EC;padding:2px 7px;border-radius:8px;border:1px solid rgba(245,168,130,0.5);white-space:nowrap;flex-shrink:0;">확인 필요</div>
+                        </sc-if>
+                      </div>
+                      <div style="font-size:12px;color:#6B6980;margin-top:2px;font-weight:600;">{{ it.category }} · {{ it.group }} · {{ it.time }}</div>
+                    </div>
+                    <div style="font-size:15px;font-weight:800;color:#2D2A3E;white-space:nowrap;">{{ it.amountLabel }}</div>
+                  </div>
+                </sc-for>
+              </div>
+            </div>
+          </sc-for>
+        </div>
+      </x-import>
+    </div>
+
+    <div style="display:flex;flex-direction:column;gap:14px;">
+      <div style="font-size:13px;font-weight:700;color:#6A5ECF;">8a. 영수증 촬영</div>
+      <x-import component-from-global-scope="IOSDevice" from="./ios-frame.jsx" width="{{ frameW }}" height="{{ frameH }}" dark="{{ true }}" hint-size="340,734">
+        <div style="height:100%;box-sizing:border-box;padding:60px 18px 24px;background:#0D0D1A;display:flex;flex-direction:column;align-items:center;">
+          <div style="width: 100%; flex: 1; border-radius: 20px; border: 2px dashed rgba(111,197,186,0.5); display: flex; align-items: center; justify-content: center; position: relative; border-color: #8574EB80">
+            <div style="font-size:13px;color:rgba(255,255,255,0.5);font-weight:600;text-align:center;line-height:1.6;">영수증을 네모 안에<br>맞춰주세요</div>
+          </div>
+          <div style="display:flex;align-items:center;justify-content:center;gap:28px;margin-top:20px;">
+            <div style="width:46px;height:46px;border-radius:14px;background:rgba(255,255,255,0.1);display:flex;align-items:center;justify-content:center;">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.85)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="18" x="3" y="3" rx="2" ry="2"></rect><circle cx="9" cy="9" r="2"></circle><path d="m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21"></path></svg>
+            </div>
+            <div style="width:66px;height:66px;border-radius:50%;background:#fff;border:4px solid rgba(255,255,255,0.25);display:flex;align-items:center;justify-content:center;">
+              <div style="width: 52px; height: 52px; border-radius: 50%; display: flex; align-items: center; justify-content: center; background-color: #3F3480">
+                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14.5 4h-5L7 7H4a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-3l-2.5-3z"></path><circle cx="12" cy="13" r="3"></circle></svg>
+              </div>
+            </div>
+            <div style="width:46px;height:46px;border-radius:14px;background:rgba(255,255,255,0.1);display:flex;align-items:center;justify-content:center;">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.85)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8"></path><path d="M21 3v5h-5"></path><path d="M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16"></path><path d="M8 16H3v5"></path></svg>
+            </div>
+          </div>
+          <div style="font-size:12px;color:rgba(255,255,255,0.4);margin-top:14px;font-weight:600;">촬영하거나 갤러리에서 선택하세요</div>
+        </div>
+      </x-import>
+    </div>
+
+    <div style="display:flex;flex-direction:column;gap:14px;">
+      <div style="font-size:13px;font-weight:700;color:#6A5ECF;">8b. 영수증 인식 중</div>
+      <x-import component-from-global-scope="IOSDevice" from="./ios-frame.jsx" width="{{ frameW }}" height="{{ frameH }}" dark="{{ true }}" hint-size="340,734">
+        <div style="height: 100%; box-sizing: border-box; padding: 60px 18px 24px; display: flex; flex-direction: column; align-items: center; justify-content: center; position: relative; background-color: #0D0D1A">
+          <div style="width: 56px; height: 56px; border-radius: 50%; border: 4px solid rgba(111,197,186,0.25); border-top-color: #6FC5BA; animation: spin360 0.9s linear infinite; border-color: #CD8FF640"></div>
+          <div style="font-size:15px;color:#fff;font-weight:800;margin-top:18px;">영수증을 읽고 있어요...</div>
+          <div style="font-size:12px;color:rgba(255,255,255,0.5);margin-top:6px;font-weight:600;">AI가 금액과 항목을 분석 중이에요</div>
+          <div style="position:absolute;bottom:50px;left:18px;right:18px;background:linear-gradient(135deg,#E3DFFB 0%,#BDB2F2 100%);border-radius:18px;padding:14px 16px;display:flex;align-items:center;gap:12px;box-shadow:0 10px 26px rgba(106,94,207,0.35);">
+            <div style="width:28px;height:28px;border-radius:50%;background:rgba(63,52,128,0.12);flex-shrink:0;display:flex;align-items:center;justify-content:center;">
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#3F3480" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>
+            </div>
+            <div>
+              <div style="font-size:14px;font-weight:800;color:#3F3480;">인식 완료!</div>
+              <div style="font-size:12px;color:rgba(63,52,128,0.75);margin-top:2px;font-weight:600;">₩12,500 · 식비 · 스타벅스</div>
+            </div>
+          </div>
+        </div>
+      </x-import>
+    </div>
+
+    <div style="display:flex;flex-direction:column;gap:14px;">
+      <div style="font-size:13px;font-weight:700;color:#6A5ECF;">9. 그룹 피드</div>
+      <x-import component-from-global-scope="IOSDevice" from="./ios-frame.jsx" width="{{ frameW }}" height="{{ frameH }}" hint-size="340,734">
+        <div style="height:100%;box-sizing:border-box;background:#F6F5FC;">
+          <div style="padding:60px 20px 14px 20px;">
+            <div style="display:flex;align-items:center;justify-content:space-between;background:#F0EEFF;border:2px solid rgba(106,94,207,0.35);border-radius:14px;padding:11px 14px;">
+              <div style="display:flex;align-items:center;gap:8px;">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#6A5ECF" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 14c1.49-1.46 3-3.21 3-5.5A5.5 5.5 0 0 0 16.5 3c-1.76 0-3 .5-4.5 2-1.5-1.5-2.74-2-4.5-2A5.5 5.5 0 0 0 2 8.5c0 2.3 1.5 4.05 3 5.5l7 7Z"></path></svg>
+                <span style="font-size:14px;font-weight:800;color:#2D2A3E;">민준 &amp; 서연</span>
+              </div>
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#6B6980" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6"></path></svg>
+            </div>
+          </div>
+          <div style="padding:0 20px 20px;display:flex;flex-direction:column;gap:10px;overflow:auto;">
+            <sc-for list="{{ feedItems }}" as="f" hint-placeholder-count="3">
+              <div style="background:#fff;border-radius:18px;padding:14px;display:flex;gap:12px;border:1px solid #E8E4F4;box-shadow:0 2px 10px rgba(45,42,62,0.05);">
+                <div style="width:38px;height:38px;border-radius:50%;background:{{ f.avatarBg }};display:flex;align-items:center;justify-content:center;font-size:14px;font-weight:800;color:#2D2A3E;flex-shrink:0;">{{ f.initial }}</div>
+                <div style="flex:1;min-width:0;">
+                  <div style="display:flex;align-items:baseline;justify-content:space-between;gap:8px;">
+                    <div><span style="font-size:14px;font-weight:800;color:#2D2A3E;">{{ f.name }}</span><span style="font-size:11px;color:#6B6980;margin-left:6px;font-weight:600;">{{ f.time }}</span></div>
+                    <div style="font-size:15px;font-weight:800;color:#2D2A3E;">{{ f.amountLabel }}</div>
+                  </div>
+                  <div style="margin-top:6px;display:flex;align-items:center;gap:5px;background:{{ f.catBg }};width:fit-content;padding:3px 9px;border-radius:8px;">
+                    <sc-if value="{{ f.isFood }}" hint-placeholder-val="{{ false }}"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#2D2A3E" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 8h1a4 4 0 1 1 0 8h-1"></path><path d="M3 8h14v9a4 4 0 0 1-4 4H7a4 4 0 0 1-4-4Z"></path><line x1="6" x2="6" y1="2" y2="4"></line><line x1="10" x2="10" y1="2" y2="4"></line><line x1="14" x2="14" y1="2" y2="4"></line></svg></sc-if>
+                    <sc-if value="{{ f.isCulture }}" hint-placeholder-val="{{ false }}"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#2D2A3E" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 9a3 3 0 1 0 0 6v2a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-2a3 3 0 1 1 0-6V7a2 2 0 0 0-2-2H4a2 2 0 0 0-2 2Z"></path><path d="M13 5v2"></path><path d="M13 17v2"></path><path d="M13 11v2"></path></svg></sc-if>
+                    <span style="font-size:11px;font-weight:700;color:#2D2A3E;">{{ f.category }}</span>
+                  </div>
+                  <sc-if value="{{ f.hasMemo }}" hint-placeholder-val="{{ false }}">
+                    <div style="font-size:12px;color:#6B6980;margin-top:6px;font-weight:600;">{{ f.memo }}</div>
+                  </sc-if>
+                </div>
+              </div>
+            </sc-for>
+          </div>
+        </div>
+      </x-import>
+    </div>
+
+  </div>
+</div>
+
+</x-dc>
+<script type="text/x-dc" data-dc-script>
+const TYPE_ACCENTS = {
+  family: { accent: '#279E88', light: '#E8F9F7' },
+  marriage: { accent: '#C24C77', light: '#FFF0F6' },
+  couple: { accent: '#6A5ECF', light: '#F0EEFF' },
+  roommate: { accent: '#2E7AB8', light: '#EBF5FF' },
+  siblings: { accent: '#A15A1E', light: '#FFF2EC' },
+  club: { accent: '#8A6A12', light: '#FFFBE8' },
+  etc: { accent: '#2E8B57', light: '#EDFAF3' },
+};
+
+const CAT_ACCENTS = {
+  food: { accent: '#F5A882', light: '#FFF2EC', ink: '#A15A1E' },
+  transport: { accent: '#89C4F4', light: '#EBF5FF', ink: '#2E7AB8' },
+  living: { accent: '#6FC5BA', light: '#E8F9F7', ink: '#1D7A69' },
+  culture: { accent: '#B8ADEC', light: '#F0EEFF', ink: '#6A5ECF' },
+  medical: { accent: '#F0A8C0', light: '#FFF0F6', ink: '#C24C77' },
+  etc2: { accent: '#F5D485', light: '#FFFBE8', ink: '#8A6A12' },
+};
+
+const MEMBERS_BASE = [
+  { name: '김서연', role: '나', initial: '서', bg: '#FFF0F6' },
+  { name: '이민준', role: '파트너', initial: '민', bg: '#F0EEFF' },
+];
+
+const EXPENSE_MONTHS_BASE = [
+  {
+    month: '2026년 9월',
+    items: [
+      { merchant: '스타벅스 강남점', category: '식비', catAccent: '#F5A882', isFood: true, amount: 5800, group: '민준 & 서연', needsReview: true, time: '오늘 08:32' },
+      { merchant: 'GS25', category: '생활', catAccent: '#6FC5BA', isLiving: true, amount: 12300, group: '전세 405호', needsReview: false, time: '9월 8일' },
+      { merchant: 'CGV 왕십리', category: '문화', catAccent: '#B8ADEC', isCulture: true, amount: 28000, group: '민준 & 서연', needsReview: false, time: '9월 6일' },
+      { merchant: '올리브영', category: '생활', catAccent: '#6FC5BA', isLiving: true, amount: 34500, group: '공유 안 함', needsReview: true, time: '9월 5일' },
+    ],
+  },
+  {
+    month: '2026년 8월',
+    items: [
+      { merchant: '이마트', category: '생활', catAccent: '#6FC5BA', isLiving: true, amount: 87200, group: '행복한 우리집', needsReview: false, time: '8월 29일' },
+      { merchant: '택시', category: '교통', catAccent: '#89C4F4', isTransport: true, amount: 9600, group: '공유 안 함', needsReview: false, time: '8월 27일' },
+    ],
+  },
+];
+
+const FEED_ITEMS_BASE = [
+  { name: '이민준', initial: '민', avatarBg: '#F0EEFF', merchant: '파스타집', amount: 32000, category: '문화', catBg: '#F0EEFF', isCulture: true, memo: '저녁 데이트', time: '오늘 19:04' },
+  { name: '김서연', initial: '서', avatarBg: '#FFF0F6', merchant: 'CGV', amount: 28000, category: '문화', catBg: '#F0EEFF', isCulture: true, memo: '영화 티켓', time: '오늘 14:20' },
+  { name: '이민준', initial: '민', avatarBg: '#F0EEFF', merchant: '스타벅스', amount: 5800, category: '식비', catBg: '#FFF2EC', isFood: true, memo: '', time: '어제 08:32' },
+];
+
+class Component extends DCLogic {
+  state = {
+    selectedGroupType: 'couple',
+    groupName: '민준 & 서연',
+    keepLoggedIn: true,
+    selectedCategory: 'food',
+  };
+
+  buildTypeVals(id) {
+    const { accent, light } = TYPE_ACCENTS[id];
+    const sel = this.state.selectedGroupType === id;
+    const out = {};
+    out[id + 'Bg'] = sel ? accent : '#FFFFFF';
+    out[id + 'Border'] = sel ? accent : '#E8E4F4';
+    out[id + 'IconBg'] = sel ? 'rgba(255,255,255,0.22)' : light;
+    out[id + 'IconColor'] = sel ? '#FFFFFF' : accent;
+    out[id + 'LabelColor'] = sel ? '#FFFFFF' : '#2D2A3E';
+    out[id + 'Shadow'] = sel ? '0 6px 16px ' + accent + '55' : '0 2px 6px rgba(45,42,62,0.06)';
+    out[id + 'OnSelect'] = () => this.setState({ selectedGroupType: id });
+    return out;
+  }
+
+  buildCatVals(id) {
+    const { accent, light, ink } = CAT_ACCENTS[id];
+    const sel = this.state.selectedCategory === id;
+    const out = {};
+    out[id + 'Bg'] = sel ? light : '#FFFFFF';
+    out[id + 'Border'] = sel ? accent : '#E8E4F4';
+    out[id + 'Color'] = ink;
+    out[id + 'Shadow'] = sel ? '0 4px 12px ' + accent + '55' : 'none';
+    out[id + 'OnSelect'] = () => this.setState({ selectedCategory: id });
+    return out;
+  }
+
+  renderVals() {
+    const typeVals = Object.assign({}, ...Object.keys(TYPE_ACCENTS).map(id => this.buildTypeVals(id)));
+    const catVals = Object.assign({}, ...Object.keys(CAT_ACCENTS).map(id => this.buildCatVals(id)));
+
+    const expenseMonths = EXPENSE_MONTHS_BASE.map(mo => ({
+      month: mo.month,
+      items: mo.items.map(it => ({
+        ...it,
+        rowBorder: it.needsReview ? '2px solid rgba(245,168,130,0.6)' : '1px solid #E8E4F4',
+        rowShadow: it.needsReview ? '0 4px 14px rgba(245,168,130,0.2)' : '0 2px 8px rgba(45,42,62,0.05)',
+        amountLabel: it.amount.toLocaleString('ko-KR') + '원',
+      })),
+    }));
+
+    const feedItems = FEED_ITEMS_BASE.map(f => ({
+      ...f,
+      amountLabel: f.amount.toLocaleString('ko-KR') + '원',
+      hasMemo: !!f.memo,
+    }));
+
+    return {
+      frameW: 340,
+      frameH: 734,
+      ...typeVals,
+      ...catVals,
+      members: MEMBERS_BASE,
+      expenseMonths,
+      feedItems,
+      groupNameValue: this.state.groupName,
+      onGroupNameChange: e => this.setState({ groupName: e.target.value }),
+      keepLoggedIn: this.state.keepLoggedIn,
+      toggleKeepLoggedIn: () => this.setState(s => ({ keepLoggedIn: !s.keepLoggedIn })),
+      keepLoggedInTrackColor: this.state.keepLoggedIn ? '#6A5ECF' : '#D8D3C8',
+      keepLoggedInThumbPos: this.state.keepLoggedIn ? '21px' : '3px',
+    };
+  }
+}
+
+</script>
+</body>
+</html>
