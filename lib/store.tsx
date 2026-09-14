@@ -284,21 +284,36 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       // 실제 groups INSERT → 성공하면 이어서 group_members INSERT(OWNER)까지 해야 그룹이 완성된다.
       // 두 요청 사이에 실패하면(드묾) 그룹만 만들어지고 멤버가 없는 상태로 남을 수 있다 — 별도 트랜잭션
       // 처리는 하지 않는다(schema.sql이 stored procedure를 쓰지 않는 지금 범위에선 과한 대응이라 판단).
+      //
+      // 2026-09-19 버그 수정: .insert().select()로 방금 넣은 행을 돌려받으려 하면 PostgREST가
+      // INSERT ... RETURNING *로 실행하는데, Postgres RLS는 이 RETURNING 결과도 SELECT 정책을
+      // 통과해야 돌려준다 — 그런데 groups_select_member_only는 "이미 그 그룹 멤버여야" 통과되고,
+      // 막 만든 그룹은 아직 group_members에 OWNER 행이 없다(바로 다음 줄에서 넣음). 그래서 insert
+      // 자체(WITH CHECK)는 문제없는데도 "new row violates row-level security policy"가 났던 거다
+      // — 정책이 잘못된 게 아니라 RETURNING이 요구하는 select 쪽 문제였다. id·시각을 브라우저에서
+      // 미리 만들어 넣고 .select()를 아예 안 써서 이 문제 자체를 피한다.
       async createGroup(name: string, groupType: GroupType): Promise<MutationResult<Group>> {
         if (!session) return { ok: false, error: "로그인이 필요해요" };
         const trimmed = name.trim();
-        const { data: newGroup, error: groupError } = await supabase
-          .from("groups")
-          .insert({ name: trimmed.length > 0 ? trimmed : "이름 없는 그룹", group_type: groupType, invite_code: generateInviteCode() })
-          .select()
-          .single();
-        if (groupError || !newGroup) return { ok: false, error: groupError?.message ?? "그룹을 만들지 못했어요" };
-        const { data: newMember, error: memberError } = await supabase
-          .from("group_members")
-          .insert({ user_id: session.user.id, group_id: newGroup.id, role: "OWNER" })
-          .select()
-          .single();
-        if (memberError || !newMember) return { ok: false, error: memberError?.message ?? "그룹을 만들지 못했어요" };
+        const newGroup: Group = {
+          id: crypto.randomUUID(),
+          name: trimmed.length > 0 ? trimmed : "이름 없는 그룹",
+          group_type: groupType,
+          invite_code: generateInviteCode(),
+          created_at: new Date().toISOString(),
+        };
+        const { error: groupError } = await supabase.from("groups").insert(newGroup);
+        if (groupError) return { ok: false, error: groupError.message };
+        const newMember: GroupMember = {
+          id: crypto.randomUUID(),
+          user_id: session.user.id,
+          group_id: newGroup.id,
+          role: "OWNER",
+          nickname: null,
+          joined_at: new Date().toISOString(),
+        };
+        const { error: memberError } = await supabase.from("group_members").insert(newMember);
+        if (memberError) return { ok: false, error: memberError.message };
         setGroups((prev) => [...prev, newGroup]);
         setGroupMembers((prev) => [...prev, newMember]);
         return { ok: true, data: newGroup };
