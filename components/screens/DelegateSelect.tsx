@@ -14,9 +14,9 @@ export default function DelegateSelect({ groupId }: { groupId: string }) {
   const nav = useNav();
   const store = useStore();
   const group = store.groups.find((g) => g.id === groupId);
-  const members = getGroupMembersWithProfile(store.groupMembers, store.profiles, groupId).filter(
-    (m) => m.user_id !== store.currentUserId
-  );
+  // 2026-09-17 팀 결정: 본인도 목록에 그대로 보여주되 "본인"이라고 표시하고 고를 수는 없게 한다
+  // (이전엔 본인을 아예 목록에서 뺐는데, 위임 화면 안에서 "이게 나다"가 안 보였다).
+  const members = getGroupMembersWithProfile(store.groupMembers, store.profiles, groupId);
 
   function handleSelect(userId: string) {
     // F18 · P10 상태값1: 나(OWNER) 대신 선택한 멤버를 새 그룹장으로 바꾼다.
@@ -26,14 +26,14 @@ export default function DelegateSelect({ groupId }: { groupId: string }) {
   }
 
   return (
-    <div style={{ height: "100%", width: "100%", boxSizing: "border-box", background: "#F6F5FC", display: "flex", flexDirection: "column" }}>
+    <div style={{ height: "100%", width: "100%", boxSizing: "border-box", background: "var(--shoot-bg)", display: "flex", flexDirection: "column" }}>
       <div style={{ padding: "20px 20px 12px", flexShrink: 0, display: "flex", alignItems: "center", gap: 10 }}>
         <div onClick={() => nav.back()} style={{ cursor: "pointer", display: "flex" }}>
-          <ChevronLeftIcon size={18} color="#2D2A3E" />
+          <ChevronLeftIcon size={18} color="var(--shoot-text)" />
         </div>
         <div>
-          <div style={{ fontSize: 18, fontWeight: 800, color: "#2D2A3E" }}>그룹장 위임</div>
-          {group && <div style={{ fontSize: 12, color: "#6B6980", fontWeight: 600, marginTop: 2 }}>&quot;{group.name}&quot;의 새 그룹장을 골라주세요</div>}
+          <div style={{ fontSize: 18, fontWeight: 800, color: "var(--shoot-text)" }}>그룹장 위임</div>
+          {group && <div style={{ fontSize: 12, color: "var(--shoot-text-muted)", fontWeight: 600, marginTop: 2 }}>&quot;{group.name}&quot;의 새 그룹장을 골라주세요</div>}
         </div>
       </div>
 
@@ -41,25 +41,39 @@ export default function DelegateSelect({ groupId }: { groupId: string }) {
         <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
           {members.map((m, idx) => {
             const name = m.profile?.name ?? "알 수 없음";
+            const isMe = m.user_id === store.currentUserId;
             return (
               <div
                 key={m.id}
-                onClick={() => handleSelect(m.user_id)}
-                style={{ background: "#fff", borderRadius: 16, padding: "12px 14px", display: "flex", alignItems: "center", gap: 12, boxShadow: "0 2px 8px rgba(45,42,62,0.05)", cursor: "pointer" }}
+                onClick={isMe ? undefined : () => handleSelect(m.user_id)}
+                style={{
+                  background: "var(--shoot-surface)",
+                  borderRadius: 16,
+                  padding: "12px 14px",
+                  display: "flex",
+                  alignItems: "center",
+                  gap: 12,
+                  boxShadow: "0 2px 8px rgba(45,42,62,0.05)",
+                  cursor: isMe ? "default" : "pointer",
+                  opacity: isMe ? 0.6 : 1,
+                }}
               >
+                {/* 아바타 배경(AVATAR_PALETTE)은 다크모드에서도 안 바뀌는 고정 파스텔이라, 글자색도 늘 고정된
+                    어두운 색이어야 한다(var(--shoot-text)를 쓰면 다크모드에서 흰 글씨가 되어 안 보인다). */}
                 <div style={{ width: 38, height: 38, borderRadius: "50%", background: AVATAR_PALETTE[idx % AVATAR_PALETTE.length], display: "flex", alignItems: "center", justifyContent: "center", fontSize: 14, fontWeight: 800, color: "#2D2A3E" }}>
                   {initialOf(name)}
                 </div>
                 <div style={{ flex: 1 }}>
-                  <div style={{ fontSize: 14, fontWeight: 800, color: "#2D2A3E" }}>{name}</div>
-                  <div style={{ fontSize: 12, color: "#6B6980", fontWeight: 600 }}>{m.nickname ?? "멤버"}</div>
+                  <div style={{ fontSize: 14, fontWeight: 800, color: "var(--shoot-text)" }}>{name}</div>
+                  {/* 2026-09-17 팀 결정: 본인 행은 "본인"이라고 표시하고 고를 수 없게 한다. */}
+                  <div style={{ fontSize: 12, color: "var(--shoot-text-muted)", fontWeight: 600 }}>{isMe ? "본인" : m.nickname ?? "멤버"}</div>
                 </div>
-                <ChevronRightIcon size={16} color="#A9A2B8" />
+                {!isMe && <ChevronRightIcon size={16} color="#A9A2B8" />}
               </div>
             );
           })}
-          {members.length === 0 && (
-            <div style={{ textAlign: "center", color: "#6B6980", fontSize: 13, fontWeight: 600, padding: "20px 0" }}>위임할 그룹원이 없어요</div>
+          {members.length <= 1 && (
+            <div style={{ textAlign: "center", color: "var(--shoot-text-muted)", fontSize: 13, fontWeight: 600, padding: "20px 0" }}>위임할 그룹원이 없어요</div>
           )}
         </div>
       </div>

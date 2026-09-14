@@ -5,7 +5,7 @@ import type { TabId } from "@/lib/nav";
 import { useNav } from "./NavContext";
 import { CameraIcon, HomeIcon, ListIcon, UserCircleIcon, UsersIcon } from "./icons";
 
-const ACTIVE = "#6A5ECF";
+const ACTIVE = "var(--shoot-accent)";
 const INACTIVE = "#A9A2B8";
 
 function TabButton({
@@ -54,7 +54,7 @@ export default function TabBar({
       style={{
         flexShrink: 0,
         padding: "10px 12px 20px",
-        background: "#fff",
+        background: "var(--shoot-surface)",
         borderTop: "1px solid #ECE9E3",
         display: "flex",
         alignItems: "center",

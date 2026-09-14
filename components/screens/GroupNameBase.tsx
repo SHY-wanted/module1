@@ -6,6 +6,7 @@ import { useState, type ReactNode } from "react";
 import { useNav } from "../NavContext";
 import { useStore } from "@/lib/store";
 import type { GroupType } from "@/lib/mock";
+import { ChevronLeftIcon } from "../icons";
 
 export interface GroupNameBaseProps {
   groupType: GroupType;
@@ -30,14 +31,18 @@ export default function GroupNameBase({ groupType, badgeIcon, badgeColor, badgeL
   }
 
   return (
-    <div style={{ height: "100%", width: "100%", boxSizing: "border-box", padding: "20px 24px 28px", background: "#F6F5FC", display: "flex", flexDirection: "column", overflowY: "auto" }}>
-      <div style={{ display: "flex", gap: 6, marginBottom: 14 }}>
-        <div style={{ height: 4, flex: 1, borderRadius: 2, background: "#6A5ECF" }} />
-        <div style={{ height: 4, flex: 1, borderRadius: 2, background: "#6A5ECF" }} />
-        <div style={{ height: 4, flex: 1, borderRadius: 2, background: "#E8E4F4" }} />
+    <div style={{ height: "100%", width: "100%", boxSizing: "border-box", padding: "20px 24px 28px", background: "var(--shoot-bg)", display: "flex", flexDirection: "column", overflowY: "auto" }}>
+      {/* 2026-09-14 팀 결정: 뒤로가기 버튼 추가 — 3a(유형 선택)로 pop. */}
+      <div onClick={() => nav.back()} style={{ cursor: "pointer", display: "flex", width: "fit-content", marginBottom: 14 }}>
+        <ChevronLeftIcon size={18} color="var(--shoot-text)" />
       </div>
-      <div style={{ fontSize: 21, fontWeight: 800, color: "#2D2A3E" }}>그룹 이름을 지어주세요</div>
-      <div style={{ display: "inline-flex", alignItems: "center", gap: 7, background: "#F0EEFF", borderRadius: 10, padding: "6px 12px", marginTop: 10, width: "fit-content" }}>
+      <div style={{ display: "flex", gap: 6, marginBottom: 14 }}>
+        <div style={{ height: 4, flex: 1, borderRadius: 2, background: "var(--shoot-accent)" }} />
+        <div style={{ height: 4, flex: 1, borderRadius: 2, background: "var(--shoot-accent)" }} />
+        <div style={{ height: 4, flex: 1, borderRadius: 2, background: "var(--shoot-border)" }} />
+      </div>
+      <div style={{ fontSize: 21, fontWeight: 800, color: "var(--shoot-text)" }}>그룹 이름을 지어주세요</div>
+      <div style={{ display: "inline-flex", alignItems: "center", gap: 7, background: "var(--shoot-surface-alt)", borderRadius: 10, padding: "6px 12px", marginTop: 10, width: "fit-content" }}>
         {badgeIcon}
         <span style={{ fontSize: 12, fontWeight: 800, color: badgeColor }}>{badgeLabel}</span>
       </div>
@@ -47,14 +52,14 @@ export default function GroupNameBase({ groupType, badgeIcon, badgeColor, badgeL
           placeholder={placeholder}
           value={name}
           onChange={(e) => setName(e.target.value)}
-          style={{ width: "100%", boxSizing: "border-box", height: 52, borderRadius: 16, border: "2px solid #6A5ECF", background: "#fff", padding: "0 18px", fontSize: 16, fontWeight: 800, color: "#2D2A3E", textAlign: "center" }}
+          style={{ width: "100%", boxSizing: "border-box", height: 52, borderRadius: 16, border: "2px solid var(--shoot-accent)", background: "var(--shoot-surface)", padding: "0 18px", fontSize: 16, fontWeight: 800, color: "var(--shoot-text)", textAlign: "center" }}
         />
       </div>
-      <div style={{ fontSize: 12, color: "#6B6980", fontWeight: 700, marginTop: 16 }}>이런 이름 어때요?</div>
+      <div style={{ fontSize: 12, color: "var(--shoot-text-muted)", fontWeight: 700, marginTop: 16 }}>이런 이름 어때요?</div>
       <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginTop: 8 }}>
         {chips.map((chip) => (
           // 디자인 스크립트에 칩 클릭 동작이 없어(정적 표시) 그대로 둔다 — 클릭 시 입력칸을 채우는 동작은 지어내지 않는다.
-          <div key={chip} style={{ fontSize: 12, fontWeight: 700, color: "#2D2A3E", background: "#F0EEFF", padding: "6px 12px", borderRadius: 10 }}>
+          <div key={chip} style={{ fontSize: 12, fontWeight: 700, color: "var(--shoot-text)", background: "var(--shoot-surface-alt)", padding: "6px 12px", borderRadius: 10 }}>
             {chip}
           </div>
         ))}

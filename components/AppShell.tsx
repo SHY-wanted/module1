@@ -3,6 +3,7 @@
 // docs/07-screens.md 「화면 전환 방식」: 탭 전환(크로스페이드) vs 화면 쌓기(세로 슬라이드) 두 종류.
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { AuthScreenId, StackScreen, TabId } from "@/lib/nav";
+import { useStore } from "@/lib/store";
 import { NavContext, type NavValue } from "./NavContext";
 import TabBar from "./TabBar";
 import StackLayer, { type RenderItem } from "./StackLayer";
@@ -29,6 +30,7 @@ function prefersReducedMotion(): boolean {
 const STACK_ANIMATION_MS = 280;
 
 export default function AppShell() {
+  const store = useStore();
   // 0·1·1b·2·2a — 07-screens.md 「화면 전환 방식」(3) 로그인 전 화면 전환: 애니메이션 없이 즉시 상태 전환
   // (2026-09-11 팀 결정, 별도 스택 관리 없음).
   const [authScreen, setAuthScreen] = useState<AuthScreenId | null>("splash");
@@ -134,7 +136,7 @@ export default function AppShell() {
 
   const logout = useCallback(() => {
     // 07-screens.md "10 마이페이지 '로그아웃' → 2(로그인 입력), 스택도 비운다" — 2026-09-11 팀 결정.
-    // isLoggedIn=false 설정은 호출하는 화면(MyPage)에서 store.setLoggedIn(false)로 먼저 처리한다.
+    // 세션 종료(supabase.auth.signOut)는 호출하는 화면(MyPage)이 store.signOut()으로 먼저 처리한다.
     setRenderItems([]);
     setActiveTab("home");
     setAuthScreen("loginInput");
@@ -156,9 +158,10 @@ export default function AppShell() {
   return (
     <NavContext.Provider value={navValue}>
       <div
-        className="h-dvh w-full overflow-hidden flex flex-col"
+        className="h-dvh w-full overflow-hidden flex flex-col shoot-app-root"
+        data-dark={store.darkMode}
         style={{
-          background: "#F6F5FC",
+          background: "var(--shoot-bg)",
           pointerEvents: isTransitioning ? "none" : "auto",
           maxWidth: 480,
           margin: "0 auto",
@@ -190,6 +193,10 @@ export default function AppShell() {
             {renderItems.length === 0 && <TabBar activeTab={activeTab} onChange={switchTab} />}
           </>
         )}
+        {/* 2c "지출 기록 시 확인 알림" 등(2026-09-17 팀 결정) — store.toastMessage를 화면 전체에서 공용으로 띄운다. */}
+        <div className="shoot-toast" data-visible={store.toastMessage !== null}>
+          {store.toastMessage}
+        </div>
       </div>
     </NavContext.Provider>
   );

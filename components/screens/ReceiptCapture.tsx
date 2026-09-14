@@ -30,7 +30,7 @@ export default function ReceiptCapture() {
         {/* 08b(인식 중)로 이동 — 실제 촬영은 없고 mock 흐름만 이어간다. */}
         <div
           onClick={() => nav.push({ id: "receiptProcessing" })}
-          style={{ width: 66, height: 66, borderRadius: "50%", background: "#fff", border: "4px solid rgba(255,255,255,0.25)", display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer" }}
+          style={{ width: 66, height: 66, borderRadius: "50%", background: "var(--shoot-surface)", border: "4px solid rgba(255,255,255,0.25)", display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer" }}
         >
           <div style={{ width: 52, height: 52, borderRadius: "50%", display: "flex", alignItems: "center", justifyContent: "center", backgroundColor: "#3F3480" }}>
             <CameraIcon size={22} color="#fff" />

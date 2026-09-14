@@ -113,7 +113,14 @@ create policy profiles_select_any_authenticated on profiles for select
   using (auth.uid() is not null);
 
 -- profiles의 INSERT는 아래 5)번 트리거(handle_new_user, security definer)가 담당하므로 클라이언트용 INSERT 정책을 두지 않는다.
--- profiles의 UPDATE(이름 변경) 정책도 없다 — [?] 이름 변경 기능 자체가 03~05 문서에 없어 만들지 않았다. 필요하면 팀 확인.
+
+-- 2026-09-18 추가: 07-screens.md 10b "내 정보 변경"(닉네임 수정)이 실제로 동작하려면 본인 이름 정도는
+-- 스스로 바꿀 수 있어야 한다 — 01~05엔 이름 변경 규칙이 없었지만(원래 [?]였던 자리), 이미 만들어진
+-- 화면이 걸어야 할 최소 정책이라 본인 행만 수정 가능하도록 추가했다. 팀 확인 필요하면 되돌릴 것.
+create policy profiles_update_own_only on profiles for update
+  using (id = auth.uid())
+  with check (id = auth.uid());
+
 -- profiles의 DELETE 정책 없음 — 계정 탈퇴 규칙이 01~05 어디에도 없어 만들지 않았다. [?] 팀 확인 필요.
 
 -- --- groups ---
@@ -137,9 +144,39 @@ create policy groups_delete_owner_only on groups for delete
 
 -- --- group_members ---
 
+-- 2026-09-18 추가(버그 수정): group_members의 SELECT/UPDATE 정책이 "그룹원인지"를 확인하려고
+-- group_members 자기 자신을 다시 서브쿼리하면, 그 서브쿼리에도 RLS가 다시 적용되면서
+-- 정책이 자기 자신을 무한히 호출한다 — Postgres가 "infinite recursion detected in policy for
+-- relation group_members"(42P17)로 막아버린다(테이블을 만든 시점엔 안 보이다가, 실제로 로그인해서
+-- 조회해보면 터진다). 아래 두 security definer 함수는 테이블 소유자 권한으로 실행되어 RLS를
+-- 다시 타지 않으므로, 이 함수를 거치면 재귀 없이 같은 검사를 할 수 있다(Supabase 공식 권장 패턴).
+create function public.is_group_member(p_group_id uuid, p_user_id uuid)
+returns boolean
+language sql
+security definer
+set search_path = public
+stable
+as $$
+  select exists (
+    select 1 from group_members where group_id = p_group_id and user_id = p_user_id
+  );
+$$;
+
+create function public.is_group_owner(p_group_id uuid, p_user_id uuid)
+returns boolean
+language sql
+security definer
+set search_path = public
+stable
+as $$
+  select exists (
+    select 1 from group_members where group_id = p_group_id and user_id = p_user_id and role = 'OWNER'
+  );
+$$;
+
 -- 05-policy.md에 group_members 조회 자체에 대응하는 P는 없다 — 같은 그룹 멤버끼리만 멤버 목록을 볼 수 있음(SHY 스펙 원안 준용, 5b 멤버 목록 패널에 필요)
 create policy members_select_same_group on group_members for select
-  using (exists (select 1 from group_members gm2 where gm2.group_id = group_members.group_id and gm2.user_id = auth.uid()));
+  using (public.is_group_member(group_members.group_id, auth.uid()));
 
 -- P3(중복 참여 방지)는 위 2)번의 unique(user_id, group_id) 제약으로 구현된다 — RLS는 "본인 명의로만 참여 신청 가능"만 강제한다.
 create policy members_insert_self on group_members for insert
@@ -147,8 +184,8 @@ create policy members_insert_self on group_members for insert
 
 -- P10(그룹장 위임)의 "role을 OWNER로 바꾸는 것은 기존 OWNER만 할 수 있다" 부분
 create policy members_update_owner_transfers_role on group_members for update
-  using (exists (select 1 from group_members gm where gm.group_id = group_members.group_id and gm.user_id = auth.uid() and gm.role = 'OWNER'))
-  with check (exists (select 1 from group_members gm where gm.group_id = group_members.group_id and gm.user_id = auth.uid() and gm.role = 'OWNER'));
+  using (public.is_group_owner(group_members.group_id, auth.uid()))
+  with check (public.is_group_owner(group_members.group_id, auth.uid()));
 -- [?] P10의 "새 그룹장을 지정하지 않으면 나갈 수 없다"는 순서 규칙(위임 먼저 → 탈퇴는 그다음) 자체는
 --     이 UPDATE 정책 하나로 강제되지 않는다 — 애플리케이션이 "role 변경 → 본인 멤버십 삭제" 순서로 두 쿼리를
 --     실행해야 한다(모듈 1 SHY프로젝트 주제 세분화.md "설계 포인트" 참고). DB 트리거로 순서까지 강제할지는 팀 확인 필요.
@@ -262,7 +299,7 @@ create trigger on_auth_user_created
 --
 -- | 테이블             | select | insert | update | delete | 비고 |
 -- |--------------------|--------|--------|--------|--------|------|
--- | profiles           |   O    |  (트리거) |  없음  |  없음  | INSERT는 handle_new_user 트리거(security definer)가 담당. UPDATE·DELETE는 01~05에 이름 변경·탈퇴 규칙이 없어 미구현 [?] |
+-- | profiles           |   O    |  (트리거) |   O    |  없음  | INSERT는 handle_new_user 트리거(security definer)가 담당. UPDATE=본인만(2026-09-18 추가, 10b 내 정보 변경용). DELETE는 01~05에 탈퇴 규칙이 없어 미구현 [?] |
 -- | groups             |   O    |   O    |   O    |   O    | P1(insert 조건) · P2(update=OWNER만) · delete는 상태값1 전제로 OWNER만 |
 -- | group_members      |   O    |   O    |   O    |   O    | insert=본인만(P3은 unique 제약), update=OWNER만(P10 위임), delete=본인만(탈퇴) |
 -- | expenses           |   O    |   O    |   O    |   O    | select 2개(본인 전체 + P5 공유피드), insert=P4, update/delete=P6 |

@@ -18,6 +18,7 @@ import IncomeEdit from "./screens/IncomeEdit";
 import Settings from "./screens/Settings";
 import MyGroupsManage from "./screens/MyGroupsManage";
 import DelegateSelect from "./screens/DelegateSelect";
+import MyInfoEdit from "./screens/MyInfoEdit";
 import ReceiptCapture from "./screens/ReceiptCapture";
 import ReceiptProcessing from "./screens/ReceiptProcessing";
 
@@ -67,6 +68,8 @@ function renderScreen(screen: StackScreen) {
       return <MyGroupsManage />;
     case "delegateSelect":
       return <DelegateSelect groupId={screen.groupId} />;
+    case "myInfoEdit":
+      return <MyInfoEdit />;
     case "receiptCapture":
       return <ReceiptCapture />;
     case "receiptProcessing":

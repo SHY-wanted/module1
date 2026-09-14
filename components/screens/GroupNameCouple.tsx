@@ -7,7 +7,7 @@ export default function GroupNameCouple() {
   return (
     <GroupNameBase
       groupType="COUPLE"
-      badgeIcon={<HeartIcon size={13} color="#6A5ECF" />}
+      badgeIcon={<HeartIcon size={13} color="var(--shoot-accent)" />}
       badgeColor="#4B3F94"
       badgeLabel="커플"
       placeholder=""

@@ -49,9 +49,11 @@ export function groupToCats(groupType: GroupType | null): CategoryDef[] {
   return DEFAULT_CATS;
 }
 
-// 2c 설정(design/shoot/Settings.dc.html) 카테고리 목록 — 그룹 유형 프리셋(FAMILY_CATS 등)과는 별개로,
-// "내 카테고리 관리"용 기본 목록이다. 디자인에 그려진 순서·라벨·색을 그대로 옮겼다.
-export const SETTINGS_BASE_CATS: CategoryDef[] = [
+// 2c 설정(design/shoot/Settings.dc.html) "개인 카테고리" 기본 목록 — 그룹 유형 프리셋(FAMILY_CATS 등)과는
+// 별개로, 그룹과 공유하지 않는(개인) 지출에 쓰는 기본 목록이다. 디자인에 그려진 순서·라벨·색을 그대로 옮겼다.
+// 2026-09-17 팀 결정(개인·그룹 카테고리 차별화): 이 배열은 "개인" 스코프의 초기값일 뿐이고, 실제로는
+// lib/store.tsx의 personalCategories(React 상태)가 들고 있다 — 편집·추가하면 그 상태가 바뀐다.
+export const PERSONAL_CATS: CategoryDef[] = [
   { id: "food", label: "식비", accent: "#F5A882", light: "#FFF2EC", ink: "#A15A1E", icon: "food" },
   { id: "living", label: "생활용품", accent: "#6FC5BA", light: "#E8F9F7", ink: "#1D7A69", icon: "living" },
   { id: "transport", label: "교통", accent: "#89C4F4", light: "#EBF5FF", ink: "#2E7AB8", icon: "transport" },
@@ -60,7 +62,29 @@ export const SETTINGS_BASE_CATS: CategoryDef[] = [
   { id: "etc", label: "기타", accent: "#F5D485", light: "#FFFBE8", ink: "#8A6A12", icon: "etc" },
 ];
 
-const ALL_KNOWN_CATS: CategoryDef[] = [...DEFAULT_CATS, ...FAMILY_CATS, ...COUPLE_CATS, ...SETTINGS_BASE_CATS];
+const ALL_KNOWN_CATS: CategoryDef[] = [...DEFAULT_CATS, ...FAMILY_CATS, ...COUPLE_CATS, ...PERSONAL_CATS];
+
+// 2026-09-17 팀 결정: "개인 카테고리"와 "그룹 카테고리"를 차별화한다 — 6(지출 입력)의 "어느 그룹과
+// 공유할까요?"에서 그룹을 고르지 않으면 개인(personal) 스코프, 고르면 그 그룹(groupId) 스코프다.
+// 각 그룹은 서로 다른 카테고리 목록을 가질 수 있다(그룹마다 "직접 입력"으로 추가한 게 다르기 때문).
+export type CategoryScope = { kind: "personal" } | { kind: "group"; groupId: string };
+
+// 아이콘을 없애고 색으로만 구별하기로 했으므로(2026-09-17), 새 카테고리는 이 팔레트를 순서대로 돌려 쓴다.
+const CUSTOM_CATEGORY_PALETTE: Array<{ accent: string; light: string; ink: string }> = [
+  { accent: "#F5A882", light: "#FFF2EC", ink: "#A15A1E" },
+  { accent: "#89C4F4", light: "#EBF5FF", ink: "#2E7AB8" },
+  { accent: "#6FC5BA", light: "#E8F9F7", ink: "#1D7A69" },
+  { accent: "#B8ADEC", light: "#F0EEFF", ink: "#6A5ECF" },
+  { accent: "#F0A8C0", light: "#FFF0F6", ink: "#C24C77" },
+  { accent: "#F5D485", light: "#FFFBE8", ink: "#8A6A12" },
+];
+
+// 새 카테고리 하나를 만든다(직접입력 저장 시 · 설정 "카테고리 추가" 둘 다 이걸 쓴다).
+// existingCount로 팔레트를 순환시켜 같은 스코프 안에서 색이 겹치지 않게 한다.
+export function makeCategory(label: string, existingCount: number): CategoryDef {
+  const palette = CUSTOM_CATEGORY_PALETTE[existingCount % CUSTOM_CATEGORY_PALETTE.length];
+  return { id: `cat-${label}-${Date.now().toString(36)}`, label, ...palette, icon: "etc" };
+}
 
 // ExpenseList(7)·Home(2b)에서 category 텍스트만으로 아이콘·색을 되찾기 위한 조회 헬퍼.
 // "확인 필요"는 프리셋에 없는 특수 값이라 별도 처리한다(05-policy.md P7).
@@ -73,10 +97,3 @@ export function getCategoryVisual(label: string): { accent: string; light: strin
   return { accent: "#C9C4D6", light: "#F1EFEC", ink: "#5B5568", icon: "etc" };
 }
 
-// 2c 설정 "새 카테고리 추가" — 팀 결정(2026-09-11)으로 그룹별이 아니라 전역 배열로 간단하게 둔다.
-// 이 배열 자체는 lib/store.tsx의 customCategories(React 상태)가 들고 있다 — 정적 상수인 SETTINGS_BASE_CATS와
-// 달리 사용자가 런타임에 추가하므로 반응형 상태가 필요하기 때문이다. 여기서는 새 항목을 만드는 헬퍼만 둔다.
-export function makeCustomCategory(label: string): CategoryDef {
-  const id = `custom-${label}-${Date.now().toString(36)}`;
-  return { id, label, accent: "#C9C4D6", light: "#F1EFEC", ink: "#5B5568", icon: "etc" };
-}

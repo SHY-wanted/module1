@@ -76,6 +76,69 @@ body {
   }
 }
 
+/* 다크 모드(2c, 2026-09-17 팀 요청 — 처음엔 색 반전(invert) 필터로 만들었다가, 색이 죄다 이상해진다는
+   피드백을 받아 손으로 고른 다크 팔레트로 다시 만들었다). 화면 곳곳의 inline style이 아래 토큰
+   (var(--shoot-*))을 참조하도록 바꿔서, 이 블록의 다크 값만 바꾸면 앱 전체가 같이 바뀐다.
+   카테고리·그룹유형 배지처럼 각자 고유색을 쓰는 작은 강조색(accent/light/ink)은 그대로 두었다 —
+   어두운 배경 위에서도 컬러 배지로 자연스럽게 보이는 편이라, 전부 다시 칠하지는 않았다. */
+:root {
+  --shoot-bg: #f6f5fc;
+  --shoot-surface: #ffffff;
+  --shoot-surface-alt: #f0eeff;
+  --shoot-border: #e8e4f4;
+  --shoot-divider: #f1eeee;
+  --shoot-text: #2d2a3e;
+  --shoot-text-muted: #6b6980;
+  --shoot-accent: #6a5ecf;
+}
+.shoot-app-root {
+  transition: background-color 200ms ease;
+}
+.shoot-app-root[data-dark="true"] {
+  --shoot-bg: #15131f;
+  --shoot-surface: #201d2e;
+  --shoot-surface-alt: #2a2640;
+  --shoot-border: #3a3552;
+  --shoot-divider: #322e46;
+  --shoot-text: #f1eefa;
+  --shoot-text-muted: #aba3c4;
+  --shoot-accent: #9b8cff;
+}
+@media (prefers-reduced-motion: reduce) {
+  .shoot-app-root {
+    transition: none;
+  }
+}
+
+/* 전역 토스트(2c "지출 기록 시 확인 알림" 등, 2026-09-17 팀 결정) — store.toastMessage를 AppShell이 띄운다. */
+.shoot-toast {
+  position: absolute;
+  left: 50%;
+  bottom: 96px;
+  transform: translateX(-50%);
+  max-width: 85%;
+  background: #2d2a3e;
+  color: #fff;
+  padding: 12px 20px;
+  border-radius: 14px;
+  font-size: 13px;
+  font-weight: 700;
+  text-align: center;
+  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.25);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 200ms ease;
+  z-index: 50;
+}
+.shoot-toast[data-visible="true"] {
+  opacity: 1;
+}
+@media (prefers-reduced-motion: reduce) {
+  .shoot-toast {
+    transition: none;
+  }
+}
+
 /* Main(0. 스플래시) 로딩 스피너 — design/shoot/Main.dc.html의 keyframes 그대로 */
 @keyframes spin360 {
   from {

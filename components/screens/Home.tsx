@@ -13,13 +13,22 @@ import {
 } from "@/lib/selectors";
 import { formatRelativeTime, formatWon, stripSurname } from "@/lib/format";
 import { getCategoryVisual } from "@/lib/categories";
+import { TODAY_DATE } from "@/lib/mock";
 import { CategoryIcon } from "../icons";
-import { ArrowUpIcon, ChevronDownIcon, ChevronRightIcon, HeartIcon, PlusIcon } from "../icons";
+import { ArrowUpIcon, ChevronDownIcon, ChevronLeftIcon, ChevronRightIcon, HeartIcon, PlusIcon } from "../icons";
 
-const CURRENT_MONTH = "2026-09";
-const TODAY_DAY = 9; // TODAY_DATE(2026-09-09)의 일(day)
-const START_WEEKDAY = 2; // 2026-09-01은 화요일
-const DAYS_IN_MONTH = 30;
+// "이번 달 총 수입·총 지출" 카드는 캘린더를 다른 달로 넘겨도 바뀌지 않는다 — 항상 실제 오늘(TODAY_DATE)
+// 기준 이번 달이다. 09-14 이전엔 9월로 하드코딩돼 있었다.
+const CURRENT_MONTH = TODAY_DATE.slice(0, 7); // "2026-09"
+const [TODAY_YEAR, TODAY_MONTH_NUM, TODAY_DAY] = TODAY_DATE.split("-").map(Number);
+const TODAY_MONTH_INDEX = TODAY_MONTH_NUM - 1; // 0-based(1월=0)
+
+// 2026-09-14 팀 결정: 캘린더는 1~12월 전부, 오늘을 기준으로 과거는 제한 없이 · 미래는 +1년까지만 넘길 수 있다.
+function toLinearMonth(year: number, monthIndex: number) {
+  return year * 12 + monthIndex;
+}
+const TODAY_LINEAR_MONTH = toLinearMonth(TODAY_YEAR, TODAY_MONTH_INDEX);
+const MAX_LINEAR_MONTH = TODAY_LINEAR_MONTH + 12; // 오늘과 같은 달의 내년까지
 
 export default function Home() {
   const nav = useNav();
@@ -35,8 +44,10 @@ export default function Home() {
     return getGroupExpenseTotal(store.expenses, homeGroup, CURRENT_MONTH);
   }, [store.expenses, store.currentUserId, homeGroup]);
 
+  // 2026-09-17 팀 결정: 3개 → 5개로 늘림. store.expenses 기준으로 매번 다시 계산되므로(위 useMemo 의존성)
+  // 현재 실시간 상태를 그대로 반영한다 — 새 지출을 기록하면 바로 목록에 반영된다.
   const recentExpenses = useMemo(
-    () => getRecentOwnExpenses(store.expenses, store.currentUserId, 3),
+    () => getRecentOwnExpenses(store.expenses, store.currentUserId, 5),
     [store.expenses, store.currentUserId]
   );
 
@@ -49,41 +60,65 @@ export default function Home() {
   // 계산한다. 07-screens.md 2b 상세(2026-09-11 팀 결정): "날짜별 지출·수입만 표시, 저금은 이번엔 제외".
   const ownExpenses = getOwnExpenses(store.expenses, store.currentUserId);
   const ownIncomes = store.incomes.filter((i) => i.user_id === store.currentUserId);
+
+  // 2026-09-14 팀 결정: 캘린더는 화살표로 달을 넘길 수 있다(과거 제한 없음 · 미래는 오늘 기준 +1년까지).
+  const [calYear, setCalYear] = useState(TODAY_YEAR);
+  const [calMonthIndex, setCalMonthIndex] = useState(TODAY_MONTH_INDEX); // 0=1월 ... 11=12월
+  const calLinearMonth = toLinearMonth(calYear, calMonthIndex);
+  const atMaxMonth = calLinearMonth >= MAX_LINEAR_MONTH;
+
+  function goPrevMonth() {
+    const prev = calLinearMonth - 1;
+    setCalYear(Math.floor(prev / 12));
+    setCalMonthIndex(((prev % 12) + 12) % 12);
+  }
+  function goNextMonth() {
+    if (atMaxMonth) return; // 미래 +1년을 넘어가지 않는다
+    const next = calLinearMonth + 1;
+    setCalYear(Math.floor(next / 12));
+    setCalMonthIndex(next % 12);
+  }
+
   const calendarDays = useMemo(() => {
+    const monthKey = `${calYear}-${String(calMonthIndex + 1).padStart(2, "0")}`;
     const expenseByDay = new Map<number, number>();
     for (const e of ownExpenses) {
-      if (!e.date.startsWith(CURRENT_MONTH)) continue;
+      if (!e.date.startsWith(monthKey)) continue;
       const day = parseInt(e.date.slice(8, 10), 10);
       expenseByDay.set(day, (expenseByDay.get(day) ?? 0) + e.amount);
     }
     const incomeByDay = new Map<number, number>();
     for (const i of ownIncomes) {
-      if (!i.date.startsWith(CURRENT_MONTH)) continue;
+      if (!i.date.startsWith(monthKey)) continue;
       const day = parseInt(i.date.slice(8, 10), 10);
       incomeByDay.set(day, (incomeByDay.get(day) ?? 0) + i.amount);
     }
+    // 어떤 연·월이든 시작 요일·마지막 날짜를 직접 계산한다(9월 고정 하드코딩 제거).
+    const startWeekday = new Date(calYear, calMonthIndex, 1).getDay(); // 0=일요일 ... 6=토요일
+    const daysInMonth = new Date(calYear, calMonthIndex + 1, 0).getDate();
+    const isRealCurrentMonth = calYear === TODAY_YEAR && calMonthIndex === TODAY_MONTH_INDEX;
     const days: Array<{ num: number | null }> = [];
-    for (let i = 0; i < START_WEEKDAY; i++) days.push({ num: null });
-    for (let n = 1; n <= DAYS_IN_MONTH; n++) days.push({ num: n });
+    for (let i = 0; i < startWeekday; i++) days.push({ num: null });
+    for (let n = 1; n <= daysInMonth; n++) days.push({ num: n });
     return days.map(({ num }) => {
       if (num === null) return { num: "", bg: "transparent", numColor: "#fff", expenseLabel: "", incomeLabel: "" };
       const expenseAmount = expenseByDay.get(num);
       const incomeAmount = incomeByDay.get(num);
-      const isToday = num === TODAY_DAY;
+      const isToday = isRealCurrentMonth && num === TODAY_DAY;
       return {
         num,
-        bg: isToday ? "#F0EEFF" : "#F9F8FC",
-        numColor: isToday ? "#6A5ECF" : "#8B8378",
+        bg: isToday ? "var(--shoot-surface-alt)" : "var(--shoot-bg)",
+        numColor: isToday ? "var(--shoot-accent)" : "var(--shoot-text-muted)",
         expenseLabel: expenseAmount ? (expenseAmount / 1000).toFixed(0) + "천" : "",
         incomeLabel: incomeAmount ? (incomeAmount / 10000).toFixed(0) + "만" : "",
       };
     });
-  }, [ownExpenses, ownIncomes]);
+  }, [ownExpenses, ownIncomes, calYear, calMonthIndex]);
 
   return (
-    <div style={{ height: "100%", width: "100%", boxSizing: "border-box", background: "#F6F5FC", display: "flex", flexDirection: "column" }}>
+    <div style={{ height: "100%", width: "100%", boxSizing: "border-box", background: "var(--shoot-bg)", display: "flex", flexDirection: "column" }}>
       <div style={{ padding: "20px 20px 0", flexShrink: 0, display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8 }}>
-        <div style={{ fontSize: 18, fontWeight: 800, color: "#2D2A3E", flex: 1, minWidth: 0 }}>
+        <div style={{ fontSize: 18, fontWeight: 800, color: "var(--shoot-text)", flex: 1, minWidth: 0 }}>
           {givenName}님
           <br />
           안녕하세요
@@ -92,7 +127,7 @@ export default function Home() {
           <select
             value={homeGroup}
             onChange={(e) => setHomeGroup(e.target.value)}
-            style={{ appearance: "none", background: "#F0EEFF", border: "none", borderRadius: 20, padding: "9px 30px 9px 34px", fontSize: 12, fontWeight: 800, color: "#6A5ECF" }}
+            style={{ appearance: "none", background: "var(--shoot-surface-alt)", border: "none", borderRadius: 20, padding: "9px 30px 9px 34px", fontSize: 12, fontWeight: 800, color: "var(--shoot-accent)" }}
           >
             <option value="me">나 (개인)</option>
             {myGroups.map((g) => (
@@ -101,8 +136,8 @@ export default function Home() {
               </option>
             ))}
           </select>
-          <HeartIcon size={14} color="#6A5ECF" style={{ position: "absolute", left: 10, top: "50%", transform: "translateY(-50%)", pointerEvents: "none" }} />
-          <ChevronDownIcon size={10} color="#6A5ECF" strokeWidth={2.5} style={{ position: "absolute", right: 10, top: "50%", transform: "translateY(-50%)", pointerEvents: "none" }} />
+          <HeartIcon size={14} color="var(--shoot-accent)" style={{ position: "absolute", left: 10, top: "50%", transform: "translateY(-50%)", pointerEvents: "none" }} />
+          <ChevronDownIcon size={10} color="var(--shoot-accent)" strokeWidth={2.5} style={{ position: "absolute", right: 10, top: "50%", transform: "translateY(-50%)", pointerEvents: "none" }} />
         </div>
       </div>
 
@@ -110,13 +145,13 @@ export default function Home() {
         {/* 07-screens.md "2b 수입 카드 탭 → 2b-1a" — 2026-09-11 팀 결정으로 수입 기능이 이번 범위에 포함됐다. */}
         <div
           onClick={() => nav.push({ id: "incomeList" })}
-          style={{ marginTop: 18, background: "#fff", border: "1.5px solid #E8E4F4", borderRadius: 22, padding: "18px 20px", display: "flex", alignItems: "center", gap: 12, cursor: "pointer" }}
+          style={{ marginTop: 18, background: "var(--shoot-surface)", border: "1.5px solid var(--shoot-border)", borderRadius: 22, padding: "18px 20px", display: "flex", alignItems: "center", gap: 12, cursor: "pointer" }}
         >
           <div style={{ width: 36, height: 36, borderRadius: 12, background: "#E8F9F7", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
             <ArrowUpIcon size={17} color="#1D7A69" />
           </div>
           <div style={{ flex: 1, minWidth: 0 }}>
-            <div style={{ fontSize: 12, fontWeight: 700, color: "#6B6980" }}>이번 달 총 수입</div>
+            <div style={{ fontSize: 12, fontWeight: 700, color: "var(--shoot-text-muted)" }}>이번 달 총 수입</div>
             <div style={{ fontSize: 22, fontWeight: 800, color: "#1D7A69", marginTop: 2, letterSpacing: "-0.4px" }}>{formatWon(incomeTotal)}</div>
           </div>
           <ChevronRightIcon size={16} color="#A9A2B8" />
@@ -145,7 +180,7 @@ export default function Home() {
                   <span>{row.pct}%</span>
                 </div>
                 <div style={{ height: 5, borderRadius: 3, background: "rgba(255,255,255,0.25)" }}>
-                  <div style={{ width: `${row.pct}%`, height: "100%", borderRadius: 3, background: "#fff" }} />
+                  <div style={{ width: `${row.pct}%`, height: "100%", borderRadius: 3, background: "var(--shoot-surface)" }} />
                 </div>
               </div>
             ))}
@@ -154,42 +189,67 @@ export default function Home() {
 
         <div
           onClick={() => nav.push({ id: "groupCreateType" })}
-          style={{ marginTop: 16, height: 48, borderRadius: 16, background: "#fff", border: "1.5px dashed #6A5ECF", display: "flex", alignItems: "center", justifyContent: "center", gap: 8, cursor: "pointer" }}
+          style={{ marginTop: 16, height: 48, borderRadius: 16, background: "var(--shoot-surface)", border: "1.5px dashed var(--shoot-accent)", display: "flex", alignItems: "center", justifyContent: "center", gap: 8, cursor: "pointer" }}
         >
-          <PlusIcon size={16} color="#6A5ECF" />
-          <span style={{ fontSize: 14, fontWeight: 800, color: "#6A5ECF" }}>그룹 만들기</span>
+          <PlusIcon size={16} color="var(--shoot-accent)" />
+          <span style={{ fontSize: 14, fontWeight: 800, color: "var(--shoot-accent)" }}>그룹 만들기</span>
         </div>
 
-        <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", marginTop: 22 }}>
-          <div style={{ fontSize: 15, fontWeight: 800, color: "#2D2A3E" }}>최근 지출</div>
-          {/* TODO: [?] 07-screens.md 2b 상세에 "전체보기"의 이동 대상이 명시돼 있지 않다. 임시로 no-op. */}
-          <div onClick={() => {}} style={{ fontSize: 12, fontWeight: 700, color: "#6A5ECF", cursor: "default" }}>
-            전체보기
-          </div>
+        {/* 2026-09-17 팀 결정: "전체보기" 삭제(이동 대상 미정 TODO였음) — 최근 지출 5개만 보여준다. */}
+        <div style={{ marginTop: 22 }}>
+          <div style={{ fontSize: 15, fontWeight: 800, color: "var(--shoot-text)" }}>최근 지출</div>
         </div>
         <div style={{ display: "flex", flexDirection: "column", gap: 8, marginTop: 10 }}>
           {recentExpenses.map((e) => {
             const visual = getCategoryVisual(e.category);
             return (
-              <div key={e.id} style={{ background: "#fff", borderRadius: 16, padding: "12px 14px", display: "flex", alignItems: "center", gap: 12, border: "1px solid #E8E4F4" }}>
+              <div key={e.id} style={{ background: "var(--shoot-surface)", borderRadius: 16, padding: "12px 14px", display: "flex", alignItems: "center", gap: 12, border: "1px solid var(--shoot-border)" }}>
                 <div style={{ width: 34, height: 34, borderRadius: 12, background: visual.light, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
                   <CategoryIcon icon={visual.icon as never} size={16} color={visual.ink} />
                 </div>
                 <div style={{ flex: 1, minWidth: 0 }}>
-                  <div style={{ fontSize: 13, fontWeight: 800, color: "#2D2A3E" }}>{e.memo}</div>
-                  <div style={{ fontSize: 11, color: "#6B6980", fontWeight: 600 }}>
+                  <div style={{ fontSize: 13, fontWeight: 800, color: "var(--shoot-text)" }}>{e.memo}</div>
+                  <div style={{ fontSize: 11, color: "var(--shoot-text-muted)", fontWeight: 600 }}>
                     {e.category} · {formatRelativeTime(e.created_at)}
                   </div>
                 </div>
-                <div style={{ fontSize: 14, fontWeight: 800, color: "#2D2A3E" }}>{formatWon(e.amount)}</div>
+                <div style={{ fontSize: 14, fontWeight: 800, color: "var(--shoot-text)" }}>{formatWon(e.amount)}</div>
               </div>
             );
           })}
         </div>
 
         <div style={{ marginTop: 24 }}>
-          <div style={{ fontSize: 15, fontWeight: 800, color: "#2D2A3E", marginBottom: 10 }}>9월 캘린더</div>
-          <div style={{ background: "#fff", borderRadius: 18, border: "1px solid #E8E4F4", padding: 14 }}>
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 10 }}>
+            <div style={{ fontSize: 15, fontWeight: 800, color: "var(--shoot-text)" }}>
+              {calYear}년 {calMonthIndex + 1}월 캘린더
+            </div>
+            {/* 2026-09-14 팀 결정: 화살표로 월(과 그에 따른 연도)을 변경한다 — 과거는 제한 없음, 미래는 오늘 기준 +1년까지. */}
+            <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+              <div
+                onClick={goPrevMonth}
+                style={{ width: 26, height: 26, borderRadius: "50%", background: "var(--shoot-surface-alt)", display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer" }}
+              >
+                <ChevronLeftIcon size={13} color="var(--shoot-accent)" />
+              </div>
+              <div
+                onClick={goNextMonth}
+                style={{
+                  width: 26,
+                  height: 26,
+                  borderRadius: "50%",
+                  background: atMaxMonth ? "var(--shoot-divider)" : "var(--shoot-surface-alt)",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  cursor: atMaxMonth ? "default" : "pointer",
+                }}
+              >
+                <ChevronRightIcon size={13} color={atMaxMonth ? "#C9C4D6" : "var(--shoot-accent)"} />
+              </div>
+            </div>
+          </div>
+          <div style={{ background: "var(--shoot-surface)", borderRadius: 18, border: "1px solid var(--shoot-border)", padding: 14 }}>
             <div style={{ display: "grid", gridTemplateColumns: "repeat(7,1fr)", gap: 4, fontSize: 11, fontWeight: 700, color: "#A9A2B8", textAlign: "center", marginBottom: 6 }}>
               {["일", "월", "화", "수", "목", "금", "토"].map((d) => (
                 <div key={d}>{d}</div>

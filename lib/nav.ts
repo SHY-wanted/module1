@@ -24,6 +24,8 @@ export type StackScreen =
   // 10a·10a-1 — 내 그룹 관리·위임 대상 선택
   | { id: "myGroupsManage" }
   | { id: "delegateSelect"; groupId: string }
+  // 10b — 내 정보 변경(닉네임·프로필 사진). 디자인 파일 없음(2026-09-17 팀 요청으로 신규 추가).
+  | { id: "myInfoEdit" }
   // 8a·8b — 영수증 촬영·인식 중
   | { id: "receiptCapture" }
   | { id: "receiptProcessing" };

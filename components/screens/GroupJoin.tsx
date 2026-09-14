@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { useNav } from "../NavContext";
 import { useStore } from "@/lib/store";
-import { LogInIcon } from "../icons";
+import { ChevronLeftIcon, LogInIcon } from "../icons";
 
 export default function GroupJoin() {
   const nav = useNav();
@@ -27,13 +27,17 @@ export default function GroupJoin() {
   }
 
   return (
-    <div style={{ height: "100%", width: "100%", boxSizing: "border-box", background: "#F6F5FC", display: "flex", flexDirection: "column", overflowY: "auto" }}>
-      <div style={{ padding: "20px 24px 32px", textAlign: "center", background: "#F0EEFF" }}>
-        <div style={{ width: 56, height: 56, borderRadius: 16, background: "#6A5ECF", display: "flex", alignItems: "center", justifyContent: "center", margin: "0 auto 14px" }}>
+    <div style={{ height: "100%", width: "100%", boxSizing: "border-box", background: "var(--shoot-bg)", display: "flex", flexDirection: "column", overflowY: "auto" }}>
+      <div style={{ padding: "20px 24px 32px", textAlign: "center", background: "var(--shoot-surface-alt)", position: "relative" }}>
+        {/* 2026-09-14 팀 결정: 뒤로가기 버튼 추가 — 5a "초대 코드로 참여하기"에서만 열리므로 5a로 pop. */}
+        <div onClick={() => nav.back()} style={{ position: "absolute", top: 20, left: 24, cursor: "pointer", display: "flex" }}>
+          <ChevronLeftIcon size={18} color="var(--shoot-text)" />
+        </div>
+        <div style={{ width: 56, height: 56, borderRadius: 16, background: "var(--shoot-accent)", display: "flex", alignItems: "center", justifyContent: "center", margin: "0 auto 14px" }}>
           <LogInIcon size={24} color="#ffffff" />
         </div>
-        <div style={{ fontSize: 20, fontWeight: 800, color: "#2D2A3E" }}>그룹에 참여하기</div>
-        <div style={{ fontSize: 13, color: "#6B6980", marginTop: 6, fontWeight: 600, lineHeight: 1.5 }}>
+        <div style={{ fontSize: 20, fontWeight: 800, color: "var(--shoot-text)" }}>그룹에 참여하기</div>
+        <div style={{ fontSize: 13, color: "var(--shoot-text-muted)", marginTop: 6, fontWeight: 600, lineHeight: 1.5 }}>
           초대 코드를 입력하면
           <br />
           바로 참여할 수 있어요
@@ -48,7 +52,7 @@ export default function GroupJoin() {
             setCode(e.target.value);
             setError(null);
           }}
-          style={{ width: "100%", boxSizing: "border-box", height: 54, borderRadius: 16, border: "2px solid #E8E4F4", background: "#fff", padding: "0 18px", fontSize: 16, fontWeight: 800, color: "#2D2A3E", textAlign: "center", letterSpacing: 2, fontFamily: "'Courier New',monospace" }}
+          style={{ width: "100%", boxSizing: "border-box", height: 54, borderRadius: 16, border: "2px solid var(--shoot-border)", background: "var(--shoot-surface)", padding: "0 18px", fontSize: 16, fontWeight: 800, color: "var(--shoot-text)", textAlign: "center", letterSpacing: 2, fontFamily: "'Courier New',monospace" }}
         />
         {error && <div style={{ marginTop: 10, fontSize: 12, fontWeight: 700, color: "#B23B3B", textAlign: "center" }}>{error}</div>}
         <div style={{ flex: 1 }} />

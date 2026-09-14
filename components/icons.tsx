@@ -194,6 +194,27 @@ export function ShareIcon({ size, color, strokeWidth, style }: IconProps) {
   );
 }
 
+// 2c "카테고리 편집" 진입 버튼(2026-09-17 팀 결정) — "3개짜리 줄" 문구 그대로, 길이가 같은 가로줄 3개.
+export function ThreeLinesIcon({ size, color, strokeWidth, style }: IconProps) {
+  return (
+    <svg {...base(size, color, strokeWidth)} style={style}>
+      <line x1="4" x2="20" y1="7" y2="7" />
+      <line x1="4" x2="20" y1="12" y2="12" />
+      <line x1="4" x2="20" y1="17" y2="17" />
+    </svg>
+  );
+}
+
+export function MoreHorizontalIcon({ size, color, strokeWidth, style }: IconProps) {
+  return (
+    <svg {...base(size, color, strokeWidth)} style={style}>
+      <circle cx="5" cy="12" r="1" />
+      <circle cx="12" cy="12" r="1" />
+      <circle cx="19" cy="12" r="1" />
+    </svg>
+  );
+}
+
 export function PlusIcon({ size, color, strokeWidth, style }: IconProps) {
   return (
     <svg {...base(size, color, strokeWidth)} style={style}>

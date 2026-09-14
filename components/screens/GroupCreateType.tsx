@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { useNav } from "../NavContext";
 import { GROUP_TYPE_CARD_TO_ENUM } from "@/lib/nav";
+import { ChevronLeftIcon } from "../icons";
 import { ClubIcon, CoupleTypeIcon, EtcTypeIcon, FamilyTypeIcon, MarriageTypeIcon, RoommateTypeIcon } from "./typeIcons";
 
 type CardId = "family" | "marriage" | "couple" | "roommate" | "club" | "etc";
@@ -21,14 +22,18 @@ export default function GroupCreateType() {
   const [selected, setSelected] = useState<CardId>("family");
 
   return (
-    <div style={{ height: "100%", width: "100%", boxSizing: "border-box", padding: "20px 20px 28px", background: "#F6F5FC", display: "flex", flexDirection: "column", overflowY: "auto" }}>
-      <div style={{ display: "flex", gap: 6, marginBottom: 14 }}>
-        <div style={{ height: 4, flex: 1, borderRadius: 2, background: "#6A5ECF" }} />
-        <div style={{ height: 4, flex: 1, borderRadius: 2, background: "#E8E4F4" }} />
-        <div style={{ height: 4, flex: 1, borderRadius: 2, background: "#E8E4F4" }} />
+    <div style={{ height: "100%", width: "100%", boxSizing: "border-box", padding: "20px 20px 28px", background: "var(--shoot-bg)", display: "flex", flexDirection: "column", overflowY: "auto" }}>
+      {/* 2026-09-14 팀 결정: 뒤로가기 버튼 추가(스택 쌓기 화면이라 nav.back()으로 이전 화면으로 pop). */}
+      <div onClick={() => nav.back()} style={{ cursor: "pointer", display: "flex", width: "fit-content", marginBottom: 14 }}>
+        <ChevronLeftIcon size={18} color="var(--shoot-text)" />
       </div>
-      <div style={{ fontSize: 21, fontWeight: 800, color: "#2D2A3E" }}>어떤 모임인가요?</div>
-      <div style={{ fontSize: 13, color: "#6B6980", marginTop: 5, fontWeight: 600 }}>모임 성격에 맞는 유형을 선택해주세요</div>
+      <div style={{ display: "flex", gap: 6, marginBottom: 14 }}>
+        <div style={{ height: 4, flex: 1, borderRadius: 2, background: "var(--shoot-accent)" }} />
+        <div style={{ height: 4, flex: 1, borderRadius: 2, background: "var(--shoot-border)" }} />
+        <div style={{ height: 4, flex: 1, borderRadius: 2, background: "var(--shoot-border)" }} />
+      </div>
+      <div style={{ fontSize: 21, fontWeight: 800, color: "var(--shoot-text)" }}>어떤 모임인가요?</div>
+      <div style={{ fontSize: 13, color: "var(--shoot-text-muted)", marginTop: 5, fontWeight: 600 }}>모임 성격에 맞는 유형을 선택해주세요</div>
       <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10, marginTop: 18 }}>
         {(Object.keys(TYPE_ACCENTS) as CardId[]).map((id) => {
           const t = TYPE_ACCENTS[id];
@@ -40,8 +45,8 @@ export default function GroupCreateType() {
               style={{
                 borderRadius: 16,
                 padding: "14px 10px",
-                background: sel ? t.accent : "#FFFFFF",
-                border: `2px solid ${sel ? t.accent : "#E8E4F4"}`,
+                background: sel ? t.accent : "var(--shoot-surface)",
+                border: `2px solid ${sel ? t.accent : "var(--shoot-border)"}`,
                 cursor: "pointer",
                 display: "flex",
                 flexDirection: "column",
@@ -53,7 +58,7 @@ export default function GroupCreateType() {
               <div style={{ width: 32, height: 32, borderRadius: 10, background: sel ? "rgba(255,255,255,0.22)" : t.light, display: "flex", alignItems: "center", justifyContent: "center" }}>
                 {t.Icon({ color: sel ? "#FFFFFF" : t.accent })}
               </div>
-              <div style={{ fontSize: 13, fontWeight: 800, color: sel ? "#FFFFFF" : "#2D2A3E" }}>{t.label}</div>
+              <div style={{ fontSize: 13, fontWeight: 800, color: sel ? "#FFFFFF" : "var(--shoot-text)" }}>{t.label}</div>
             </div>
           );
         })}

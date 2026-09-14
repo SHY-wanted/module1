@@ -7,7 +7,7 @@ import { useStore } from "@/lib/store";
 import { getOwnExpenses, groupExpensesByMonth } from "@/lib/selectors";
 import { getCategoryVisual } from "@/lib/categories";
 import { formatRelativeTime, formatWon } from "@/lib/format";
-import { CategoryIcon, PlusIcon } from "../icons";
+import { CategoryIcon, ChevronLeftIcon, PlusIcon } from "../icons";
 import type { CategoryIconKey } from "../icons";
 
 export default function ExpenseList() {
@@ -37,14 +37,18 @@ export default function ExpenseList() {
   const months = groupExpensesByMonth(filtered);
 
   return (
-    <div style={{ height: "100%", width: "100%", boxSizing: "border-box", background: "#F6F5FC", display: "flex", flexDirection: "column" }}>
+    <div style={{ height: "100%", width: "100%", boxSizing: "border-box", background: "var(--shoot-bg)", display: "flex", flexDirection: "column" }}>
       <div style={{ flex: 1, overflowY: "auto", padding: "20px 20px 20px" }}>
-        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-          <div style={{ fontSize: 22, fontWeight: 800, color: "#2D2A3E" }}>지출 내역</div>
+        <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+          {/* 2026-09-14 팀 결정: 탭 루트지만 뒤로가기 버튼을 두고, 누르면 홈(2b) 탭으로 전환한다. */}
+          <div onClick={() => nav.switchTab("home")} style={{ cursor: "pointer", display: "flex", flexShrink: 0 }}>
+            <ChevronLeftIcon size={18} color="var(--shoot-text)" />
+          </div>
+          <div style={{ fontSize: 22, fontWeight: 800, color: "var(--shoot-text)", flex: 1 }}>지출 내역</div>
           {/* 07-screens.md "7 우상단 새 '+' 버튼(신규) → 6(신규 입력)" — 2026-09-11 팀 결정. */}
           <div
             onClick={() => nav.push({ id: "expenseInput" })}
-            style={{ width: 36, height: 36, borderRadius: "50%", background: "#6A5ECF", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0, cursor: "pointer" }}
+            style={{ width: 36, height: 36, borderRadius: "50%", background: "var(--shoot-accent)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0, cursor: "pointer" }}
           >
             <PlusIcon size={17} color="#fff" strokeWidth={2.4} />
           </div>
@@ -55,7 +59,7 @@ export default function ExpenseList() {
           <select
             value={categoryFilter}
             onChange={(e) => setCategoryFilter(e.target.value)}
-            style={{ width: "100%", boxSizing: "border-box", height: 42, borderRadius: 12, border: "1.5px solid #E8E4F4", background: "#fff", padding: "0 12px", fontSize: 13, fontWeight: 700, color: "#2D2A3E" }}
+            style={{ width: "100%", boxSizing: "border-box", height: 42, borderRadius: 12, border: "1.5px solid var(--shoot-border)", background: "var(--shoot-surface)", padding: "0 12px", fontSize: 13, fontWeight: 700, color: "var(--shoot-text)" }}
           >
             <option value="all">전체 카테고리</option>
             {categoryOptions.map((c) => (
@@ -69,14 +73,14 @@ export default function ExpenseList() {
               type="date"
               value={startDate}
               onChange={(e) => setStartDate(e.target.value)}
-              style={{ flex: 1, boxSizing: "border-box", height: 42, borderRadius: 12, border: "1.5px solid #E8E4F4", background: "#fff", padding: "0 10px", fontSize: 12, fontWeight: 600, color: "#2D2A3E" }}
+              style={{ flex: 1, boxSizing: "border-box", height: 42, borderRadius: 12, border: "1.5px solid var(--shoot-border)", background: "var(--shoot-surface)", padding: "0 10px", fontSize: 12, fontWeight: 600, color: "var(--shoot-text)" }}
             />
             <span style={{ fontSize: 12, color: "#A9A2B8", fontWeight: 700 }}>~</span>
             <input
               type="date"
               value={endDate}
               onChange={(e) => setEndDate(e.target.value)}
-              style={{ flex: 1, boxSizing: "border-box", height: 42, borderRadius: 12, border: "1.5px solid #E8E4F4", background: "#fff", padding: "0 10px", fontSize: 12, fontWeight: 600, color: "#2D2A3E" }}
+              style={{ flex: 1, boxSizing: "border-box", height: 42, borderRadius: 12, border: "1.5px solid var(--shoot-border)", background: "var(--shoot-surface)", padding: "0 10px", fontSize: 12, fontWeight: 600, color: "var(--shoot-text)" }}
             />
             {(categoryFilter !== "all" || startDate || endDate) && (
               <div
@@ -95,7 +99,7 @@ export default function ExpenseList() {
 
         {months.map((mo) => (
           <div key={mo.month} style={{ marginTop: 18 }}>
-            <div style={{ fontSize: 13, fontWeight: 800, color: "#6B6980", marginBottom: 8 }}>{mo.month}</div>
+            <div style={{ fontSize: 13, fontWeight: 800, color: "var(--shoot-text-muted)", marginBottom: 8 }}>{mo.month}</div>
             <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
               {mo.items.map((it) => {
                 const needsReview = it.category === "확인 필요";
@@ -109,13 +113,13 @@ export default function ExpenseList() {
                     // P6·F14: 여기 보이는 항목은 전부 본인 지출(getOwnExpenses)이라 수정 권한 문제가 없다.
                     onClick={() => nav.push({ id: "expenseInput", expenseId: it.id })}
                     style={{
-                      background: "#fff",
+                      background: "var(--shoot-surface)",
                       borderRadius: 16,
                       padding: "12px 14px",
                       display: "flex",
                       alignItems: "center",
                       gap: 12,
-                      border: needsReview ? "2px solid rgba(245,168,130,0.6)" : "1px solid #E8E4F4",
+                      border: needsReview ? "2px solid rgba(245,168,130,0.6)" : "1px solid var(--shoot-border)",
                       boxShadow: needsReview ? "0 4px 14px rgba(245,168,130,0.2)" : "0 2px 8px rgba(45,42,62,0.05)",
                       cursor: "pointer",
                     }}
@@ -125,23 +129,23 @@ export default function ExpenseList() {
                     </div>
                     <div style={{ flex: 1, minWidth: 0 }}>
                       <div style={{ display: "flex", alignItems: "center", gap: 6, minWidth: 0 }}>
-                        <div style={{ fontSize: 14, fontWeight: 800, color: "#2D2A3E", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", minWidth: 0 }}>{it.memo}</div>
+                        <div style={{ fontSize: 14, fontWeight: 800, color: "var(--shoot-text)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", minWidth: 0 }}>{it.memo}</div>
                         {needsReview && (
                           <div style={{ fontSize: 10, fontWeight: 800, color: "#A15A1E", background: "#FFF2EC", padding: "2px 7px", borderRadius: 8, border: "1px solid rgba(245,168,130,0.5)", whiteSpace: "nowrap", flexShrink: 0 }}>
                             확인 필요
                           </div>
                         )}
                       </div>
-                      <div style={{ fontSize: 12, color: "#6B6980", marginTop: 2, fontWeight: 600 }}>
+                      <div style={{ fontSize: 12, color: "var(--shoot-text-muted)", marginTop: 2, fontWeight: 600 }}>
                         {it.category} · {groupLabel} · {formatRelativeTime(it.created_at)}
                       </div>
                     </div>
-                    <div style={{ fontSize: 15, fontWeight: 800, color: "#2D2A3E", whiteSpace: "nowrap" }}>{formatWon(it.amount)}</div>
+                    <div style={{ fontSize: 15, fontWeight: 800, color: "var(--shoot-text)", whiteSpace: "nowrap" }}>{formatWon(it.amount)}</div>
                   </div>
                 );
               })}
               {mo.items.length === 0 && (
-                <div style={{ textAlign: "center", color: "#6B6980", fontSize: 13, fontWeight: 600, padding: "12px 0" }}>이 필터에 맞는 지출이 없어요</div>
+                <div style={{ textAlign: "center", color: "var(--shoot-text-muted)", fontSize: 13, fontWeight: 600, padding: "12px 0" }}>이 필터에 맞는 지출이 없어요</div>
               )}
             </div>
           </div>
