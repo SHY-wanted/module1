@@ -7,7 +7,7 @@ import { useStore } from "@/lib/store";
 import { getOwnExpenses, groupExpensesByMonth } from "@/lib/selectors";
 import { getCategoryVisual } from "@/lib/categories";
 import { formatRelativeTime, formatWon } from "@/lib/format";
-import { CategoryIcon, ChevronLeftIcon, PlusIcon } from "../icons";
+import { CategoryIcon, ChevronLeftIcon, PlusIcon, TrashIcon } from "../icons";
 import type { CategoryIconKey } from "../icons";
 
 export default function ExpenseList() {
@@ -18,6 +18,14 @@ export default function ExpenseList() {
   const [categoryFilter, setCategoryFilter] = useState<string>("all");
   const [startDate, setStartDate] = useState<string>("");
   const [endDate, setEndDate] = useState<string>("");
+  // 2026-09-19 팀 요청: 삭제 버튼 — 바로 지우지 않고 확인 팝업을 한 번 띄운다(10a "그룹 나가기"와 같은 패턴).
+  const [confirmingId, setConfirmingId] = useState<string | null>(null);
+
+  async function handleDeleteConfirmed() {
+    if (!confirmingId) return;
+    await store.deleteExpense(confirmingId);
+    setConfirmingId(null);
+  }
 
   const ownExpenses = getOwnExpenses(store.expenses, store.currentUserId);
   const categoryOptions = useMemo(() => {
@@ -37,7 +45,7 @@ export default function ExpenseList() {
   const months = groupExpensesByMonth(filtered);
 
   return (
-    <div style={{ height: "100%", width: "100%", boxSizing: "border-box", background: "var(--shoot-bg)", display: "flex", flexDirection: "column" }}>
+    <div style={{ height: "100%", width: "100%", boxSizing: "border-box", background: "var(--shoot-bg)", display: "flex", flexDirection: "column", position: "relative" }}>
       <div style={{ flex: 1, overflowY: "auto", padding: "20px 20px 20px" }}>
         <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
           {/* 2026-09-14 팀 결정: 탭 루트지만 뒤로가기 버튼을 두고, 누르면 홈(2b) 탭으로 전환한다. */}
@@ -141,6 +149,16 @@ export default function ExpenseList() {
                       </div>
                     </div>
                     <div style={{ fontSize: 15, fontWeight: 800, color: "var(--shoot-text)", whiteSpace: "nowrap" }}>{formatWon(it.amount)}</div>
+                    {/* 2026-09-19 팀 요청: 삭제 버튼 — 행 클릭(수정 모드 진입)과 안 겹치게 stopPropagation. */}
+                    <div
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setConfirmingId(it.id);
+                      }}
+                      style={{ flexShrink: 0, width: 30, height: 30, borderRadius: "50%", display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer" }}
+                    >
+                      <TrashIcon size={15} color="#A9A2B8" />
+                    </div>
                   </div>
                 );
               })}
@@ -151,6 +169,30 @@ export default function ExpenseList() {
           </div>
         ))}
       </div>
+
+      {/* 2026-09-19 팀 요청: 바로 지우지 않고 확인 팝업을 한 번 띄운다(10a "그룹 나가기"와 같은 패턴). */}
+      {confirmingId && (
+        <div style={{ position: "absolute", inset: 0, background: "rgba(45,42,62,0.45)", display: "flex", alignItems: "center", justifyContent: "center", padding: 32, zIndex: 20 }}>
+          <div style={{ background: "var(--shoot-surface)", borderRadius: 20, padding: 22, width: "100%", textAlign: "center" }}>
+            <div style={{ fontSize: 16, fontWeight: 800, color: "var(--shoot-text)" }}>이 지출을 삭제할까요?</div>
+            <div style={{ fontSize: 12, color: "var(--shoot-text-muted)", marginTop: 8, fontWeight: 600 }}>삭제하면 되돌릴 수 없어요</div>
+            <div style={{ display: "flex", gap: 8, marginTop: 18 }}>
+              <div
+                onClick={() => setConfirmingId(null)}
+                style={{ flex: 1, height: 44, borderRadius: 14, border: "1.5px solid var(--shoot-border)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 13, fontWeight: 800, color: "var(--shoot-text)", cursor: "pointer" }}
+              >
+                취소
+              </div>
+              <div
+                onClick={handleDeleteConfirmed}
+                style={{ flex: 1, height: 44, borderRadius: 14, background: "#B23B3B", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 13, fontWeight: 800, color: "#fff", cursor: "pointer" }}
+              >
+                삭제
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

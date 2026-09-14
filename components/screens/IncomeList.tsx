@@ -1,11 +1,12 @@
 "use client";
 // components/screens/IncomeList.tsx — 2b-1a. 수입 내역(design/shoot/IncomeList.dc.html)
 // 06-data.md E7 참고 — supabase/schema.sql엔 없는 신규 기능(2026-09-11 팀 결정으로 이번 범위에 포함).
+import { useState } from "react";
 import { useNav } from "../NavContext";
 import { useStore } from "@/lib/store";
 import { getIncomeTotalForUser, getIncomesForUser } from "@/lib/selectors";
 import { formatWon, formatFullDateKorean } from "@/lib/format";
-import { ArrowUpIcon, ChevronLeftIcon, PlusIcon } from "../icons";
+import { ArrowUpIcon, ChevronLeftIcon, PlusIcon, TrashIcon } from "../icons";
 
 const CURRENT_MONTH = "2026-09";
 
@@ -14,9 +15,11 @@ export default function IncomeList() {
   const store = useStore();
   const total = getIncomeTotalForUser(store.incomes, store.currentUserId, CURRENT_MONTH);
   const incomes = getIncomesForUser(store.incomes, store.currentUserId, CURRENT_MONTH);
+  // 2026-09-19 팀 요청: 삭제 버튼 — 바로 지우지 않고 확인 팝업을 한 번 띄운다(10a "그룹 나가기"와 같은 패턴).
+  const [confirmingId, setConfirmingId] = useState<string | null>(null);
 
   return (
-    <div style={{ height: "100%", width: "100%", boxSizing: "border-box", background: "var(--shoot-bg)", display: "flex", flexDirection: "column" }}>
+    <div style={{ height: "100%", width: "100%", boxSizing: "border-box", background: "var(--shoot-bg)", display: "flex", flexDirection: "column", position: "relative" }}>
       <div style={{ padding: "20px 20px 12px", flexShrink: 0, display: "flex", alignItems: "center", gap: 10 }}>
         <div onClick={() => nav.back()} style={{ cursor: "pointer", display: "flex" }}>
           <ChevronLeftIcon size={18} color="var(--shoot-text)" />
@@ -50,6 +53,13 @@ export default function IncomeList() {
                 </div>
               </div>
               <div style={{ fontSize: 14, fontWeight: 800, color: "#1D7A69" }}>{formatWon(inc.amount)}</div>
+              {/* 2026-09-19 팀 요청: 삭제 버튼. */}
+              <div
+                onClick={() => setConfirmingId(inc.id)}
+                style={{ flexShrink: 0, width: 28, height: 28, borderRadius: "50%", display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer" }}
+              >
+                <TrashIcon size={14} color="#A9A2B8" />
+              </div>
             </div>
           ))}
           {incomes.length === 0 && (
@@ -57,6 +67,32 @@ export default function IncomeList() {
           )}
         </div>
       </div>
+
+      {confirmingId && (
+        <div style={{ position: "absolute", inset: 0, background: "rgba(45,42,62,0.45)", display: "flex", alignItems: "center", justifyContent: "center", padding: 32, zIndex: 20 }}>
+          <div style={{ background: "var(--shoot-surface)", borderRadius: 20, padding: 22, width: "100%", textAlign: "center" }}>
+            <div style={{ fontSize: 16, fontWeight: 800, color: "var(--shoot-text)" }}>이 수입을 삭제할까요?</div>
+            <div style={{ fontSize: 12, color: "var(--shoot-text-muted)", marginTop: 8, fontWeight: 600 }}>삭제하면 되돌릴 수 없어요</div>
+            <div style={{ display: "flex", gap: 8, marginTop: 18 }}>
+              <div
+                onClick={() => setConfirmingId(null)}
+                style={{ flex: 1, height: 44, borderRadius: 14, border: "1.5px solid var(--shoot-border)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 13, fontWeight: 800, color: "var(--shoot-text)", cursor: "pointer" }}
+              >
+                취소
+              </div>
+              <div
+                onClick={() => {
+                  if (confirmingId) store.deleteIncome(confirmingId);
+                  setConfirmingId(null);
+                }}
+                style={{ flex: 1, height: 44, borderRadius: 14, background: "#B23B3B", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 13, fontWeight: 800, color: "#fff", cursor: "pointer" }}
+              >
+                삭제
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

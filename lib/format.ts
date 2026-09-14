@@ -15,7 +15,7 @@ export function monthLabel(dateStr: string): string {
   return `${y}년 ${parseInt(m, 10)}월`;
 }
 
-// created_at(timestamptz)을 "오늘 08:32" / "어제" / "9월 6일" 형태로 — 데모 기준 오늘은 TODAY_DATE 고정.
+// created_at(timestamptz)을 "오늘 08:32" / "어제" / "9월 6일" 형태로 — TODAY_DATE는 실제 오늘 날짜(KST, lib/mock.ts 참고).
 export function formatRelativeTime(createdAt: string): string {
   const d = new Date(createdAt);
   const day = createdAt.slice(0, 10);

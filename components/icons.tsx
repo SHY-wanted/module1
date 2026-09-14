@@ -98,6 +98,19 @@ export function LogInIcon({ size, color, strokeWidth, style }: IconProps) {
 }
 
 // design/shoot/MyGroupsManage.dc.html "그룹 나가기" 아이콘 그대로.
+// 2026-09-19 팀 요청(2b-1a·7 삭제 버튼용) — Lucide "trash-2" 그대로.
+export function TrashIcon({ size, color, strokeWidth, style }: IconProps) {
+  return (
+    <svg {...base(size, color, strokeWidth)} style={style}>
+      <path d="M3 6h18" />
+      <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6" />
+      <path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
+      <line x1="10" x2="10" y1="11" y2="17" />
+      <line x1="14" x2="14" y1="11" y2="17" />
+    </svg>
+  );
+}
+
 export function LogOutIcon({ size, color, strokeWidth, style }: IconProps) {
   return (
     <svg {...base(size, color, strokeWidth)} style={style}>

@@ -93,9 +93,16 @@ export interface MockIncome {
 // ------------------------------------------------------------------
 export const CURRENT_USER_ID = "u-seoyeon";
 
-// 데모 기준 "오늘" — Home 캘린더(9월, today=9)·아래 목업 시각과 맞춘 고정 날짜.
-// 실제 Date.now()를 쓰면 화면 문구("오늘 08:32" 등)가 날짜가 바뀔 때마다 어긋나므로 고정한다.
-export const TODAY_DATE = "2026-09-09";
+// 2026-09-19 버그 수정: 원래는 데모용으로 "2026-09-09"에 고정해뒀었다 — 그런데 실제 Supabase 연동 후
+// 6(지출 입력)·2b-1(수입 입력) 등 "신규 입력"이 이 값을 기본 날짜로 채우다 보니, 실제 오늘(예: 9/14)
+// 지출을 입력해도 저장된 date는 항상 "2026-09-09"가 돼서 7(지출 목록)의 오늘 날짜 필터에 안 걸리는
+// 문제가 있었다. 이제 진짜 오늘 날짜(한국시간 기준)로 계산한다 — 목업 시드 데이터(INITIAL_EXPENSES 등)의
+// 고정 날짜와는 무관하다(그것들은 자기 날짜를 그대로 갖고 있고, 실제 로그인하면 Supabase 데이터로 대체된다).
+function computeTodayDateKST(): string {
+  const kst = new Date(Date.now() + 9 * 60 * 60 * 1000);
+  return kst.toISOString().slice(0, 10);
+}
+export const TODAY_DATE = computeTodayDateKST();
 
 let idCounter = 0;
 export function generateId(prefix: string): string {

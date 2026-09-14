@@ -114,7 +114,13 @@ interface StoreValue extends StoreState {
   addExpense: (input: Omit<Expense, "id" | "created_at">) => Promise<MutationResult<Expense>>;
   // P6 · F14: 본인 지출만 수정 가능 — 그룹장도 예외 없음(05-policy.md).
   updateExpense: (id: string, patch: Omit<Expense, "id" | "created_at" | "user_id">) => Promise<boolean>;
+  // 7 "지출 목록" 삭제(2026-09-19 팀 요청) — P6과 같은 이유로 본인 지출만 지울 수 있다
+  // (RLS expenses_delete_own_only가 실제로 막는다).
+  deleteExpense: (id: string) => Promise<boolean>;
   addIncome: (input: Omit<MockIncome, "id" | "created_at">) => MockIncome;
+  // 2b-1a "수입 내역" 삭제(2026-09-19 팀 요청) — 수입(E7)은 schema.sql에 테이블이 없어 아직
+  // 목업 상태다(store.incomes 로컬 배열만 지운다).
+  deleteIncome: (id: string) => void;
   // 2c/6 카테고리 — scope(개인 또는 특정 그룹)의 카테고리 목록을 읽는다(없으면 그룹 프리셋으로 폴백).
   getCategoriesForScope: (scope: CategoryScope) => CategoryDef[];
   // 2c "카테고리 편집" — "..." 버튼으로 고른 카테고리의 이름만 바꾼다(그 scope 안에서만).
@@ -336,6 +342,15 @@ export function StoreProvider({ children }: { children: ReactNode }) {
         return true;
       },
 
+      // P6과 같은 이유로 본인 지출만 지울 수 있다(expenses_delete_own_only) — 남의 지출이면
+      // 0행 삭제되고 error 없이 data가 빈 배열로 온다(count로 실제 삭제 여부를 확인한다).
+      async deleteExpense(id: string): Promise<boolean> {
+        const { error, count } = await supabase.from("expenses").delete({ count: "exact" }).eq("id", id);
+        if (error || !count) return false;
+        setExpenses((prev) => prev.filter((e) => e.id !== id));
+        return true;
+      },
+
       addIncome(input: Omit<MockIncome, "id" | "created_at">): MockIncome {
         const newIncome: MockIncome = {
           ...input,
@@ -344,6 +359,10 @@ export function StoreProvider({ children }: { children: ReactNode }) {
         };
         setIncomes((prev) => [newIncome, ...prev]);
         return newIncome;
+      },
+
+      deleteIncome(id: string) {
+        setIncomes((prev) => prev.filter((i) => i.id !== id));
       },
 
       // 2026-09-17 팀 결정(개인·그룹 카테고리 차별화) — scope의 카테고리 목록을 읽는다. 그룹이 아직 한
