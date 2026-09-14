@@ -259,6 +259,34 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     };
   }, [session, supabase]);
 
+  // 2026-09-19 버그 수정: profiles는 "내 프로필"만 읽어왔어서, 같은 그룹의 다른 사람 이름은
+  // store.profiles에 없어 화면들이 전부 "알 수 없음"으로 표시했다(10a-1 위임 대상 선택, 5b 그룹
+  // 피드 작성자 이름 등). group_members가 새로 채워지거나 바뀔 때마다, 아직 profiles에 없는
+  // user_id들의 이름을 한 번에 읽어와 채운다(profiles_select_any_authenticated 정책 — 로그인한
+  // 사람은 누구나 다른 사람 이름을 읽을 수 있게 돼 있어 이 조회 자체는 원래도 허용돼 있었다).
+  useEffect(() => {
+    if (!session) return;
+    const known = new Set(profiles.map((p) => p.id));
+    const missing = Array.from(new Set(groupMembers.map((m) => m.user_id))).filter((id) => !known.has(id));
+    if (missing.length === 0) return;
+    let active = true;
+    supabase
+      .from("profiles")
+      .select("id,name")
+      .in("id", missing)
+      .then(({ data, error }) => {
+        if (!active || error || !data || data.length === 0) return;
+        setProfiles((prev) => {
+          const existingIds = new Set(prev.map((p) => p.id));
+          const toAdd = data.filter((p) => !existingIds.has(p.id));
+          return toAdd.length > 0 ? [...prev, ...toAdd] : prev;
+        });
+      });
+    return () => {
+      active = false;
+    };
+  }, [session, supabase, groupMembers, profiles]);
+
   const value = useMemo<StoreValue>(
     () => ({
       profiles,
