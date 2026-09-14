@@ -7,10 +7,10 @@
 //   공유할까요?"와 짝을 맞춰, 그룹마다 서로 다른 카테고리 목록을 따로 관리한다(store.getCategoriesForScope).
 import { useState } from "react";
 import { useNav } from "../NavContext";
-import { useStore, type FontSize } from "@/lib/store";
+import { useStore } from "@/lib/store";
 import type { CategoryScope } from "@/lib/categories";
 import { getGroupsForUser } from "@/lib/selectors";
-import { BellIcon, ChevronLeftIcon, MoonIcon, MoreHorizontalIcon, PlusIcon, ThreeLinesIcon, TypeSizeIcon } from "../icons";
+import { BellIcon, ChevronLeftIcon, MoonIcon, MoreHorizontalIcon, PlusIcon, ThreeLinesIcon } from "../icons";
 
 function Toggle({ on, onClick }: { on: boolean; onClick: () => void }) {
   return (
@@ -22,12 +22,6 @@ function Toggle({ on, onClick }: { on: boolean; onClick: () => void }) {
     </div>
   );
 }
-
-const FONT_SIZE_OPTIONS: { value: FontSize; label: string }[] = [
-  { value: "medium", label: "중간" },
-  { value: "small", label: "작게" },
-  { value: "large", label: "크게" },
-];
 
 // select 하나로 "개인" 또는 그룹 하나를 고르기 위한 문자열 값 <-> CategoryScope 변환.
 const PERSONAL_VALUE = "__personal__";
@@ -89,19 +83,26 @@ export default function Settings() {
       </div>
 
       <div style={{ flex: 1, overflowY: "auto", padding: "6px 20px 20px" }}>
-        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", margin: "14px 0 8px" }}>
+        <div
+          onClick={() => setMenuOpen((v) => !v)}
+          style={{ display: "flex", alignItems: "center", justifyContent: "space-between", margin: "14px 0 8px", cursor: "pointer" }}
+        >
+          {/* 2026-09-19 팀 요청: "카테고리" 눌러도 반응이 없었다 — 줄 전체(라벨 포함)를 눌러도
+              오른쪽 3줄 버튼과 똑같이 편집 메뉴가 열리도록 클릭 영역을 넓혔다. */}
           <div style={{ fontSize: 12, fontWeight: 800, color: "var(--shoot-text-muted)" }}>카테고리</div>
           {/* 2026-09-17 팀 결정: "3개짜리 줄" 버튼 → "카테고리 편집" 메뉴 → 각 칸 "..."로 이름 변경 + 추가 버튼. */}
           <div style={{ position: "relative" }}>
             <div
-              onClick={() => setMenuOpen((v) => !v)}
-              style={{ width: 28, height: 28, borderRadius: 8, display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer" }}
+              style={{ width: 28, height: 28, borderRadius: 8, display: "flex", alignItems: "center", justifyContent: "center" }}
             >
               <ThreeLinesIcon size={17} color="var(--shoot-text-muted)" />
             </div>
             {menuOpen && (
               <div
-                onClick={() => {
+                onClick={(e) => {
+                  // 이 항목이 바깥 줄(카테고리 라벨 전체) 안에 있어서, stopPropagation 없이는 클릭이
+                  // 버블링돼 바깥 onClick(메뉴 토글)이 또 실행되어 메뉴가 다시 열려버린다.
+                  e.stopPropagation();
                   setEditMode((v) => !v);
                   setMenuOpen(false);
                   resetRowEditing();
@@ -243,22 +244,6 @@ export default function Settings() {
             <div style={{ flex: 1, fontSize: 14, fontWeight: 700, color: "var(--shoot-text)" }}>다크 모드</div>
             <Toggle on={store.darkMode} onClick={() => store.toggleDarkMode()} />
           </div>
-          <div style={{ height: 1, background: "var(--shoot-divider)", margin: "14px 0" }} />
-          <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 10 }}>
-            <TypeSizeIcon size={17} color="var(--shoot-text-muted)" />
-            <div style={{ fontSize: 14, fontWeight: 700, color: "var(--shoot-text)" }}>글자 크기</div>
-          </div>
-          <select
-            value={store.fontSize}
-            onChange={(e) => store.setFontSize(e.target.value as FontSize)}
-            style={{ width: "100%", boxSizing: "border-box", height: 42, borderRadius: 10, border: "1.5px solid var(--shoot-border)", background: "var(--shoot-surface)", padding: "0 12px", fontSize: 13, fontWeight: 600, color: "var(--shoot-text)" }}
-          >
-            {FONT_SIZE_OPTIONS.map((opt) => (
-              <option key={opt.value} value={opt.value}>
-                {opt.label}
-              </option>
-            ))}
-          </select>
         </div>
       </div>
     </div>

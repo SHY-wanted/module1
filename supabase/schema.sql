@@ -328,7 +328,15 @@ create trigger on_auth_user_created
   for each row execute function public.handle_new_user();
 
 -- ============================================================
--- 6) RLS 체크리스트 — 테이블마다 select/insert/update/delete 정책이 있는지
+-- 6) Realtime 활성화 — 2c "그룹원 기록 확인 알림"(2026-09-19 추가)이 다른 그룹원의 새 지출 INSERT를
+--    실시간으로 받으려면 expenses 테이블이 supabase_realtime publication에 있어야 한다. RLS는 그대로
+--    적용되므로(Postgres Changes가 RLS를 존중한다) 클라이언트는 자기가 원래 select할 수 있는 행의
+--    이벤트만 받는다 — 새 정책을 따로 만들 필요는 없다.
+-- ============================================================
+alter publication supabase_realtime add table public.expenses;
+
+-- ============================================================
+-- 7) RLS 체크리스트 — 테이블마다 select/insert/update/delete 정책이 있는지
 --    (⚠️ 없는 칸은 "그 동작을 아무도 할 수 없다"는 뜻이다 — 의도된 것인지 아래 비고를 확인할 것)
 -- ============================================================
 --

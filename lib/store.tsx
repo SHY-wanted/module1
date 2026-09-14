@@ -74,7 +74,6 @@ interface StoreState {
   isLoggedIn: boolean;
   notificationSettings: NotificationSettings;
   darkMode: boolean;
-  fontSize: FontSize;
 }
 
 interface JoinResult {
@@ -96,7 +95,6 @@ export interface MutationResult<T> {
   error?: string;
 }
 
-export type FontSize = "small" | "medium" | "large";
 export interface NotificationSettings {
   expenseConfirm: boolean;
   // 2026-09-17 팀 결정: "예산 초과 시 알림"은 삭제(예산 자체가 없는 기능이라). "알림음"은
@@ -151,7 +149,6 @@ interface StoreValue extends StoreState {
   // 2.2초 동안 화면 위에 알림 문구를 띄운다(지출 기록 확인 알림 · 그룹원 기록 확인 알림이 이걸 쓴다).
   showToast: (message: string) => void;
   toggleDarkMode: () => void;
-  setFontSize: (size: FontSize) => void;
   // 10a "그룹장 위임"(F18) — 현재 OWNER인 나 대신 선택한 멤버를 새 OWNER로 바꾼다. 새 그룹장을
   // 먼저 OWNER로 올리고 나서 내 role을 MEMBER로 내리는 순서로 실제 UPDATE 2번을 보낸다(순서를
   // 바꾸면 RLS members_update_owner_transfers_role이 두 번째 요청을 막는다 — schema.sql 참고).
@@ -189,9 +186,18 @@ export function StoreProvider({ children }: { children: ReactNode }) {
   const [groupCategoriesById, setGroupCategoriesById] = useState<Record<string, CategoryDef[]>>({});
   const [notificationSettings, setNotificationSettings] = useState<NotificationSettings>(DEFAULT_NOTIFICATION_SETTINGS);
   const [darkMode, setDarkMode] = useState(false);
-  const [fontSize, setFontSizeState] = useState<FontSize>("medium");
   const [toastMessage, setToastMessage] = useState<string | null>(null);
   const toastTimerRef = useRef<number | null>(null);
+
+  // showToast 본체를 밖으로 빼서, value 안의 showToast 액션과 아래 그룹원 기록 알림 effect가 같이 쓴다.
+  function showToastMessage(message: string) {
+    if (toastTimerRef.current !== null) window.clearTimeout(toastTimerRef.current);
+    setToastMessage(message);
+    toastTimerRef.current = window.setTimeout(() => {
+      setToastMessage(null);
+      toastTimerRef.current = null;
+    }, 2200);
+  }
 
   // 로그인 전(세션 확인 전 포함)엔 CURRENT_USER_ID(가짜 데모 계정, INITIAL_* 목업 데이터가 이 id로
   // 채워져 있다)를 그대로 쓰지만, 실제 로그인한 사람이 있으면 그 사람의 실제 id를 우선한다.
@@ -259,6 +265,32 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     };
   }, [session, supabase]);
 
+  // 2026-09-19 추가: 2c "그룹원 기록 확인 알림" — 예전엔 mock이 단일 사용자 기준이라 "다른 그룹원이
+  // 방금 기록했다"는 상황 자체를 재현할 수 없어 토글만 있고 기능이 없었다. 이제 실제 Supabase라
+  // Realtime(Postgres Changes)으로 expenses INSERT를 구독해서 실제로 띄운다. expenses에도 RLS가
+  // 그대로 적용돼(내 것 + 내가 멤버인 그룹의 공유 지출만) 이벤트가 오므로, 그중 "본인이 아닌" 것만
+  // 알린다(본인 기록은 "지출 기록 시 확인 알림"이 따로 처리). Realtime을 받으려면 Supabase 프로젝트의
+  // supabase_realtime publication에 expenses 테이블이 추가돼 있어야 한다(schema.sql 맨 끝 참고).
+  useEffect(() => {
+    if (!session) return;
+    const channel = supabase
+      .channel("expenses-inserts")
+      .on("postgres_changes", { event: "INSERT", schema: "public", table: "expenses" }, (payload) => {
+        const row = payload.new as Expense;
+        if (row.user_id === session.user.id) return;
+        if (!row.is_shared || !row.group_id) return;
+        if (!notificationSettings.groupMemberRecord) return;
+        const group = groups.find((g) => g.id === row.group_id);
+        if (!group) return; // RLS를 통과해 왔다면 이론상 내 그룹이지만, 방어적으로 한 번 더 확인.
+        const author = profiles.find((p) => p.id === row.user_id);
+        showToastMessage(`${group.name} · ${author?.name ?? "그룹원"}님이 ${row.category} 비용을 저장하였어요`);
+      })
+      .subscribe();
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [session, supabase, groups, profiles, notificationSettings]);
+
   // 2026-09-19 버그 수정: profiles는 "내 프로필"만 읽어왔어서, 같은 그룹의 다른 사람 이름은
   // store.profiles에 없어 화면들이 전부 "알 수 없음"으로 표시했다(10a-1 위임 대상 선택, 5b 그룹
   // 피드 작성자 이름 등). group_members가 새로 채워지거나 바뀔 때마다, 아직 profiles에 없는
@@ -305,7 +337,6 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       isLoggedIn,
       notificationSettings,
       darkMode,
-      fontSize,
       currentUserId,
 
       // P1: 그룹 이름이 비어 있으면 호출하는 쪽(화면)에서 막아야 한다 — 여기서도 방어적으로 한 번 더 막는다.
@@ -515,20 +546,11 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       },
 
       showToast(message: string) {
-        if (toastTimerRef.current !== null) window.clearTimeout(toastTimerRef.current);
-        setToastMessage(message);
-        toastTimerRef.current = window.setTimeout(() => {
-          setToastMessage(null);
-          toastTimerRef.current = null;
-        }, 2200);
+        showToastMessage(message);
       },
 
       toggleDarkMode() {
         setDarkMode((prev) => !prev);
-      },
-
-      setFontSize(size: FontSize) {
-        setFontSizeState(size);
       },
 
       // F18 · P10 상태값1: 현재 OWNER(나)를 지정한 멤버로 교체한다. 새 그룹장을 먼저 OWNER로 올리고
@@ -584,7 +606,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
         return { ok: true };
       },
     }),
-    [profiles, session, authReady, currentUserId, currentUserAvatarUrl, groups, groupMembers, expenses, savings, incomes, personalCategories, groupCategoriesById, toastMessage, isLoggedIn, notificationSettings, darkMode, fontSize, supabase]
+    [profiles, session, authReady, currentUserId, currentUserAvatarUrl, groups, groupMembers, expenses, savings, incomes, personalCategories, groupCategoriesById, toastMessage, isLoggedIn, notificationSettings, darkMode, supabase]
   );
 
   return <StoreContext.Provider value={value}>{children}</StoreContext.Provider>;
