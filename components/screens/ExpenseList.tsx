@@ -10,12 +10,15 @@ import { formatRelativeTime, formatWon } from "@/lib/format";
 import { CategoryIcon, ChevronLeftIcon, PlusIcon, TrashIcon } from "../icons";
 import type { CategoryIconKey } from "../icons";
 
-export default function ExpenseList() {
+// 2026-09-19 팀 요청: 2c(설정) "카테고리" 항목을 누르면 그 카테고리로 미리 필터링된 이 화면을
+// 스택에 쌓아 보여준다 — 지출내역 탭(7)과 완전히 같은 화면을 재사용하되, initialCategoryFilter로
+// 시작 필터를 지정하고 pushed일 땐 뒤로가기가 탭 전환이 아니라 스택 pop(nav.back())이 되게 한다.
+export default function ExpenseList({ initialCategoryFilter, pushed }: { initialCategoryFilter?: string; pushed?: boolean } = {}) {
   const nav = useNav();
   const store = useStore();
 
   // 7 "카테고리·기간 필터 UI"(신규, 2026-09-11 팀 결정 — 04-features.md F6 입력 "category, startDate, endDate" 참고).
-  const [categoryFilter, setCategoryFilter] = useState<string>("all");
+  const [categoryFilter, setCategoryFilter] = useState<string>(initialCategoryFilter ?? "all");
   const [startDate, setStartDate] = useState<string>("");
   const [endDate, setEndDate] = useState<string>("");
   // 2026-09-19 팀 요청: 삭제 버튼 — 바로 지우지 않고 확인 팝업을 한 번 띄운다(10a "그룹 나가기"와 같은 패턴).
@@ -48,8 +51,10 @@ export default function ExpenseList() {
     <div style={{ height: "100%", width: "100%", boxSizing: "border-box", background: "var(--shoot-bg)", display: "flex", flexDirection: "column", position: "relative" }}>
       <div style={{ flex: 1, overflowY: "auto", padding: "20px 20px 20px" }}>
         <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-          {/* 2026-09-14 팀 결정: 탭 루트지만 뒤로가기 버튼을 두고, 누르면 홈(2b) 탭으로 전환한다. */}
-          <div onClick={() => nav.switchTab("home")} style={{ cursor: "pointer", display: "flex", flexShrink: 0 }}>
+          {/* 2026-09-14 팀 결정: 탭 루트지만 뒤로가기 버튼을 두고, 누르면 홈(2b) 탭으로 전환한다.
+              2026-09-19: 2c에서 카테고리별로 눌러서 스택에 쌓인 경우(pushed)는 탭 전환이 아니라
+              그냥 스택 pop(nav.back())으로 2c에 돌아간다. */}
+          <div onClick={() => (pushed ? nav.back() : nav.switchTab("home"))} style={{ cursor: "pointer", display: "flex", flexShrink: 0 }}>
             <ChevronLeftIcon size={18} color="var(--shoot-text)" />
           </div>
           <div style={{ fontSize: 22, fontWeight: 800, color: "var(--shoot-text)", flex: 1 }}>지출 내역</div>

@@ -28,7 +28,10 @@ export type StackScreen =
   | { id: "myInfoEdit" }
   // 8a·8b — 영수증 촬영·인식 중
   | { id: "receiptCapture" }
-  | { id: "receiptProcessing" };
+  | { id: "receiptProcessing" }
+  // 2c "카테고리" 항목 클릭(디자인 파일 없음, 2026-09-19 팀 요청으로 신규) — 7(지출 목록)을
+  // 그 카테고리로 미리 필터링해서 재사용한다.
+  | { id: "categoryExpenses"; category: string };
 
 // 3a 화면의 카드 id → schema.sql group_type enum 매핑
 export const GROUP_TYPE_CARD_TO_ENUM: Record<string, GroupType> = {

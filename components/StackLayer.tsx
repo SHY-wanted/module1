@@ -21,6 +21,7 @@ import DelegateSelect from "./screens/DelegateSelect";
 import MyInfoEdit from "./screens/MyInfoEdit";
 import ReceiptCapture from "./screens/ReceiptCapture";
 import ReceiptProcessing from "./screens/ReceiptProcessing";
+import ExpenseList from "./screens/ExpenseList";
 
 export type StackPhase = "entering" | "settled" | "leaving";
 
@@ -74,6 +75,8 @@ function renderScreen(screen: StackScreen) {
       return <ReceiptCapture />;
     case "receiptProcessing":
       return <ReceiptProcessing />;
+    case "categoryExpenses":
+      return <ExpenseList initialCategoryFilter={screen.category} pushed />;
     default:
       return null;
   }

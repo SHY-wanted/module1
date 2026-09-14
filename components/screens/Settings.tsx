@@ -152,7 +152,17 @@ export default function Settings() {
           {categories.map((cat, idx) => (
             <div
               key={cat.id}
-              style={{ padding: "13px 14px", display: "flex", alignItems: "center", gap: 10, borderBottom: idx < categories.length - 1 ? "1px solid var(--shoot-divider)" : "none" }}
+              // 2026-09-19 팀 요청: 편집 모드가 아닐 땐 카테고리를 누르면 그 카테고리로 필터링된
+              // 지출 목록(7)이 뜬다 — 편집 모드에선 원래대로 "..."로 이름만 바꾼다.
+              onClick={!editMode ? () => nav.push({ id: "categoryExpenses", category: cat.label }) : undefined}
+              style={{
+                padding: "13px 14px",
+                display: "flex",
+                alignItems: "center",
+                gap: 10,
+                borderBottom: idx < categories.length - 1 ? "1px solid var(--shoot-divider)" : "none",
+                cursor: !editMode ? "pointer" : "default",
+              }}
             >
               {/* 2026-09-17 팀 결정: 아이콘 제거, 색으로만 구별(칠해진 원). */}
               <div style={{ width: 16, height: 16, borderRadius: "50%", background: cat.ink, flexShrink: 0 }} />
