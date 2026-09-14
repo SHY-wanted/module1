@@ -17,18 +17,20 @@ export default function ReceiptProcessing() {
   useEffect(() => {
     const timer = window.setTimeout(() => {
       // P7: 인식에 실패했다고 해서 저장 자체를 실패시킬 수 없다 — 항상 category="확인 필요"로 저장은 성공한다.
-      store.addExpense({
-        user_id: store.currentUserId,
-        group_id: null,
-        amount: 12500,
-        category: "확인 필요",
-        memo: "스타벅스",
-        date: TODAY_DATE,
-        source_type: "RECEIPT",
-        image_url: null,
-        is_shared: false,
-      });
-      nav.resetStackToTab("expenses");
+      // (addExpense 자체의 네트워크 실패까지 P7이 보장하진 않는다 — 그런 경우는 그냥 7로 넘어간다.)
+      store
+        .addExpense({
+          user_id: store.currentUserId,
+          group_id: null,
+          amount: 12500,
+          category: "확인 필요",
+          memo: "스타벅스",
+          date: TODAY_DATE,
+          source_type: "RECEIPT",
+          image_url: null,
+          is_shared: false,
+        })
+        .finally(() => nav.resetStackToTab("expenses"));
     }, PROCESSING_DELAY_MS);
     return () => window.clearTimeout(timer);
     // 마운트 시 한 번만 — 타이머가 끝나면 8a·8b 둘 다 pop하고 지출내역 탭(7)으로 이동한다.

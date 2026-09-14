@@ -15,9 +15,9 @@ export default function MyGroupsManage() {
   const [confirmingGroupId, setConfirmingGroupId] = useState<string | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
-  function handleLeaveConfirmed() {
+  async function handleLeaveConfirmed() {
     if (!confirmingGroupId) return;
-    const result = store.leaveGroup(confirmingGroupId);
+    const result = await store.leaveGroup(confirmingGroupId);
     setConfirmingGroupId(null);
     if (!result.ok && result.reason === "must_delegate") {
       // 05-policy.md P10 — "새 그룹장을 먼저 지정해주세요" 오류.

@@ -60,7 +60,13 @@ export default function ExpenseInput({ expenseId }: { expenseId?: string }) {
     setSelectedCategoryId(nextCats[0]?.id ?? "etc");
   }
 
-  function handleSave() {
+  const [saving, setSaving] = useState(false);
+  const [saveError, setSaveError] = useState<string | null>(null);
+
+  async function handleSave() {
+    if (saving) return;
+    setSaving(true);
+    setSaveError(null);
     const category = selectedCategoryId === "custom" ? customCategory.trim() || "기타" : allCats.find((c) => c.id === selectedCategoryId)?.label ?? "기타";
     if (selectedCategoryId === "custom") {
       // 2026-09-17 팀 결정: 직접 입력으로 쓴 카테고리는 지금 scope(개인 또는 고른 그룹)에 저장돼서
@@ -68,7 +74,7 @@ export default function ExpenseInput({ expenseId }: { expenseId?: string }) {
       store.addCategoryInScope(scope, category);
     }
     if (isEdit && existing) {
-      store.updateExpense(existing.id, {
+      const ok = await store.updateExpense(existing.id, {
         group_id: shareGroup?.id ?? null,
         amount,
         category,
@@ -78,8 +84,13 @@ export default function ExpenseInput({ expenseId }: { expenseId?: string }) {
         image_url: existing.image_url,
         is_shared: !!shareGroup,
       });
+      setSaving(false);
+      if (!ok) {
+        setSaveError("지출을 수정하지 못했어요");
+        return;
+      }
     } else {
-      store.addExpense({
+      const result = await store.addExpense({
         user_id: store.currentUserId,
         group_id: shareGroup?.id ?? null,
         amount,
@@ -90,6 +101,11 @@ export default function ExpenseInput({ expenseId }: { expenseId?: string }) {
         image_url: null,
         is_shared: !!shareGroup,
       });
+      setSaving(false);
+      if (!result.ok) {
+        setSaveError(result.error ?? "지출을 저장하지 못했어요");
+        return;
+      }
       // 2c "지출 기록 시 확인 알림"(2026-09-17 팀 결정 — 실제로 토스트를 띄우도록 구현) — 새로 기록할 때만,
       // 수정할 때는 안 띄운다.
       if (store.notificationSettings.expenseConfirm) {
@@ -197,9 +213,10 @@ export default function ExpenseInput({ expenseId }: { expenseId?: string }) {
             ))}
           </select>
         </div>
+        {saveError && <div style={{ fontSize: 12, fontWeight: 700, color: "#B23B3B", textAlign: "center", marginTop: 10 }}>{saveError}</div>}
         <div
           onClick={handleSave}
-          style={{ marginTop: 22, height: 50, borderRadius: 16, background: "linear-gradient(135deg,#E3DFFB 0%,#BDB2F2 100%)", color: "#3F3480", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 15, fontWeight: 800, boxShadow: "0 8px 18px rgba(106,94,207,0.3)", cursor: "pointer" }}
+          style={{ marginTop: 22, height: 50, borderRadius: 16, background: "linear-gradient(135deg,#E3DFFB 0%,#BDB2F2 100%)", color: "#3F3480", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 15, fontWeight: 800, boxShadow: "0 8px 18px rgba(106,94,207,0.3)", cursor: "pointer", opacity: saving ? 0.6 : 1 }}
         >
           저장하기
         </div>

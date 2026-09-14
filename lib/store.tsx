@@ -1,9 +1,9 @@
 "use client";
 // lib/store.tsx — 목업 데이터를 React 상태로 들고 있는 전역 스토어(Context).
-// 2026-09-18 팀 요청으로 로그인/회원가입/로그아웃·내 이름·이메일·비밀번호(profiles.name 포함)는
-// 실제 Supabase Auth + profiles 테이블로 바꿨다 — supabase/schema.sql이 그 계약이다.
-// 그 외(그룹·지출·수입·저금·카테고리)는 아직 이 파일의 React 상태가 그대로 "DB" 역할을 한다
-// (다음 단계에서 테이블별로 하나씩 Supabase 쿼리로 갈아끼울 것).
+// 2026-09-18: 로그인/회원가입/로그아웃·내 정보 변경(profiles.name 포함)에 이어, 그룹·그룹원·지출·저금도
+// 실제 Supabase 쿼리로 옮겼다 — supabase/schema.sql이 그 계약이다. 로그인하면 이 4개 테이블을 한 번에
+// 읽어와 아래 React 상태를 "캐시"로 채우고, 이후 각 액션이 실제로 Supabase에 쓴 다음 그 결과로 캐시를 갱신한다.
+// 카테고리(개인·그룹, DB 테이블 없음)·수입(schema.sql에 없는 E7)만 아직 목업 상태로 남아있다.
 
 import { createContext, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import type { Session } from "@supabase/supabase-js";
@@ -88,6 +88,14 @@ interface LeaveGroupResult {
   reason?: "must_delegate";
 }
 
+// 2026-09-18 추가: createGroup·addExpense는 실패할 수 있는 실제 네트워크 호출이 됐다 — 화면에서
+// 실패를 구분해서 보여줄 수 있도록 값 대신 이 결과 타입을 던진다(throw)는 대신 반환하게 한다.
+export interface MutationResult<T> {
+  ok: boolean;
+  data?: T;
+  error?: string;
+}
+
 export type FontSize = "small" | "medium" | "large";
 export interface NotificationSettings {
   expenseConfirm: boolean;
@@ -98,11 +106,14 @@ export interface NotificationSettings {
 
 interface StoreValue extends StoreState {
   currentUserId: string;
-  createGroup: (name: string, groupType: GroupType) => Group;
-  joinGroupByInviteCode: (code: string) => JoinResult;
-  addExpense: (input: Omit<Expense, "id" | "created_at">) => Expense;
+  // 3b "그룹 만들기" — 실제 groups·group_members INSERT 2번(성공하면 로컬 캐시에도 반영).
+  createGroup: (name: string, groupType: GroupType) => Promise<MutationResult<Group>>;
+  // 4 "참여하기" — 실제 join_group_by_invite_code RPC(schema.sql 참고, 초대 코드로 아직 멤버가
+  // 아닌 그룹을 찾으려면 일반 select로는 안 되기 때문).
+  joinGroupByInviteCode: (code: string) => Promise<JoinResult>;
+  addExpense: (input: Omit<Expense, "id" | "created_at">) => Promise<MutationResult<Expense>>;
   // P6 · F14: 본인 지출만 수정 가능 — 그룹장도 예외 없음(05-policy.md).
-  updateExpense: (id: string, patch: Omit<Expense, "id" | "created_at" | "user_id">) => boolean;
+  updateExpense: (id: string, patch: Omit<Expense, "id" | "created_at" | "user_id">) => Promise<boolean>;
   addIncome: (input: Omit<MockIncome, "id" | "created_at">) => MockIncome;
   // 2c/6 카테고리 — scope(개인 또는 특정 그룹)의 카테고리 목록을 읽는다(없으면 그룹 프리셋으로 폴백).
   getCategoriesForScope: (scope: CategoryScope) => CategoryDef[];
@@ -135,10 +146,12 @@ interface StoreValue extends StoreState {
   showToast: (message: string) => void;
   toggleDarkMode: () => void;
   setFontSize: (size: FontSize) => void;
-  // 10a "그룹장 위임"(F18) — 현재 OWNER인 나 대신 선택한 멤버를 새 OWNER로 바꾼다.
-  delegateOwner: (groupId: string, newOwnerUserId: string) => void;
-  // 10a "그룹 나가기" — P10: OWNER는 위임 없이 나갈 수 없다(단, 혼자뿐이면 예외로 그룹·지출 함께 삭제).
-  leaveGroup: (groupId: string) => LeaveGroupResult;
+  // 10a "그룹장 위임"(F18) — 현재 OWNER인 나 대신 선택한 멤버를 새 OWNER로 바꾼다. 새 그룹장을
+  // 먼저 OWNER로 올리고 나서 내 role을 MEMBER로 내리는 순서로 실제 UPDATE 2번을 보낸다(순서를
+  // 바꾸면 RLS members_update_owner_transfers_role이 두 번째 요청을 막는다 — schema.sql 참고).
+  delegateOwner: (groupId: string, newOwnerUserId: string) => Promise<void>;
+  // 10a "그룹 나가기" — P10: OWNER는 위임 없이 나갈 수 없다(단, 혼자뿐이면 예외로 그룹·지출·저금 함께 삭제).
+  leaveGroup: (groupId: string) => Promise<LeaveGroupResult>;
 }
 
 const StoreContext = createContext<StoreValue | null>(null);
@@ -164,7 +177,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
   const [groups, setGroups] = useState<Group[]>(INITIAL_GROUPS);
   const [groupMembers, setGroupMembers] = useState<GroupMember[]>(INITIAL_GROUP_MEMBERS);
   const [expenses, setExpenses] = useState<Expense[]>(INITIAL_EXPENSES);
-  const [savings] = useState<Saving[]>(INITIAL_SAVINGS);
+  const [savings, setSavings] = useState<Saving[]>(INITIAL_SAVINGS);
   const [incomes, setIncomes] = useState<MockIncome[]>(INITIAL_INCOMES);
   const [personalCategories, setPersonalCategories] = useState<CategoryDef[]>(PERSONAL_CATS);
   const [groupCategoriesById, setGroupCategoriesById] = useState<Record<string, CategoryDef[]>>({});
@@ -174,8 +187,8 @@ export function StoreProvider({ children }: { children: ReactNode }) {
   const [toastMessage, setToastMessage] = useState<string | null>(null);
   const toastTimerRef = useRef<number | null>(null);
 
-  // 그룹·지출 등은 아직 목업 상태라 CURRENT_USER_ID(가짜 데모 계정)를 그대로 쓰지만, 실제 로그인한
-  // 사람이 있으면 그 사람의 실제 id를 우선한다 — 새로 만드는 그룹·지출은 실제 계정 명의로 남는다.
+  // 로그인 전(세션 확인 전 포함)엔 CURRENT_USER_ID(가짜 데모 계정, INITIAL_* 목업 데이터가 이 id로
+  // 채워져 있다)를 그대로 쓰지만, 실제 로그인한 사람이 있으면 그 사람의 실제 id를 우선한다.
   const currentUserId = session?.user.id ?? CURRENT_USER_ID;
   const isLoggedIn = session !== null;
 
@@ -217,6 +230,29 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     };
   }, [session, supabase]);
 
+  // 2026-09-18 추가: 로그인되면 그룹·그룹원·지출·저금 4개 테이블을 한 번에 읽어와 로컬 상태를 채운다.
+  // RLS가 이미 "내가 볼 수 있는 행"만 걸러주므로 전부 select("*")로 충분하다 — 로그인 전 보이던
+  // INITIAL_* 데모 데이터(가짜 계정 id)는 실제 계정으로 교체되면서 사라진다(새 계정은 빈 상태로 시작).
+  useEffect(() => {
+    if (!session) return;
+    let active = true;
+    Promise.all([
+      supabase.from("groups").select("*"),
+      supabase.from("group_members").select("*"),
+      supabase.from("expenses").select("*").order("created_at", { ascending: false }),
+      supabase.from("savings").select("*").order("created_at", { ascending: false }),
+    ]).then(([groupsRes, membersRes, expensesRes, savingsRes]) => {
+      if (!active) return;
+      if (!groupsRes.error && groupsRes.data) setGroups(groupsRes.data);
+      if (!membersRes.error && membersRes.data) setGroupMembers(membersRes.data);
+      if (!expensesRes.error && expensesRes.data) setExpenses(expensesRes.data);
+      if (!savingsRes.error && savingsRes.data) setSavings(savingsRes.data);
+    });
+    return () => {
+      active = false;
+    };
+  }, [session, supabase]);
+
   const value = useMemo<StoreValue>(
     () => ({
       profiles,
@@ -239,68 +275,64 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       currentUserId,
 
       // P1: 그룹 이름이 비어 있으면 호출하는 쪽(화면)에서 막아야 한다 — 여기서도 방어적으로 한 번 더 막는다.
-      createGroup(name: string, groupType: GroupType): Group {
+      // 실제 groups INSERT → 성공하면 이어서 group_members INSERT(OWNER)까지 해야 그룹이 완성된다.
+      // 두 요청 사이에 실패하면(드묾) 그룹만 만들어지고 멤버가 없는 상태로 남을 수 있다 — 별도 트랜잭션
+      // 처리는 하지 않는다(schema.sql이 stored procedure를 쓰지 않는 지금 범위에선 과한 대응이라 판단).
+      async createGroup(name: string, groupType: GroupType): Promise<MutationResult<Group>> {
+        if (!session) return { ok: false, error: "로그인이 필요해요" };
         const trimmed = name.trim();
-        const newGroup: Group = {
-          id: generateId("g"),
-          name: trimmed.length > 0 ? trimmed : "이름 없는 그룹",
-          group_type: groupType,
-          invite_code: generateInviteCode(),
-          created_at: new Date().toISOString(),
-        };
+        const { data: newGroup, error: groupError } = await supabase
+          .from("groups")
+          .insert({ name: trimmed.length > 0 ? trimmed : "이름 없는 그룹", group_type: groupType, invite_code: generateInviteCode() })
+          .select()
+          .single();
+        if (groupError || !newGroup) return { ok: false, error: groupError?.message ?? "그룹을 만들지 못했어요" };
+        const { data: newMember, error: memberError } = await supabase
+          .from("group_members")
+          .insert({ user_id: session.user.id, group_id: newGroup.id, role: "OWNER" })
+          .select()
+          .single();
+        if (memberError || !newMember) return { ok: false, error: memberError?.message ?? "그룹을 만들지 못했어요" };
         setGroups((prev) => [...prev, newGroup]);
-        setGroupMembers((prev) => [
-          ...prev,
-          {
-            id: generateId("gm"),
-            user_id: currentUserId,
-            group_id: newGroup.id,
-            role: "OWNER",
-            nickname: null,
-            joined_at: new Date().toISOString(),
-          },
-        ]);
-        return newGroup;
+        setGroupMembers((prev) => [...prev, newMember]);
+        return { ok: true, data: newGroup };
       },
 
-      // P3: 같은 그룹에 중복 참여 불가
-      joinGroupByInviteCode(code: string): JoinResult {
+      // P3(중복 참여 방지)는 join_group_by_invite_code RPC 안(schema.sql)에서 확인한다 — groups는
+      // 멤버만 select 가능한 RLS라 클라이언트가 직접 invite_code로 조회할 수 없기 때문에 RPC를 거친다.
+      async joinGroupByInviteCode(code: string): Promise<JoinResult> {
         const normalized = code.trim().toUpperCase();
-        const group = groups.find((g) => g.invite_code === normalized);
-        if (!group) return { ok: false, reason: "not_found" };
-        const already = groupMembers.some(
-          (m) => m.group_id === group.id && m.user_id === currentUserId
-        );
-        if (already) return { ok: false, reason: "already_member", group };
-        setGroupMembers((prev) => [
-          ...prev,
-          {
-            id: generateId("gm"),
-            user_id: currentUserId,
-            group_id: group.id,
-            role: "MEMBER",
-            nickname: null,
-            joined_at: new Date().toISOString(),
-          },
-        ]);
-        return { ok: true, group };
+        if (!session || normalized.length === 0) return { ok: false, reason: "not_found" };
+        const { data, error } = await supabase.rpc("join_group_by_invite_code", { p_invite_code: normalized });
+        if (error) {
+          if (error.message.includes("ALREADY_MEMBER")) return { ok: false, reason: "already_member" };
+          return { ok: false, reason: "not_found" };
+        }
+        const newGroup = data as Group;
+        const { data: newMember } = await supabase
+          .from("group_members")
+          .select("*")
+          .eq("group_id", newGroup.id)
+          .eq("user_id", session.user.id)
+          .maybeSingle();
+        setGroups((prev) => (prev.some((g) => g.id === newGroup.id) ? prev : [...prev, newGroup]));
+        if (newMember) setGroupMembers((prev) => [...prev, newMember]);
+        return { ok: true, group: newGroup };
       },
 
-      addExpense(input: Omit<Expense, "id" | "created_at">): Expense {
-        const newExpense: Expense = {
-          ...input,
-          id: generateId("e"),
-          created_at: new Date().toISOString(),
-        };
-        setExpenses((prev) => [newExpense, ...prev]);
-        return newExpense;
+      async addExpense(input: Omit<Expense, "id" | "created_at">): Promise<MutationResult<Expense>> {
+        const { data, error } = await supabase.from("expenses").insert(input).select().single();
+        if (error || !data) return { ok: false, error: error?.message ?? "지출을 저장하지 못했어요" };
+        setExpenses((prev) => [data, ...prev]);
+        return { ok: true, data };
       },
 
       // P6 · F14: 본인이 등록한 지출이 아니면 수정할 수 없다 — 그룹장이라도 예외 없다.
-      updateExpense(id: string, patch: Omit<Expense, "id" | "created_at" | "user_id">): boolean {
-        const target = expenses.find((e) => e.id === id);
-        if (!target || target.user_id !== currentUserId) return false;
-        setExpenses((prev) => prev.map((e) => (e.id === id ? { ...e, ...patch } : e)));
+      // (RLS expenses_update_own_only가 실제로 막는다 — 남의 지출이면 0행 갱신되고 data가 null로 온다.)
+      async updateExpense(id: string, patch: Omit<Expense, "id" | "created_at" | "user_id">): Promise<boolean> {
+        const { data, error } = await supabase.from("expenses").update(patch).eq("id", id).select().maybeSingle();
+        if (error || !data) return false;
+        setExpenses((prev) => prev.map((e) => (e.id === id ? data : e)));
         return true;
       },
 
@@ -437,8 +469,13 @@ export function StoreProvider({ children }: { children: ReactNode }) {
         setFontSizeState(size);
       },
 
-      // F18 · P10 상태값1: 현재 OWNER(나)를 지정한 멤버로 교체한다.
-      delegateOwner(groupId: string, newOwnerUserId: string) {
+      // F18 · P10 상태값1: 현재 OWNER(나)를 지정한 멤버로 교체한다. 새 그룹장을 먼저 OWNER로 올리고
+      // 나서 내 role을 MEMBER로 내린다 — 순서를 바꾸면 두 번째 UPDATE 시점엔 내가 이미 MEMBER라
+      // RLS(members_update_owner_transfers_role, "호출자가 OWNER인지"를 확인)가 막아버린다.
+      async delegateOwner(groupId: string, newOwnerUserId: string): Promise<void> {
+        if (!session) return;
+        await supabase.from("group_members").update({ role: "OWNER" }).eq("group_id", groupId).eq("user_id", newOwnerUserId);
+        await supabase.from("group_members").update({ role: "MEMBER" }).eq("group_id", groupId).eq("user_id", session.user.id);
         setGroupMembers((prev) =>
           prev.map((m) => {
             if (m.group_id !== groupId) return m;
@@ -449,8 +486,9 @@ export function StoreProvider({ children }: { children: ReactNode }) {
         );
       },
 
-      // P10: 그룹장은 새 그룹장을 지정하지 않으면 나갈 수 없다(그룹원이 혼자면 예외 — 그룹·지출 함께 삭제).
-      leaveGroup(groupId: string): LeaveGroupResult {
+      // P10: 그룹장은 새 그룹장을 지정하지 않으면 나갈 수 없다(그룹원이 혼자면 예외 — 그룹·지출·저금 함께 삭제).
+      async leaveGroup(groupId: string): Promise<LeaveGroupResult> {
+        if (!session) return { ok: true };
         const membersOfGroup = groupMembers.filter((m) => m.group_id === groupId);
         const me = membersOfGroup.find((m) => m.user_id === currentUserId);
         if (!me) return { ok: true };
@@ -464,14 +502,22 @@ export function StoreProvider({ children }: { children: ReactNode }) {
 
         if (isOwner && others.length === 0) {
           // 05-policy.md 상태값1 — 혼자뿐이면 그룹·지출을 함께 삭제(schema.sql: expenses.group_id는
-          // on delete set null이지만, 06-data.md 상태값1은 "그룹·지출 함께 삭제"라고 명시적으로 정해서 그대로 따른다).
+          // on delete set null이지만, 06-data.md 상태값1은 "그룹·지출 함께 삭제"라고 명시적으로 정해서
+          // 그대로 따른다). savings.group_id → groups(id) FK는 ON DELETE 지정이 없어(RESTRICT) 저금
+          // 행이 남아있으면 그룹 삭제 자체가 실패하므로, 지출·저금을 먼저 지운 다음 그룹을 지운다
+          // (group_members는 on delete cascade라 그룹만 지우면 같이 정리된다).
+          await supabase.from("expenses").delete().eq("group_id", groupId);
+          await supabase.from("savings").delete().eq("group_id", groupId);
+          await supabase.from("groups").delete().eq("id", groupId);
           setGroups((prev) => prev.filter((g) => g.id !== groupId));
           setGroupMembers((prev) => prev.filter((m) => m.group_id !== groupId));
           setExpenses((prev) => prev.filter((e) => e.group_id !== groupId));
+          setSavings((prev) => prev.filter((s) => s.group_id !== groupId));
           return { ok: true };
         }
 
         // 일반 멤버는 바로 나갈 수 있다.
+        await supabase.from("group_members").delete().eq("group_id", groupId).eq("user_id", session.user.id);
         setGroupMembers((prev) => prev.filter((m) => !(m.group_id === groupId && m.user_id === currentUserId)));
         return { ok: true };
       },

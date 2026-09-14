@@ -32,6 +32,14 @@ export default function ExpenseListEmpty() {
           <CameraIcon size={16} color="#3F3480" />
           영수증으로 기록하기
         </div>
+        {/* 2026-09-18 팀 요청: 빈 상태에도 6(지출 입력)으로 바로 들어가는 길이 있어야 한다 —
+            7(지출 목록) 우상단 "+"와 같은 목적지(nav.push({ id: "expenseInput" })). */}
+        <div
+          onClick={() => nav.push({ id: "expenseInput" })}
+          style={{ marginTop: 10, height: 48, padding: "0 22px", borderRadius: 16, background: "var(--shoot-surface)", border: "1.5px solid var(--shoot-border)", color: "var(--shoot-text)", display: "flex", alignItems: "center", justifyContent: "center", gap: 8, fontSize: 14, fontWeight: 800, cursor: "pointer" }}
+        >
+          직접 입력하기
+        </div>
       </div>
     </div>
   );

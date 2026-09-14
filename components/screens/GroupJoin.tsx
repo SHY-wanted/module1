@@ -10,10 +10,13 @@ export default function GroupJoin() {
   const store = useStore();
   const [code, setCode] = useState("");
   const [error, setError] = useState<string | null>(null);
+  const [submitting, setSubmitting] = useState(false);
 
-  function handleSubmit() {
-    if (code.trim().length === 0) return;
-    const result = store.joinGroupByInviteCode(code);
+  async function handleSubmit() {
+    if (code.trim().length === 0 || submitting) return;
+    setSubmitting(true);
+    const result = await store.joinGroupByInviteCode(code);
+    setSubmitting(false);
     if (result.ok) {
       // 07-screens.md "4 '참여하기'(성공) → 5a로 복귀" — 2026-09-11 팀 결정. GroupJoin은 5a "초대 코드로
       // 참여하기"에서만 열리므로 뒤로가기(스택 pop) 한 번으로 5a에 돌아간다.
@@ -58,7 +61,7 @@ export default function GroupJoin() {
         <div style={{ flex: 1 }} />
         <div
           onClick={handleSubmit}
-          style={{ height: 50, borderRadius: 16, background: "linear-gradient(135deg,#E3DFFB 0%,#BDB2F2 100%)", color: "#3F3480", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 15, fontWeight: 800, boxShadow: "0 8px 18px rgba(106,94,207,0.3)", cursor: "pointer" }}
+          style={{ height: 50, borderRadius: 16, background: "linear-gradient(135deg,#E3DFFB 0%,#BDB2F2 100%)", color: "#3F3480", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 15, fontWeight: 800, boxShadow: "0 8px 18px rgba(106,94,207,0.3)", cursor: "pointer", opacity: submitting ? 0.6 : 1 }}
         >
           참여하기
         </div>

@@ -266,8 +266,43 @@ create policy savings_update_own_only on savings for update
   using (user_id = auth.uid())
   with check (user_id = auth.uid());
 
--- savings DELETE 정책 없음: 05-policy.md P11·P12, 04-features.md F19~F21 어디에도 저금 삭제 규칙이 없어
--- 만들지 않았다 — [?] 필요하면 팀 확인 후 추가.
+-- 2026-09-18 추가: 05-policy.md P11·P12·04-features.md F19~F21엔 저금 삭제 규칙이 없어 원래
+-- [?]로 비워뒀지만, 10a "그룹 나가기"(그룹원이 혼자뿐이면 그룹·지출을 함께 삭제)를 실제로 구현하려면
+-- 최소한 본인 저금은 스스로 지울 수 있어야 한다 — savings.group_id → groups(id) FK에 ON DELETE가
+-- 지정 안 돼 있어(기본 RESTRICT) 저금 행이 남아있으면 그룹 삭제 자체가 막히기 때문. 팀 확인 필요하면 되돌릴 것.
+create policy savings_delete_own_only on savings for delete
+  using (user_id = auth.uid());
+
+-- ============================================================
+-- 4-1) 그룹 참여(4번 화면, 초대 코드) 전용 RPC
+--    groups_select_member_only(위 "groups" 절)는 "이미 그 그룹 멤버인 사람만" 그룹 행을 볼 수 있게
+--    막아뒀다 — 그런데 초대 코드로 처음 참여하려는 사람은 아직 멤버가 아니므로, 일반 select로는
+--    참여하려는 그룹을 찾을 수조차 없다(모든 그룹을 공개로 열면 초대 코드 없이도 그룹명이 다 보여버려
+--    "멤버만 볼 수 있다"는 원래 의도가 깨진다). security definer 함수로 "이 초대 코드에 해당하는
+--    그룹 하나만" 우회 조회해서 멤버로 등록시키는 방식으로 우회한다.
+-- ============================================================
+create function public.join_group_by_invite_code(p_invite_code text)
+returns groups
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  v_group groups;
+begin
+  select * into v_group from groups where invite_code = p_invite_code;
+  if not found then
+    raise exception 'NOT_FOUND';
+  end if;
+  if exists (select 1 from group_members where group_id = v_group.id and user_id = auth.uid()) then
+    raise exception 'ALREADY_MEMBER';
+  end if;
+  insert into group_members (user_id, group_id, role) values (auth.uid(), v_group.id, 'MEMBER');
+  return v_group;
+end;
+$$;
+
+grant execute on function public.join_group_by_invite_code(text) to authenticated;
 
 -- ============================================================
 -- 5) auth.users에 새 행이 생기면 profiles(E1)에 자동으로 넣는 트리거
@@ -301,11 +336,13 @@ create trigger on_auth_user_created
 -- |--------------------|--------|--------|--------|--------|------|
 -- | profiles           |   O    |  (트리거) |   O    |  없음  | INSERT는 handle_new_user 트리거(security definer)가 담당. UPDATE=본인만(2026-09-18 추가, 10b 내 정보 변경용). DELETE는 01~05에 탈퇴 규칙이 없어 미구현 [?] |
 -- | groups             |   O    |   O    |   O    |   O    | P1(insert 조건) · P2(update=OWNER만) · delete는 상태값1 전제로 OWNER만 |
--- | group_members      |   O    |   O    |   O    |   O    | insert=본인만(P3은 unique 제약), update=OWNER만(P10 위임), delete=본인만(탈퇴) |
+-- | group_members      |   O    |   O    |   O    |   O    | select/update는 재귀 방지용 security definer 함수(is_group_member·is_group_owner, 2026-09-18) 경유. insert=본인만(P3은 unique 제약), update=OWNER만(P10 위임), delete=본인만(탈퇴) |
 -- | expenses           |   O    |   O    |   O    |   O    | select 2개(본인 전체 + P5 공유피드), insert=P4, update/delete=P6 |
 -- | expense_ocr_raw    |   O    |  없음  |  없음  |  없음  | 클라이언트는 읽기만 함 — 쓰기는 Edge Function이 service_role로 수행(RLS 우회), 의도된 설계 |
--- | savings            |   O    |   O    |   O    |  없음  | select 2개(P11 본인 + P12 그룹멤버), insert=[?](P4 패턴 차용), update=P11·P12, delete는 05-policy.md에 규칙이 없어 미구현 [?] |
+-- | savings            |   O    |   O    |   O    |   O    | select 2개(P11 본인 + P12 그룹멤버), insert=[?](P4 패턴 차용), update=P11·P12, delete=본인만(2026-09-18 추가, 그룹 나가기용) |
 --
+-- 그 외 RPC: join_group_by_invite_code(text) — 4번(그룹 참여) 전용. groups가 멤버만 select 가능해서
+-- 초대 코드로 아직 멤버 아닌 그룹을 찾을 방법이 없어, security definer 함수로 조회+가입을 한 번에 처리한다.
 -- P1~P12 대응표
 -- P1  → groups_insert_any_authenticated (WITH CHECK의 이름 비어있음 검사)
 -- P2  → groups_update_owner_only

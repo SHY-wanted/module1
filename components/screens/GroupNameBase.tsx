@@ -21,13 +21,23 @@ export default function GroupNameBase({ groupType, badgeIcon, badgeColor, badgeL
   const nav = useNav();
   const store = useStore();
   const [name, setName] = useState("");
+  const [submitting, setSubmitting] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   const canSubmit = name.trim().length > 0; // P1: 그룹 이름 없으면 그룹 생성 불가
 
-  function handleSubmit() {
-    if (!canSubmit) return;
-    const group = store.createGroup(name, groupType);
-    nav.push({ id: "groupCreateDone", groupId: group.id });
+  // 2026-09-18 추가: 실제 groups·group_members INSERT라 네트워크 실패 등으로 실패할 수 있다.
+  async function handleSubmit() {
+    if (!canSubmit || submitting) return;
+    setSubmitting(true);
+    setError(null);
+    const result = await store.createGroup(name, groupType);
+    setSubmitting(false);
+    if (!result.ok || !result.data) {
+      setError(result.error ?? "그룹을 만들지 못했어요");
+      return;
+    }
+    nav.push({ id: "groupCreateDone", groupId: result.data.id });
   }
 
   return (
@@ -58,12 +68,17 @@ export default function GroupNameBase({ groupType, badgeIcon, badgeColor, badgeL
       <div style={{ fontSize: 12, color: "var(--shoot-text-muted)", fontWeight: 700, marginTop: 16 }}>이런 이름 어때요?</div>
       <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginTop: 8 }}>
         {chips.map((chip) => (
-          // 디자인 스크립트에 칩 클릭 동작이 없어(정적 표시) 그대로 둔다 — 클릭 시 입력칸을 채우는 동작은 지어내지 않는다.
-          <div key={chip} style={{ fontSize: 12, fontWeight: 700, color: "var(--shoot-text)", background: "var(--shoot-surface-alt)", padding: "6px 12px", borderRadius: 10 }}>
+          // 2026-09-18 팀 요청: 누르면 위 입력칸에 그 문구를 그대로 채운다.
+          <div
+            key={chip}
+            onClick={() => setName(chip)}
+            style={{ fontSize: 12, fontWeight: 700, color: "var(--shoot-text)", background: "var(--shoot-surface-alt)", padding: "6px 12px", borderRadius: 10, cursor: "pointer" }}
+          >
             {chip}
           </div>
         ))}
       </div>
+      {error && <div style={{ fontSize: 12, fontWeight: 700, color: "#B23B3B", textAlign: "center", marginTop: 10 }}>{error}</div>}
       <div style={{ flex: 1 }} />
       <div
         onClick={handleSubmit}
@@ -79,6 +94,7 @@ export default function GroupNameBase({ groupType, badgeIcon, badgeColor, badgeL
           fontWeight: 800,
           boxShadow: canSubmit ? "0 8px 18px rgba(106,94,207,0.3)" : "none",
           cursor: canSubmit ? "pointer" : "default",
+          opacity: submitting ? 0.6 : 1,
         }}
       >
         그룹 만들기

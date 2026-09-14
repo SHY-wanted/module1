@@ -18,9 +18,9 @@ export default function DelegateSelect({ groupId }: { groupId: string }) {
   // (이전엔 본인을 아예 목록에서 뺐는데, 위임 화면 안에서 "이게 나다"가 안 보였다).
   const members = getGroupMembersWithProfile(store.groupMembers, store.profiles, groupId);
 
-  function handleSelect(userId: string) {
+  async function handleSelect(userId: string) {
     // F18 · P10 상태값1: 나(OWNER) 대신 선택한 멤버를 새 그룹장으로 바꾼다.
-    store.delegateOwner(groupId, userId);
+    await store.delegateOwner(groupId, userId);
     // 10a "그룹장 위임" → 10a-1에서 선택 → 위임 실행 후 10a로 복귀(2026-09-11 팀 결정).
     nav.back();
   }
