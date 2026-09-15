@@ -1,6 +1,7 @@
-> 문서: 06-data.md · 상태: 초안 · 열린 질문 [?] 11개 · 채택한 [제안] 3개 · 마지막 갱신: 금
+> 문서: 06-data.md · 상태: 초안 · 열린 질문 [?] 19개 · 채택한 [제안] 3개 · 마지막 갱신: 화
 > 이 문서를 읽는 에이전트에게: 여기 없는 것은 지어내지 말고 질문으로 돌려라. [?] 는 팀이 아직 모르는 것이다.
 > 종합 메모: 03-requirements.md(유형 "데이터"인 R) · 04-features.md(입력·결과 열) · 05-policy.md(규칙·상태값)과 `모듈 1 SHY프로젝트 주제 세분화.md`(SHY 스펙, "3. DB 스키마" Supabase/Postgres SQL)를 기본 근거로 삼고, `ShooT 하윤.dc.html`(디자인) 화면에 실제로 쓰인 필드·목록을 대조해 채웠다. SHY 스펙 DB 스키마에 없는 저금(Saving)은 03-05의 R19~R21·F19~F21·P11·P12를 근거로 새로 추가했고, 수입(Income)은 03~05 어디에도 없이 디자인에만 있어 전부 [?]로 표시했다. 이 문서를 만들기 전 팀 인터뷰는 진행하지 않았다 — 기존 문서·디자인만으로 채운 초안이라, [?] 항목은 반드시 팀 확인이 필요하다.
+> **2026-09-15 추가**: docs/08-pet-feature-spec.md(저금통 펫 키우기 — 클로드 디자인 프로토타입 기반 신규 제안)를 E9 Pet·E10 WeeklySettlement로 병합했다. 이 두 엔티티는 01~05 어디에도 근거가 없고, 특히 E10은 이 앱에 아직 없는 "예산" 개념에 의존하고 있어 **정책이 정해지기 전엔 구현 착수 금지**(기획 문서 반영만 완료된 상태) — 사용자 요청으로 문서 병합 범위만 진행함.
 
 ## 엔티티 목록
 | E | 엔티티 | 설명 | 출처 |
@@ -13,6 +14,8 @@
 | E6 | Saving (저금) | 개인 또는 그룹 단위 저금 1건 | 03-requirements.md R19~R21 · 04-features.md F19~F21 · 05-policy.md P11·P12 — SHY 스펙 DB 스키마엔 없어 이번에 새로 추가 |
 | E7 | Income (수입) | 월별 수입 금액·항목 | `ShooT 하윤.dc.html` 화면 "2b-1·2b-1a" — **[?] 01~05 어디에도 이 개념이 없다. 팀이 새로 정한 요구인지, 디자이너가 임의로 넣은 화면인지 확인 필요** |
 | E8 | CategoryPreset | 그룹 유형별 기본 카테고리 목록(정적 상수, DB 테이블 아님) | SHY 스펙 "Task 2-3" · 03-requirements.md R16 · 디자인 `FAMILY_CATS`/`COUPLE_CATS`/`DEFAULT_CATS` |
+| E9 | Pet (저금통 펫) | 지출 절약을 게이미피케이션하는 펫 1마리(성장 단계·XP·코인) | docs/08-pet-feature-spec.md — **01~05엔 근거 없음, 아직 미구현(기획 문서 반영만)** |
+| E10 | WeeklySettlement (주간 정산) | 주간 예산 대비 지출을 계산해 코인·XP를 지급한 기록 | docs/08-pet-feature-spec.md §4·§8 — **01~05엔 근거 없음, 아직 미구현. "예산" 개념 자체가 이 앱에 없어 blocked(아래 E10 표 참고)** |
 
 ## 엔티티별 필드
 
@@ -115,6 +118,39 @@
 
 **[제안] 디자인(`ShooT 하윤.dc.html`)의 지출 입력 화면(6번)은 그룹 유형이 FAMILY·COUPLE일 때만 각각 다른 프리셋을 쓰고, 그 외(SIBLING·ROOMMATE·MARRIED_COUPLE·CLUB·OTHER)는 전부 DEFAULT_CATS로 통일해 보여준다(`Component.GROUP_TO_CATS` 함수가 'couple'·'family'만 분기).** SHY 스펙 Task 2-3은 7개 유형 모두 다른 프리셋을 쓰라고 정했으므로, 이 부분은 디자인이 데모 편의상 3종류로 줄인 것으로 보인다 — 근거: 디자인 스크립트에 SIBLING·ROOMMATE·MARRIED_COUPLE·CLUB용 카테고리 배열 자체가 없음. 실제 구현 범위를 SHY 스펙 7종 그대로 할지, 디자인처럼 3종(가족·커플·기타)으로 줄일지는 팀이 정해야 한다.
 
+### E9. Pet (저금통 펫) — docs/08-pet-feature-spec.md 근거, 01~05엔 없는 신규 제안 · 아직 미구현
+| 필드 | 타입 | 필수(추정) | 설명 | 출처 |
+|---|---|---|---|---|
+| id | uuid | 필수 | | [제안] 다른 엔티티와 동일한 PK 관례 |
+| user_id 또는 group_id | uuid (FK) | [?] | **08-pet-feature-spec.md 자체가 "user_id 또는 group_id"라고 모호하게 적어 뒀다.** §1은 "사용자/그룹 단위로 1마리만 존재"라 하고, §6(그룹 랭킹)은 "그룹 멤버들의 XP 획득량 순위"라고 해서 멤버 개개인이 각자 펫을 갖는 쪽(개인 펫 + 그룹은 멤버별 개인 펫을 모아 보여주는 랭킹)처럼 읽힌다. 개인 전용 / 그룹 전용 / 개인+그룹 둘 다 중 팀이 정해야 함 | docs/08-pet-feature-spec.md §1, §8 |
+| species | enum(TIGER, DOG, CAT, DRAGON) | 필수 | 백호·강아지·고양이·흑룡 | docs/08-pet-feature-spec.md §0 |
+| pet_name | text | 선택 | 비우면 종별 기본 이름(백설/몽이/나비/칠흑) | docs/08-pet-feature-spec.md §1 |
+| stage_index | int(1~5) | 필수, 기본 1 | 알→유년기→청소년기→성체→전설 | docs/08-pet-feature-spec.md §0, §2 |
+| xp_progress | numeric(0~100) | 필수, 기본 0 | 현재 단계 내 진행률(%) — 100 넘으면 stage_index+1, 초과분 이월 | docs/08-pet-feature-spec.md §2, §8 |
+| total_coins | int | 필수, 기본 0 | 누적 저금통 코인 | docs/08-pet-feature-spec.md §4, §7 |
+| last_fed_date | date | 선택 | 데일리 먹이주기 하루 1회 제한용(별도 pet_feed_logs 테이블 대안도 있음, §8) | docs/08-pet-feature-spec.md §3, §8 |
+| created_at | timestamptz | 필수(자동) | | [제안] 다른 엔티티와 동일한 감사 필드 관례 |
+
+**[?] xpGained(먹이주기 1회당 XP) 기본값 15는 스펙 문서 자체가 "실제 값은 서버 정책으로 결정"이라고 못박아 뒀다** — 팀이 정해야 확정값이다. 출처: docs/08-pet-feature-spec.md §3
+
+### E10. WeeklySettlement (주간 정산) — docs/08-pet-feature-spec.md 근거, 01~05엔 없는 신규 제안 · 아직 미구현
+| 필드 | 타입 | 필수(추정) | 설명 | 출처 |
+|---|---|---|---|---|
+| id | uuid | 필수 | | [제안] 다른 엔티티와 동일한 PK 관례 |
+| user_id | uuid (FK → Profile) | 필수 | | docs/08-pet-feature-spec.md §8 |
+| week_start | date | 필수 | 정산 기준 주(예: 매주 월요일) — 몇 시·어느 타임존 기준인지 미정 [?] | docs/08-pet-feature-spec.md §4, §8 |
+| budget_amount | integer | [?] | **이 앱엔 "예산" 개념 자체가 없다** — 2c(설정)에서 "예산 초과 시 알림"도 예산 기능이 없어서 아예 뺀 전례가 있다(07-screens.md 2c 참고). budgetAmount를 어디서 가져올지(사용자가 직접 설정하는 새 기능? 과거 지출 평균으로 자동 산정?) 팀이 정하지 않으면 이 테이블 전체가 동작할 수 없다 | docs/08-pet-feature-spec.md §4, §8 |
+| spent_amount | integer | 필수(추정) | 그 주 실제 지출 합계 | docs/08-pet-feature-spec.md §4 |
+| coins_earned | integer | [?] | 절약액→코인 환산 비율 미정(예: "절약 1,000원당 1코인" 등 — 스펙 문서 자체가 "정책 필요"라고 표시) | docs/08-pet-feature-spec.md §4 |
+| xp_gained | integer | [?] | 값 미정 | docs/08-pet-feature-spec.md §4 |
+| created_at | timestamptz | 필수(자동) | | [제안] 다른 엔티티와 동일한 감사 필드 관례 |
+
+**[?] 절약액이 음수(예산 초과)일 때 처리 방식 미정** — 스펙 문서는 "0으로 표시하거나 리포트 자체를 생략하는 방식 추천"이라고 제안만 해뒀을 뿐 팀이 정하지 않았다. 출처: docs/08-pet-feature-spec.md §4
+
+**[?] 주간 정산을 어떤 방식으로 돌릴지(Supabase Edge Function 스케줄, pg_cron 등) 미정** — 배치 실행 인프라 자체가 이번 프로젝트에 아직 없다. 출처: docs/08-pet-feature-spec.md §8
+
+참고: "나의 배지"(MyBadges)는 별도 테이블이 필요 없다 — stage_index 하나로 5단계 배지 획득 여부를 계산만 하면 된다고 스펙 문서에 명시돼 있어, 새 엔티티를 추가하지 않았다. 출처: docs/08-pet-feature-spec.md §5
+
 ## 관계
 | 관계 | 설명 | 출처 |
 |---|---|---|
@@ -126,6 +162,8 @@
 | Profile 1 — N Saving | | 04-features.md F19 |
 | Group 1 — N Saving | type=GROUP인 경우만 | 04-features.md F19 |
 | Profile 1 — N Income | [?] 그룹 연결 여부 확정 안 됨 | 디자인 화면 2b-1 |
+| Profile 1 — 1 Pet | [?] 그룹 단위일 수도 있음(E9 참고) | docs/08-pet-feature-spec.md §1 |
+| Profile 1 — N WeeklySettlement | | docs/08-pet-feature-spec.md §8 |
 
 ## 상태값과 데이터 연동
 - 그룹장(Role) 상태(05-policy.md 상태값1): `group_members.role`이 OWNER↔MEMBER로 전환됨. 그룹원이 OWNER 혼자뿐이면 위임 없이 `groups` 행 자체를 삭제 — 이때 `expenses.group_id`는 null로, `group_members`는 cascade로 함께 삭제(SHY 스펙 "설계 포인트").
