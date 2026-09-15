@@ -156,3 +156,22 @@ body {
     animation: none;
   }
 }
+
+/* P2(펫 상세) — docs/08-pet-feature-spec.md §2 "살짝 위아래로 움직이는 애니메이션" */
+@keyframes petBounce {
+  0%, 100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-6px);
+  }
+}
+.shoot-pet-bounce {
+  display: inline-block;
+  animation: petBounce 2.2s ease-in-out infinite;
+}
+@media (prefers-reduced-motion: reduce) {
+  .shoot-pet-bounce {
+    animation: none;
+  }
+}

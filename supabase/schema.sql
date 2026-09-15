@@ -336,7 +336,82 @@ create trigger on_auth_user_created
 alter publication supabase_realtime add table public.expenses;
 
 -- ============================================================
--- 7) RLS 체크리스트 — 테이블마다 select/insert/update/delete 정책이 있는지
+-- 7) 저금통 펫 키우기 (docs/08-pet-feature-spec.md, §9 종민 확인 반영, 2026-09-15 추가)
+--    P6(그룹 저금통 랭킹)은 뺐다 — "그룹 펫이 정확히 어떻게 XP를 얻는지"가 팀이 아직 안 정한
+--    정책 공백이라 지어내지 않았다. 자세한 이유·정책은 supabase/005_pet_feature.sql 헤더 참고.
+-- ============================================================
+
+create type pet_species as enum ('TIGER','DOG','CAT','DRAGON'); -- 08-pet-feature-spec.md §0
+
+-- E9. Pet — user_id 또는 group_id 중 하나만 채운다(배타적, 06-data.md E9 · 08-pet-feature-spec.md §9).
+create table pets (
+  id            uuid primary key default gen_random_uuid(),
+  user_id       uuid references profiles(id) on delete cascade,
+  group_id      uuid references groups(id) on delete cascade,
+  species       pet_species not null,
+  pet_name      text,
+  stage_index   int not null default 1 check (stage_index between 1 and 5),
+  xp_progress   numeric not null default 0 check (xp_progress >= 0),
+  total_coins   int not null default 0 check (total_coins >= 0),
+  last_fed_date date,
+  created_at    timestamptz not null default now(),
+  constraint pets_owner_exclusive check (
+    (user_id is not null and group_id is null) or (user_id is null and group_id is not null)
+  )
+);
+create unique index pets_one_personal_per_user on pets (user_id) where user_id is not null;
+create unique index pets_one_per_group on pets (group_id) where group_id is not null;
+
+-- E11. Budget(예산) — 08-pet-feature-spec.md §4-1(BudgetSetting). 개인 단위 주간 예산만 가정(§9 참고).
+create table budgets (
+  id            uuid primary key default gen_random_uuid(),
+  user_id       uuid not null unique references profiles(id) on delete cascade,
+  weekly_amount integer not null check (weekly_amount >= 0),
+  auto_repeat   boolean not null default true,
+  created_at    timestamptz not null default now(),
+  updated_at    timestamptz not null default now()
+);
+
+-- E10. WeeklySettlement(주간 정산) — 08-pet-feature-spec.md §4, §8. 배치(cron/Edge Function) 대신
+-- P4 화면을 열 때 그 자리에서 이번 주 지출을 계산해 upsert하는 방식으로 구현했다(정확한 배치 기준
+-- 요일·시각·타임존이 팀이 안 정한 [?]라서 — supabase/005_pet_feature.sql 헤더 참고).
+create table weekly_settlements (
+  id            uuid primary key default gen_random_uuid(),
+  user_id       uuid not null references profiles(id) on delete cascade,
+  week_start    date not null,
+  budget_amount integer not null,
+  spent_amount  integer not null,
+  coins_earned  integer not null default 0,
+  xp_gained     integer not null default 0,
+  created_at    timestamptz not null default now(),
+  unique (user_id, week_start)
+);
+
+alter table pets enable row level security;
+alter table budgets enable row level security;
+alter table weekly_settlements enable row level security;
+
+create policy pets_select_own_or_group_member on pets for select
+  using (user_id = auth.uid() or (group_id is not null and public.is_group_member(group_id, auth.uid())));
+create policy pets_insert_own_or_group_member on pets for insert
+  with check (
+    (user_id = auth.uid() and group_id is null)
+    or (user_id is null and group_id is not null and public.is_group_member(group_id, auth.uid()))
+  );
+create policy pets_update_own_or_group_member on pets for update
+  using (user_id = auth.uid() or (group_id is not null and public.is_group_member(group_id, auth.uid())))
+  with check (user_id = auth.uid() or (group_id is not null and public.is_group_member(group_id, auth.uid())));
+
+create policy budgets_select_own on budgets for select using (user_id = auth.uid());
+create policy budgets_insert_own on budgets for insert with check (user_id = auth.uid());
+create policy budgets_update_own on budgets for update using (user_id = auth.uid()) with check (user_id = auth.uid());
+
+create policy weekly_settlements_select_own on weekly_settlements for select using (user_id = auth.uid());
+create policy weekly_settlements_insert_own on weekly_settlements for insert with check (user_id = auth.uid());
+create policy weekly_settlements_update_own on weekly_settlements for update using (user_id = auth.uid()) with check (user_id = auth.uid());
+
+-- ============================================================
+-- 8) RLS 체크리스트 — 테이블마다 select/insert/update/delete 정책이 있는지
 --    (⚠️ 없는 칸은 "그 동작을 아무도 할 수 없다"는 뜻이다 — 의도된 것인지 아래 비고를 확인할 것)
 -- ============================================================
 --
@@ -348,6 +423,9 @@ alter publication supabase_realtime add table public.expenses;
 -- | expenses           |   O    |   O    |   O    |   O    | select 2개(본인 전체 + P5 공유피드), insert=P4, update/delete=P6 |
 -- | expense_ocr_raw    |   O    |  없음  |  없음  |  없음  | 클라이언트는 읽기만 함 — 쓰기는 Edge Function이 service_role로 수행(RLS 우회), 의도된 설계 |
 -- | savings            |   O    |   O    |   O    |   O    | select 2개(P11 본인 + P12 그룹멤버), insert=[?](P4 패턴 차용), update=P11·P12, delete=본인만(2026-09-18 추가, 그룹 나가기용) |
+-- | pets               |   O    |   O    |   O    |  없음  | 2026-09-15 추가. select/insert/update=본인 개인 펫 또는 그 그룹 멤버(그룹 펫). delete는 스펙에 삭제 규칙이 없어 미구현 |
+-- | budgets            |   O    |   O    |   O    |  없음  | 2026-09-15 추가. 본인만. delete는 스펙에 규칙 없어 미구현(재설정은 update로) |
+-- | weekly_settlements |   O    |   O    |   O    |  없음  | 2026-09-15 추가. 본인만. 배치가 아니라 화면을 열 때 upsert하는 방식(위 7절 참고) |
 --
 -- 그 외 RPC: join_group_by_invite_code(text) — 4번(그룹 참여) 전용. groups가 멤버만 select 가능해서
 -- 초대 코드로 아직 멤버 아닌 그룹을 찾을 방법이 없어, security definer 함수로 조회+가입을 한 번에 처리한다.

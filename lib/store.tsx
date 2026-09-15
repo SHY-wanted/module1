@@ -16,17 +16,22 @@ import {
   INITIAL_INCOMES,
   INITIAL_PROFILES,
   INITIAL_SAVINGS,
+  TODAY_DATE,
   generateId,
   generateInviteCode,
+  type Budget,
   type Expense,
   type Group,
   type GroupMember,
   type GroupType,
   type MockIncome,
+  type Pet,
   type Profile,
   type Saving,
+  type WeeklySettlement,
 } from "./mock";
 import { PERSONAL_CATS, groupToCats, makeCategory, type CategoryDef, type CategoryScope } from "./categories";
+import { COINS_PER_SAVED_WON, FEED_XP_DEFAULT, WEEKLY_XP_PER_COIN, applyXpGain, currentWeekStart, type PetSpecies } from "./pets";
 
 // signUp/signIn/updateUser 실패 시 화면에 그대로 보여줄 결과 — Supabase 에러 메시지(영어)를 흔한 경우만
 // 한국어로 바꾸고, 나머지는 그대로 보여준다(계정 잠김 등 팀이 문구를 아직 안 정한 경우들 [?]).
@@ -74,6 +79,13 @@ interface StoreState {
   isLoggedIn: boolean;
   notificationSettings: NotificationSettings;
   darkMode: boolean;
+  // 저금통 펫 키우기(docs/08-pet-feature-spec.md, §9 종민 확인 반영, 2026-09-15 추가) — 내 개인 펫 +
+  // 내가 속한 그룹들의 그룹 펫이 함께 들어있다(RLS가 이미 "내가 볼 수 있는 펫"만 걸러준다).
+  pets: Pet[];
+  budget: Budget | null;
+  weeklySettlements: WeeklySettlement[];
+  // P3 "데일리 먹이주기 팝업" — 지출을 기록한 직후, 오늘 아직 개인 펫에게 밥을 안 줬으면 연다.
+  feedPopupPetId: string | null;
 }
 
 interface JoinResult {
@@ -155,6 +167,20 @@ interface StoreValue extends StoreState {
   delegateOwner: (groupId: string, newOwnerUserId: string) => Promise<void>;
   // 10a "그룹 나가기" — P10: OWNER는 위임 없이 나갈 수 없다(단, 혼자뿐이면 예외로 그룹·지출·저금 함께 삭제).
   leaveGroup: (groupId: string) => Promise<LeaveGroupResult>;
+
+  // ------- 저금통 펫 키우기(docs/08-pet-feature-spec.md) -------
+  // scope는 카테고리(lib/categories.ts CategoryScope)와 같은 모양을 그대로 재사용한다 —
+  // { kind: "personal" }(개인 펫) | { kind: "group", groupId }(그룹 펫).
+  createPet: (scope: CategoryScope, species: PetSpecies, name: string) => Promise<MutationResult<Pet>>;
+  // P3 "밥 주기" — 오늘 이미 줬으면 ok:false(alreadyFed)를 돌려준다.
+  feedPet: (petId: string) => Promise<MutationResult<{ xpGained: number; leveledUp: boolean }>>;
+  // 지출 기록 성공 직후 호출 — 개인 펫이 있고 오늘 아직 안 먹였으면 팝업을 연다(§3 노출 조건).
+  openFeedPopupIfEligible: () => void;
+  closeFeedPopup: () => void;
+  // P7 예산 설정 — 없으면 새로 만들고 있으면 갱신한다(upsert 패턴).
+  setBudget: (weeklyAmount: number, autoRepeat: boolean) => Promise<MutationResult<Budget>>;
+  // P4 주간 절약 리포트 — 배치(cron) 대신 화면을 열 때 이번 주 정산을 계산해 저장한다(이미 있으면 그대로 반환).
+  getOrCreateWeeklySettlement: () => Promise<MutationResult<WeeklySettlement>>;
 }
 
 const StoreContext = createContext<StoreValue | null>(null);
@@ -186,6 +212,11 @@ export function StoreProvider({ children }: { children: ReactNode }) {
   const [groupCategoriesById, setGroupCategoriesById] = useState<Record<string, CategoryDef[]>>({});
   const [notificationSettings, setNotificationSettings] = useState<NotificationSettings>(DEFAULT_NOTIFICATION_SETTINGS);
   const [darkMode, setDarkMode] = useState(false);
+  // 저금통 펫 키우기 — 완전히 새 기능이라 목업 시드가 없다(빈 배열로 시작, 로그인 후 실제로 채워짐).
+  const [pets, setPets] = useState<Pet[]>([]);
+  const [budget, setBudget_] = useState<Budget | null>(null);
+  const [weeklySettlements, setWeeklySettlements] = useState<WeeklySettlement[]>([]);
+  const [feedPopupPetId, setFeedPopupPetId] = useState<string | null>(null);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
   const toastTimerRef = useRef<number | null>(null);
 
@@ -253,12 +284,18 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       supabase.from("group_members").select("*"),
       supabase.from("expenses").select("*").order("created_at", { ascending: false }),
       supabase.from("savings").select("*").order("created_at", { ascending: false }),
-    ]).then(([groupsRes, membersRes, expensesRes, savingsRes]) => {
+      // 저금통 펫(내 개인 펫 + 내가 속한 그룹의 그룹 펫)·예산 — pets_select_own_or_group_member 정책이
+      // 이미 "내가 볼 수 있는 펫"만 걸러준다.
+      supabase.from("pets").select("*"),
+      supabase.from("budgets").select("*").eq("user_id", session.user.id).maybeSingle(),
+    ]).then(([groupsRes, membersRes, expensesRes, savingsRes, petsRes, budgetRes]) => {
       if (!active) return;
       if (!groupsRes.error && groupsRes.data) setGroups(groupsRes.data);
       if (!membersRes.error && membersRes.data) setGroupMembers(membersRes.data);
       if (!expensesRes.error && expensesRes.data) setExpenses(expensesRes.data);
       if (!savingsRes.error && savingsRes.data) setSavings(savingsRes.data);
+      if (!petsRes.error && petsRes.data) setPets(petsRes.data);
+      if (!budgetRes.error) setBudget_(budgetRes.data ?? null);
     });
     return () => {
       active = false;
@@ -337,6 +374,10 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       isLoggedIn,
       notificationSettings,
       darkMode,
+      pets,
+      budget,
+      weeklySettlements,
+      feedPopupPetId,
       currentUserId,
 
       // P1: 그룹 이름이 비어 있으면 호출하는 쪽(화면)에서 막아야 한다 — 여기서도 방어적으로 한 번 더 막는다.
@@ -605,8 +646,140 @@ export function StoreProvider({ children }: { children: ReactNode }) {
         setGroupMembers((prev) => prev.filter((m) => !(m.group_id === groupId && m.user_id === currentUserId)));
         return { ok: true };
       },
+
+      // P1(펫 선택) — 개인 펫은 본인 명의로, 그룹 펫은 group_id로 만든다(schema.sql pets_owner_exclusive
+      // 제약 — 배타적). .select() 없이 id·시각을 미리 만들어 넣는다(createGroup과 같은 이유 —
+      // 막 만든 그룹 펫은 아직 RETURNING이 요구하는 select 정책을 못 만족할 수 있어서).
+      async createPet(scope: CategoryScope, species: PetSpecies, name: string): Promise<MutationResult<Pet>> {
+        if (!session) return { ok: false, error: "로그인이 필요해요" };
+        const trimmed = name.trim();
+        const newPet: Pet = {
+          id: crypto.randomUUID(),
+          user_id: scope.kind === "personal" ? session.user.id : null,
+          group_id: scope.kind === "group" ? scope.groupId : null,
+          species,
+          pet_name: trimmed.length > 0 ? trimmed : null,
+          stage_index: 1,
+          xp_progress: 0,
+          total_coins: 0,
+          last_fed_date: null,
+          created_at: new Date().toISOString(),
+        };
+        const { error } = await supabase.from("pets").insert(newPet);
+        if (error) return { ok: false, error: error.message };
+        setPets((prev) => [...prev, newPet]);
+        return { ok: true, data: newPet };
+      },
+
+      // P3 "밥 주기" — 하루 1회 제한(§3). XP 지급·단계 승급은 lib/pets.ts applyXpGain 참고.
+      async feedPet(petId: string): Promise<MutationResult<{ xpGained: number; leveledUp: boolean }>> {
+        const pet = pets.find((p) => p.id === petId);
+        if (!pet) return { ok: false, error: "펫을 찾을 수 없어요" };
+        if (pet.last_fed_date === TODAY_DATE) return { ok: false, error: "오늘은 이미 밥을 줬어요" };
+        const { stageIndex, xpProgress } = applyXpGain(pet.stage_index, pet.xp_progress, FEED_XP_DEFAULT);
+        const { error } = await supabase
+          .from("pets")
+          .update({ stage_index: stageIndex, xp_progress: xpProgress, last_fed_date: TODAY_DATE })
+          .eq("id", petId);
+        if (error) return { ok: false, error: error.message };
+        setPets((prev) => prev.map((p) => (p.id === petId ? { ...p, stage_index: stageIndex, xp_progress: xpProgress, last_fed_date: TODAY_DATE } : p)));
+        return { ok: true, data: { xpGained: FEED_XP_DEFAULT, leveledUp: stageIndex > pet.stage_index } };
+      },
+
+      // 지출 기록(신규) 성공 직후 호출 — 개인 펫이 있고 오늘 아직 안 먹였을 때만 P3 팝업을 연다.
+      openFeedPopupIfEligible() {
+        const personalPet = pets.find((p) => p.user_id === currentUserId);
+        if (personalPet && personalPet.last_fed_date !== TODAY_DATE) {
+          setFeedPopupPetId(personalPet.id);
+        }
+      },
+
+      closeFeedPopup() {
+        setFeedPopupPetId(null);
+      },
+
+      // P7 예산 설정 — 있으면 갱신, 없으면 새로 만든다(budgets.user_id가 UNIQUE라 upsert 패턴).
+      async setBudget(weeklyAmount: number, autoRepeat: boolean): Promise<MutationResult<Budget>> {
+        if (!session) return { ok: false, error: "로그인이 필요해요" };
+        const nowIso = new Date().toISOString();
+        if (budget) {
+          const { error } = await supabase
+            .from("budgets")
+            .update({ weekly_amount: weeklyAmount, auto_repeat: autoRepeat, updated_at: nowIso })
+            .eq("id", budget.id);
+          if (error) return { ok: false, error: error.message };
+          const updated: Budget = { ...budget, weekly_amount: weeklyAmount, auto_repeat: autoRepeat, updated_at: nowIso };
+          setBudget_(updated);
+          return { ok: true, data: updated };
+        }
+        const newBudget: Budget = {
+          id: crypto.randomUUID(),
+          user_id: session.user.id,
+          weekly_amount: weeklyAmount,
+          auto_repeat: autoRepeat,
+          created_at: nowIso,
+          updated_at: nowIso,
+        };
+        const { error } = await supabase.from("budgets").insert(newBudget);
+        if (error) return { ok: false, error: error.message };
+        setBudget_(newBudget);
+        return { ok: true, data: newBudget };
+      },
+
+      // P4 주간 절약 리포트 — [?] 08-pet-feature-spec.md §9: 정확한 배치 요일·시각·타임존은 팀이
+      // 안 정했다. cron/Edge Function 배치 대신, 이 화면을 열 때 "이번 주(월요일 시작, 로컬 날짜
+      // 기준, lib/pets.ts currentWeekStart)" 지출을 그 자리에서 계산해 upsert한다 — 이미 이번 주
+      // 정산이 있으면 새로 계산하지 않고 그대로 돌려준다(중복 지급 방지).
+      async getOrCreateWeeklySettlement(): Promise<MutationResult<WeeklySettlement>> {
+        if (!session) return { ok: false, error: "로그인이 필요해요" };
+        const weekStart = currentWeekStart(TODAY_DATE);
+        const existing = weeklySettlements.find((w) => w.week_start === weekStart);
+        if (existing) return { ok: true, data: existing };
+
+        const weekStartDate = new Date(weekStart + "T00:00:00");
+        const weekEndDate = new Date(weekStartDate);
+        weekEndDate.setDate(weekEndDate.getDate() + 6);
+        const weekEnd = weekEndDate.toISOString().slice(0, 10);
+        const spentAmount = expenses
+          .filter((e) => e.user_id === currentUserId && e.date >= weekStart && e.date <= weekEnd)
+          .reduce((sum, e) => sum + e.amount, 0);
+        const budgetAmount = budget?.weekly_amount ?? 0;
+        const savedAmount = budgetAmount - spentAmount;
+        // §4 "절약액이 음수(예산 초과)면 0으로 표시" — 스펙이 직접 추천한 처리 방식을 그대로 썼다.
+        const coinsEarned = savedAmount > 0 ? Math.floor(savedAmount / COINS_PER_SAVED_WON) : 0;
+        const xpGained = coinsEarned * WEEKLY_XP_PER_COIN;
+
+        const newSettlement: WeeklySettlement = {
+          id: crypto.randomUUID(),
+          user_id: session.user.id,
+          week_start: weekStart,
+          budget_amount: budgetAmount,
+          spent_amount: spentAmount,
+          coins_earned: coinsEarned,
+          xp_gained: xpGained,
+          created_at: new Date().toISOString(),
+        };
+        const { error } = await supabase.from("weekly_settlements").insert(newSettlement);
+        if (error) return { ok: false, error: error.message };
+        setWeeklySettlements((prev) => [...prev, newSettlement]);
+
+        // 코인·XP 지급 대상은 개인 펫이다(§4 "코인 지급과 동시에 펫 XP도 함께 지급").
+        const personalPet = pets.find((p) => p.user_id === currentUserId);
+        if (personalPet && (coinsEarned > 0 || xpGained > 0)) {
+          const { stageIndex, xpProgress } = applyXpGain(personalPet.stage_index, personalPet.xp_progress, xpGained);
+          const newTotalCoins = personalPet.total_coins + coinsEarned;
+          await supabase
+            .from("pets")
+            .update({ stage_index: stageIndex, xp_progress: xpProgress, total_coins: newTotalCoins })
+            .eq("id", personalPet.id);
+          setPets((prev) =>
+            prev.map((p) => (p.id === personalPet.id ? { ...p, stage_index: stageIndex, xp_progress: xpProgress, total_coins: newTotalCoins } : p))
+          );
+        }
+        return { ok: true, data: newSettlement };
+      },
     }),
-    [profiles, session, authReady, currentUserId, currentUserAvatarUrl, groups, groupMembers, expenses, savings, incomes, personalCategories, groupCategoriesById, toastMessage, isLoggedIn, notificationSettings, darkMode, supabase]
+    [profiles, session, authReady, currentUserId, currentUserAvatarUrl, groups, groupMembers, expenses, savings, incomes, personalCategories, groupCategoriesById, toastMessage, isLoggedIn, notificationSettings, darkMode, pets, budget, weeklySettlements, feedPopupPetId, supabase]
   );
 
   return <StoreContext.Provider value={value}>{children}</StoreContext.Provider>;

@@ -2,6 +2,8 @@
 // 더미 데이터 — 필드명은 supabase/schema.sql의 컬럼명과 정확히 같게 맞춘다.
 // (다음 단계에서 Supabase 응답으로 통째로 갈아끼울 것이기 때문 — docs/06-data.md, supabase/schema.sql 참고)
 
+import type { PetSpecies } from "./pets";
+
 export type GroupType =
   | "FAMILY"
   | "SIBLING"
@@ -312,3 +314,47 @@ export const INITIAL_INCOMES: MockIncome[] = [
     created_at: "2026-09-01T09:00:00+09:00",
   },
 ];
+
+// ------------------------------------------------------------------
+// 저금통 펫 키우기 — docs/08-pet-feature-spec.md, §9 종민 확인 반영(2026-09-15 추가).
+// 완전히 새로운 실제 기능이라(디자인 시안·목업 시드 데이터 없음) INITIAL_* 배열이 없다 —
+// 로그인 후 store가 Supabase에서 실제로 읽어온 값으로만 채워진다.
+// ------------------------------------------------------------------
+
+// E9. Pet — schema.sql: id, user_id, group_id, species, pet_name, stage_index, xp_progress,
+// total_coins, last_fed_date, created_at. user_id·group_id는 배타적(개인 펫 또는 그룹 펫).
+export interface Pet {
+  id: string;
+  user_id: string | null;
+  group_id: string | null;
+  species: PetSpecies;
+  pet_name: string | null;
+  stage_index: number;
+  xp_progress: number;
+  total_coins: number;
+  last_fed_date: string | null;
+  created_at: string;
+}
+
+// E11. Budget(예산) — schema.sql: id, user_id, weekly_amount, auto_repeat, created_at, updated_at.
+export interface Budget {
+  id: string;
+  user_id: string;
+  weekly_amount: number;
+  auto_repeat: boolean;
+  created_at: string;
+  updated_at: string;
+}
+
+// E10. WeeklySettlement(주간 정산) — schema.sql: id, user_id, week_start, budget_amount,
+// spent_amount, coins_earned, xp_gained, created_at.
+export interface WeeklySettlement {
+  id: string;
+  user_id: string;
+  week_start: string;
+  budget_amount: number;
+  spent_amount: number;
+  coins_earned: number;
+  xp_gained: number;
+  created_at: string;
+}

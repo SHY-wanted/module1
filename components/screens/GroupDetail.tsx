@@ -4,11 +4,12 @@
 import { useState } from "react";
 import { useNav } from "../NavContext";
 import { useStore } from "@/lib/store";
-import { getGroupMembersWithProfile, getGroupFeed } from "@/lib/selectors";
+import { getGroupMembersWithProfile, getGroupFeed, getGroupPet } from "@/lib/selectors";
 import { GROUP_TYPE_VISUAL } from "@/lib/groupTypeVisual";
 import { formatRelativeTime, formatSignedWon, initialOf } from "@/lib/format";
 import { getCategoryVisual } from "@/lib/categories";
-import { ChevronLeftIcon, ShareIcon, UsersIcon } from "../icons";
+import { PET_SPECIES_META } from "@/lib/pets";
+import { ChevronLeftIcon, ChevronRightIcon, ShareIcon, UsersIcon } from "../icons";
 import { typeIconFor } from "./groupIcon";
 
 const AVATAR_PALETTE = ["#FFF0F6", "#F0EEFF", "#E8F9F7", "#FFFBE8", "#EBF5FF"];
@@ -20,6 +21,9 @@ export default function GroupDetail({ groupId }: { groupId: string }) {
   const group = store.groups.find((g) => g.id === groupId);
   const members = getGroupMembersWithProfile(store.groupMembers, store.profiles, groupId);
   const feed = getGroupFeed(store.expenses, store.savings, groupId);
+  // 저금통 펫 키우기(docs/08-pet-feature-spec.md §1, 2026-09-15 신규) — 그룹 펫(그룹원이 함께 키움).
+  // P6(그룹 랭킹)은 그룹 펫 XP 산정 방식이 팀 미정이라 뺐다(07-screens.md 참고) — 여기선 펫 카드만.
+  const groupPet = getGroupPet(store.pets, groupId);
 
   if (!group) {
     return (
@@ -101,6 +105,25 @@ export default function GroupDetail({ groupId }: { groupId: string }) {
             </div>
           </>
         )}
+
+        {/* §1 "그룹 펫"(디자인 파일 없음, 2026-09-15 신규) — 그룹원이 함께 키우는 펫 1마리. */}
+        <div
+          onClick={() =>
+            nav.push(groupPet ? { id: "petDetail", scope: { kind: "group", groupId } } : { id: "petSelect", scope: { kind: "group", groupId } })
+          }
+          style={{ background: "var(--shoot-surface)", borderRadius: 16, border: "1px solid var(--shoot-border)", padding: "14px 16px", display: "flex", alignItems: "center", gap: 12, cursor: "pointer", marginBottom: 18 }}
+        >
+          <div style={{ width: 40, height: 40, borderRadius: "50%", background: "var(--shoot-surface-alt)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 20, flexShrink: 0 }}>
+            {groupPet ? PET_SPECIES_META[groupPet.species].emoji : "🐣"}
+          </div>
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <div style={{ fontSize: 13, fontWeight: 800, color: "var(--shoot-text)" }}>그룹 저금통 펫</div>
+            <div style={{ fontSize: 11, color: "var(--shoot-text-muted)", fontWeight: 600, marginTop: 2 }}>
+              {groupPet ? `${groupPet.pet_name?.trim() || PET_SPECIES_META[groupPet.species].defaultName} · ${groupPet.stage_index}단계` : "아직 없어요 — 함께 데려와요"}
+            </div>
+          </div>
+          <ChevronRightIcon size={16} color="#A9A2B8" />
+        </div>
 
         <div style={{ fontSize: 13, fontWeight: 800, color: "var(--shoot-text-muted)", marginBottom: 10 }}>지출·저금 피드</div>
         <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
