@@ -31,7 +31,9 @@ export type StackScreen =
   | { id: "receiptProcessing" }
   // 2c "카테고리" 항목 클릭(디자인 파일 없음, 2026-09-19 팀 요청으로 신규) — 7(지출 목록)을
   // 그 카테고리로 미리 필터링해서 재사용한다.
-  | { id: "categoryExpenses"; category: string };
+  | { id: "categoryExpenses"; category: string }
+  // 월별 목표 설정 — 디자인 파일 없음. 2b(홈) 목표 카드 · 10(마이페이지) "월별 목표 설정" 행에서 진입한다.
+  | { id: "monthlyGoalSetting" };
 
 // 3a 화면의 카드 id → schema.sql group_type enum 매핑
 export const GROUP_TYPE_CARD_TO_ENUM: Record<string, GroupType> = {

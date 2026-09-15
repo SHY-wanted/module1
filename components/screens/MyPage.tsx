@@ -3,7 +3,7 @@
 import { useNav } from "../NavContext";
 import { useStore } from "@/lib/store";
 import { initialOf, stripSurname } from "@/lib/format";
-import { ChevronRightIcon, GearIcon, UsersIcon } from "../icons";
+import { ChevronRightIcon, FlagIcon, GearIcon, UsersIcon } from "../icons";
 
 export default function MyPage() {
   const nav = useNav();
@@ -55,6 +55,16 @@ export default function MyPage() {
               <UsersIcon size={16} color="var(--shoot-accent)" />
             </div>
             <div style={{ flex: 1, fontSize: 14, fontWeight: 800, color: "var(--shoot-text)" }}>내 그룹 관리</div>
+            <ChevronRightIcon size={16} color="#A9A2B8" />
+          </div>
+          <div style={{ height: 1, background: "var(--shoot-border)" }} />
+          {/* 2026-09-20 팀 요청(신규): 월별 목표 설정 — 2b(홈) 목표 카드와 같은 화면으로 push. */}
+          <div onClick={() => nav.push({ id: "monthlyGoalSetting" })} style={{ padding: "16px 18px", display: "flex", alignItems: "center", gap: 12, cursor: "pointer" }}>
+            <div style={{ width: 34, height: 34, borderRadius: 10, background: "var(--shoot-surface-alt)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+              <FlagIcon size={16} color="var(--shoot-accent)" />
+            </div>
+            <div style={{ flex: 1, fontSize: 14, fontWeight: 800, color: "var(--shoot-text)" }}>월별 목표 설정</div>
+            <span style={{ fontSize: 10, fontWeight: 800, color: "#fff", background: "var(--shoot-accent)", borderRadius: 999, padding: "2px 8px", marginRight: 6 }}>NEW</span>
             <ChevronRightIcon size={16} color="#A9A2B8" />
           </div>
         </div>

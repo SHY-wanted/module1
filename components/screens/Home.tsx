@@ -15,7 +15,7 @@ import { formatRelativeTime, formatWon, stripSurname } from "@/lib/format";
 import { getCategoryVisual } from "@/lib/categories";
 import { TODAY_DATE } from "@/lib/mock";
 import { CategoryIcon } from "../icons";
-import { ArrowUpIcon, ChevronDownIcon, ChevronLeftIcon, ChevronRightIcon, HeartIcon, PlusIcon } from "../icons";
+import { ArrowUpIcon, ChevronDownIcon, ChevronLeftIcon, ChevronRightIcon, FlagIcon, HeartIcon, PlusIcon } from "../icons";
 
 // "이번 달 총 수입·총 지출" 카드는 캘린더를 다른 달로 넘겨도 바뀌지 않는다 — 항상 실제 오늘(TODAY_DATE)
 // 기준 이번 달이다. 09-14 이전엔 9월로 하드코딩돼 있었다.
@@ -193,6 +193,21 @@ export default function Home() {
         >
           <PlusIcon size={16} color="var(--shoot-accent)" />
           <span style={{ fontSize: 14, fontWeight: 800, color: "var(--shoot-accent)" }}>그룹 만들기</span>
+        </div>
+
+        {/* 2026-09-20 팀 요청(신규): 월별 목표 설정 진입점 — 10(마이페이지) "월별 목표 설정" 행과 같은 화면으로 push. */}
+        <div
+          onClick={() => nav.push({ id: "monthlyGoalSetting" })}
+          style={{ marginTop: 12, background: "var(--shoot-surface-alt)", border: "1.5px dashed var(--shoot-accent)", borderRadius: 22, padding: "18px 20px", display: "flex", alignItems: "center", gap: 14, cursor: "pointer" }}
+        >
+          <div style={{ width: 36, height: 36, borderRadius: 12, background: "var(--shoot-surface)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+            <FlagIcon size={17} color="var(--shoot-accent)" />
+          </div>
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <div style={{ fontSize: 14, fontWeight: 800, color: "var(--shoot-text)" }}>이번 달 목표 설정하기</div>
+            <div style={{ fontSize: 12, color: "var(--shoot-text-muted)", marginTop: 2 }}>카테고리별 목표를 정하고 지출을 관리해보세요</div>
+          </div>
+          <span style={{ fontSize: 10, fontWeight: 800, color: "#fff", background: "var(--shoot-accent)", borderRadius: 999, padding: "2px 8px", flexShrink: 0 }}>NEW</span>
         </div>
 
         {/* 2026-09-17 팀 결정: "전체보기" 삭제(이동 대상 미정 TODO였음) — 최근 지출 5개만 보여준다. */}
