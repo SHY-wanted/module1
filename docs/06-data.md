@@ -133,7 +133,7 @@
 | id | uuid | 필수 | | [제안] 다른 엔티티와 동일한 PK 관례 |
 | user_id 또는 group_id | uuid (FK) | 필수(배타적, DB CHECK `pets_owner_exclusive`) | 개인 펫 1행(`user_id`만 채움) 또는 그룹 펫 1행(`group_id`만 채움) — v1과 동일 구조 유지(사용자 확인: "하나로 합침") | docs/08-pet-feature-spec.md §1, §9 + hybranch F22 |
 | pet_name | text | 선택 | 비우면 기본 이름("저금이") | docs/08-pet-feature-spec.md §1 |
-| stage_index | int(0~3) | 필수, 기본 0 | **v2로 4단계 축소**(사용자 확인: "이미지대로 4단계") — 0=알, 1=유년기, 2=청소년기, 3=성체. v1의 "전설"(5단계) 폐기 | 참고 이미지("캐릭터 커스텀" 화면 성장 단계 미리보기) |
+| stage_index | int(1~4) | 필수, 기본 1 | **v2로 4단계 축소**(사용자 확인: "이미지대로 4단계") — 1=알, 2=유년기, 3=청소년기, 4=성체. v1의 "전설"(5단계) 폐기 | 참고 이미지("캐릭터 커스텀" 화면 성장 단계 미리보기) |
 | xp_progress | numeric(0~100) | 필수, 기본 0 | 현재 단계 내 진행률(%) — 100 넘으면 stage_index+1(3에서 캡), 초과분 이월 | docs/08-pet-feature-spec.md §2, §8 |
 | total_coins | int | 필수, 기본 0 | 누적 저금통 코인(개인 펫만 의미 있음, 그룹 펫은 코인 없이 XP만) | docs/08-pet-feature-spec.md §4, §7 |
 | last_fed_date | date | 선택 | 개인 펫 전용 — 데일리 밥주기 하루 1회 제한. 그룹 펫은 수동 밥주기가 없어 이 컬럼을 안 씀 | docs/08-pet-feature-spec.md §3, §8 |
