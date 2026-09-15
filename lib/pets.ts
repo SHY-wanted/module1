@@ -44,14 +44,16 @@ export const PET_COLOR_PARTS: { key: PetColorPart; label: string }[] = [
   { key: "leaf", label: "잎사귀 색상" },
 ];
 
-// 성장 단계마다 실제로 존재하는 부위만 커스텀 화면에 보여준다(2026-09-15 사용자 확인 — 참고 이미지
-// 자체에 스테이지별 "변경 가능 색상" 라벨이 적혀 있다). 없는 부위의 색은 DB엔 계속 저장돼 있지만
-// (다음 단계로 자라면 그대로 살아남게) 그 단계에서는 편집 UI를 숨긴다.
+// 성장 단계마다 실제로 존재하는 부위만 커스텀 화면에 보여준다. 2026-09-15 사용자 재확인: 청소년기는
+// 가계부를 그대로 들고, 성년기는 가방+코인(코인은 고정 장식이라 커스텀 대상 아님) — v2 참고 이미지의
+// "청소년기=가방, 성년기=가계부+가방" 라벨은 채택 안 함(래스터 추출 정밀도 문제로 SVG 직접 그리기로
+// 전환하면서 원래 이미지 구성으로 되돌렸다). 없는 부위의 색은 DB엔 계속 저장돼 있지만(다음 단계로
+// 자라면 그대로 살아남게) 그 단계에서는 편집 UI를 숨긴다.
 export function colorPartsForStage(stageIndex: number): PetColorPart[] {
   if (stageIndex <= 1) return ["body", "leaf"]; // 알 — 눈·가계부·가방 없음
   if (stageIndex === 2) return ["body", "eyes", "leaf"]; // 유년기 — 가계부·가방 없음
-  if (stageIndex === 3) return ["body", "eyes", "leaf", "bag"]; // 청소년기 — 가계부 없음
-  return ["body", "eyes", "leaf", "ledger", "bag"]; // 성년기 — 전부
+  if (stageIndex === 3) return ["body", "eyes", "leaf", "ledger"]; // 청소년기 — 가계부, 가방 없음
+  return ["body", "eyes", "leaf", "bag"]; // 성년기 — 가방(+코인, 고정 장식) · 가계부는 없음
 }
 
 // 이미지의 부위별 스와치를 그대로 다 옮기진 않고, 팔레트 하나를 5개 부위에 공통으로 쓴다(단순화 —
