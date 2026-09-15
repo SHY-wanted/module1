@@ -44,6 +44,16 @@ export const PET_COLOR_PARTS: { key: PetColorPart; label: string }[] = [
   { key: "leaf", label: "잎사귀 색상" },
 ];
 
+// 성장 단계마다 실제로 존재하는 부위만 커스텀 화면에 보여준다(2026-09-15 사용자 확인 — 참고 이미지
+// 자체에 스테이지별 "변경 가능 색상" 라벨이 적혀 있다). 없는 부위의 색은 DB엔 계속 저장돼 있지만
+// (다음 단계로 자라면 그대로 살아남게) 그 단계에서는 편집 UI를 숨긴다.
+export function colorPartsForStage(stageIndex: number): PetColorPart[] {
+  if (stageIndex <= 1) return ["body", "leaf"]; // 알 — 눈·가계부·가방 없음
+  if (stageIndex === 2) return ["body", "eyes", "leaf"]; // 유년기 — 가계부·가방 없음
+  if (stageIndex === 3) return ["body", "eyes", "leaf", "bag"]; // 청소년기 — 가계부 없음
+  return ["body", "eyes", "leaf", "ledger", "bag"]; // 성년기 — 전부
+}
+
 // 이미지의 부위별 스와치를 그대로 다 옮기진 않고, 팔레트 하나를 5개 부위에 공통으로 쓴다(단순화 —
 // 부위마다 다른 팔레트를 원하면 팀 확인 후 나눌 것).
 export const PET_COLOR_PALETTE = ["#8C81E0", "#5FA8E0", "#E07AAE", "#5FBF9E", "#E0C25F", "#E08A5F", "#8A8FA3"];

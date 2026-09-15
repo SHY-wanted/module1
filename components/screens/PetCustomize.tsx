@@ -5,7 +5,7 @@ import { useState } from "react";
 import { useNav } from "../NavContext";
 import { useStore } from "@/lib/store";
 import { getPersonalPet } from "@/lib/selectors";
-import { PET_COLOR_PALETTE, PET_COLOR_PARTS, PET_STAGE_LABELS, type PetColorPart } from "@/lib/pets";
+import { PET_COLOR_PALETTE, PET_COLOR_PARTS, PET_STAGE_LABELS, colorPartsForStage, type PetColorPart } from "@/lib/pets";
 import PetMascot from "../PetMascot";
 import { ChevronLeftIcon } from "../icons";
 
@@ -91,8 +91,10 @@ export default function PetCustomize() {
           })}
         </div>
 
+        {/* 성장 단계마다 실제로 존재하는 부위만 보여준다(사용자 확인 — 참고 이미지 자체에 스테이지별
+            "변경 가능 색상" 라벨이 적혀 있음). 예: 알엔 눈·가계부·가방이 없어서 그 스와치를 숨긴다. */}
         <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-          {PET_COLOR_PARTS.map(({ key, label }) => (
+          {PET_COLOR_PARTS.filter(({ key }) => colorPartsForStage(previewStage).includes(key)).map(({ key, label }) => (
             <div key={key} style={{ background: "var(--shoot-surface)", border: "1px solid var(--shoot-border)", borderRadius: 16, padding: 14 }}>
               <div style={{ fontSize: 13, fontWeight: 800, color: "var(--shoot-text)", marginBottom: 10 }}>{label}</div>
               <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
