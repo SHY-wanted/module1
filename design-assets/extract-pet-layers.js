@@ -1,5 +1,5 @@
 // 참고 이미지(사용자 제공, design-assets/pet-mascot-reference.png)를 부위별 레이어로 분리하는
-// 스크립트(2026-09-15, 5차 수정) — public/pets/*-gray.png·*-fixed.png가 이 스크립트의 결과물이다.
+// 스크립트(2026-09-15, 6차 수정) — public/pets/*-gray.png·*-fixed.png가 이 스크립트의 결과물이다.
 // 재실행: `node design-assets/extract-pet-layers.js` (프로젝트 루트에서, sharp가 있어야 함).
 //
 // 이력(요약): 1차 도형 마스크 → 2차 알 단계 눈·잎사귀 보정 → 3차 dest-in/out이 알파 채널로만
@@ -54,11 +54,11 @@ const STAGES = {
     eyeBoxes: [{ x0: 75, x1: 148, y0: 145, y1: 222 }, { x0: 132, x1: 225, y0: 135, y1: 218 }],
     pupilDark: true,
     eyeWhite: true,
-    fixed: [
-      ellipse(148, 197, 19, 13),
-      ellipse(70, 188, 20, 14), ellipse(213, 182, 20, 14),
-      ellipse(240, 50, 26, 26),
-    ],
+    // 볼·입은 좌표를 눈대중으로 잡았더니 실제 위치와 안 맞아서(2026-09-15 사용자 스크린샷 신고:
+    // "입 근처 타원 하나, 왼쪽 눈 옆 타원 하나") 엉뚱한 자리에 떠 있는 타원처럼 보였다 — 흰자와
+    // 같은 방식으로, 색(핑크빛: R·B는 높고 G만 낮음, 라벤더 몸통과 다름)으로 실제 위치를 찾는다.
+    cheekMouthBox: { boxes: [{ x0: 0, x1: 278, y0: 150, y1: 260 }] },
+    fixed: [ellipse(240, 50, 26, 26)], // 하트 장식만 도형으로 남김
   },
   "stage-3": {
     leaf: [ellipse(135, 70, 95, 62)],
@@ -66,11 +66,8 @@ const STAGES = {
     eyeBoxes: [{ x0: 85, x1: 155, y0: 175, y1: 252 }, { x0: 145, x1: 248, y0: 155, y1: 250 }],
     pupilDark: true,
     eyeWhite: true,
-    fixed: [
-      ellipse(168, 214, 21, 15),
-      ellipse(75, 205, 23, 16), ellipse(240, 198, 23, 16),
-      rect(228, 10, 45, 65),
-    ],
+    cheekMouthBox: { boxes: [{ x0: 0, x1: 286, y0: 180, y1: 290 }] },
+    fixed: [rect(228, 10, 45, 65)], // 우측 상단 모션 라인만 도형으로 남김
   },
   "stage-4": {
     leaf: [ellipse(147, 85, 112, 72)],
@@ -78,11 +75,10 @@ const STAGES = {
     eyeBoxes: [{ x0: 110, x1: 205, y0: 210, y1: 296 }, { x0: 185, x1: 302, y0: 180, y1: 300 }],
     pupilDark: true,
     eyeWhite: true,
-    fixed: [
-      ellipse(222, 259, 27, 17),
-      ellipse(115, 271, 27, 17), ellipse(290, 251, 27, 17),
-      rect(255, 0, 106, 175),
-    ],
+    // 코인·반짝임은 y<175에만 있어서(rect 255,0,106,175) x는 안 끊어도 안전 — 오른쪽 볼이 x=284
+    // 근처까지 있어서 처음에 x1을 250으로 좁혔다가 오른쪽 볼이 통째로 잘려나갔었다(수정).
+    cheekMouthBox: { boxes: [{ x0: 0, x1: 340, y0: 220, y1: 340 }] },
+    fixed: [rect(255, 0, 106, 175)], // 코인+반짝임만 도형으로 남김
   },
   "stage-3-sulking": {
     // 크롭 직후 좌상단에 stage-4의 코인/반짝임이 새어 들어와서 지워야 한다(eraseFirst).
@@ -170,7 +166,7 @@ async function run() {
       await sharp(grayBuf).composite([{ input: pupilMask, blend: "dest-in" }]).png().toFile(path.join(DIR, `${stage}-pupils-gray.png`));
     }
 
-    // 고정 요소(원색 그대로) = 흰자(색 임계값, 있으면) ∪ 나머지 fixed 도형들
+    // 고정 요소(원색 그대로) = 흰자·볼·입(색 임계값, 있으면) ∪ 나머지 fixed 도형들
     const fixedParts = cfg.fixed ? [maskSvg(w, h, cfg.fixed)] : [];
     if (cfg.eyeWhite) {
       const whiteMask = await buildMaskFromPredicate(srcBuf, (r, g, b, a, x, y) => {
@@ -179,6 +175,15 @@ async function run() {
         return minC > WHITE_MIN_CHANNEL && maxC - minC < WHITE_MAX_SPREAD;
       });
       fixedParts.push(whiteMask);
+    }
+    if (cfg.cheekMouthBox) {
+      // 볼 홍조·입은 라벤더 몸통과 달리 R·B가 높고 G만 낮은 핑크빛 — 이 색 신호로 실제 위치를 찾는다
+      // (2026-09-15 5차 수정에서 좌표를 눈대중으로 잡았다가 엉뚱한 자리에 떠서 이번에 바꿨다).
+      const pinkMask = await buildMaskFromPredicate(srcBuf, (r, g, b, a, x, y) => {
+        if (!inBoxes(cfg.cheekMouthBox.boxes, x, y) || a <= 40) return false;
+        return (r + b) / 2 - g > 30 && Math.abs(r - b) < 15;
+      });
+      fixedParts.push(pinkMask);
     }
     if (fixedParts.length > 0) {
       const fixedMask = await unionAlpha(fixedParts);
