@@ -23,6 +23,12 @@ const SAMPLE_LAST_3_MONTHS: Record<string, [number, number, number]> = {
   etc: [60000, 55000, 70000],
 };
 
+// Home(2b) "이번 달 총 수입"·"이번 달 총 지출" 카드와 같은 샘플 숫자 — 목표 금액은
+// 카테고리와 무관하게 0원 ~ 지금 갖고 있는 돈(수입 - 지출)까지만 잡을 수 있다.
+const SAMPLE_INCOME_TOTAL = 2400000;
+const SAMPLE_EXPENSE_TOTAL = 1024300;
+const AVAILABLE_MONEY = Math.max(SAMPLE_INCOME_TOTAL - SAMPLE_EXPENSE_TOTAL, 0);
+
 function average(nums: number[]): number {
   return Math.round(nums.reduce((sum, n) => sum + n, 0) / nums.length);
 }
@@ -53,7 +59,7 @@ export default function MonthlyGoalSetting() {
 
   const avg3 = useMemo(() => average(SAMPLE_LAST_3_MONTHS[selectedCategoryId] ?? [0, 0, 0]), [selectedCategoryId]);
   const recommended = useMemo(() => roundTo1000(avg3 * 0.9), [avg3]);
-  const sliderMax = useMemo(() => Math.max(roundTo1000(avg3 * 2), 100000), [avg3]);
+  const sliderMax = AVAILABLE_MONEY;
 
   const [amount, setAmount] = useState(recommended);
   const [amountText, setAmountText] = useState(String(recommended));
@@ -70,8 +76,9 @@ export default function MonthlyGoalSetting() {
 
   function handleAmountText(text: string) {
     const digitsOnly = text.replace(/[^0-9]/g, "");
-    setAmountText(digitsOnly);
-    setAmount(parseInt(digitsOnly, 10) || 0);
+    const next = Math.min(parseInt(digitsOnly, 10) || 0, AVAILABLE_MONEY);
+    setAmountText(String(next));
+    setAmount(next);
   }
 
   function handleSlider(value: number) {
