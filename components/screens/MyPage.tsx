@@ -4,7 +4,8 @@ import { useNav } from "../NavContext";
 import { useStore } from "@/lib/store";
 import { initialOf, stripSurname } from "@/lib/format";
 import { getPersonalPet } from "@/lib/selectors";
-import { MAX_STAGE_INDEX, PET_SPECIES_META } from "@/lib/pets";
+import { MAX_STAGE_INDEX } from "@/lib/pets";
+import PetMascot from "../PetMascot";
 import { ChevronRightIcon, GearIcon, UsersIcon } from "../icons";
 
 export default function MyPage() {
@@ -68,8 +69,8 @@ export default function MyPage() {
           onClick={() => nav.push(personalPet ? { id: "petDetail", scope: { kind: "personal" } } : { id: "petSelect", scope: { kind: "personal" } })}
           style={{ marginTop: 16, background: "var(--shoot-surface)", borderRadius: 20, padding: 18, display: "flex", alignItems: "center", gap: 14, border: "1px solid var(--shoot-border)", cursor: "pointer" }}
         >
-          <div style={{ width: 44, height: 44, borderRadius: "50%", background: "var(--shoot-surface-alt)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 22, flexShrink: 0 }}>
-            {personalPet ? PET_SPECIES_META[personalPet.species].emoji : "🐣"}
+          <div style={{ width: 44, height: 44, borderRadius: "50%", background: "var(--shoot-surface-alt)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0, overflow: "hidden" }}>
+            {personalPet ? <PetMascot pet={personalPet} size={38} /> : <span style={{ fontSize: 22 }}>🐣</span>}
           </div>
           <div style={{ flex: 1, minWidth: 0 }}>
             <div style={{ fontSize: 13, fontWeight: 700, color: "var(--shoot-text-muted)" }}>저금통 코인</div>

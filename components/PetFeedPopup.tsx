@@ -5,7 +5,7 @@
 import { useState } from "react";
 import { useStore } from "@/lib/store";
 import { getPersonalPet } from "@/lib/selectors";
-import { PET_SPECIES_META } from "@/lib/pets";
+import PetMascot from "./PetMascot";
 import { CheckIcon } from "./icons";
 
 export default function PetFeedPopup() {
@@ -17,8 +17,7 @@ export default function PetFeedPopup() {
 
   const pet = store.feedPopupPetId ? getPersonalPet(store.pets, store.currentUserId) : undefined;
   if (!store.feedPopupPetId || !pet) return null;
-  const meta = PET_SPECIES_META[pet.species];
-  const displayName = pet.pet_name?.trim() || meta.defaultName;
+  const displayName = pet.pet_name?.trim() || "저금통이";
 
   function handleClose() {
     setFed(false);
@@ -45,7 +44,9 @@ export default function PetFeedPopup() {
   return (
     <div style={{ position: "absolute", inset: 0, background: "rgba(45,42,62,0.5)", display: "flex", alignItems: "center", justifyContent: "center", padding: 32, zIndex: 30 }}>
       <div style={{ background: "var(--shoot-surface)", borderRadius: 24, padding: 28, width: "100%", textAlign: "center" }}>
-        <div style={{ fontSize: 56 }}>{meta.emoji}</div>
+        <div style={{ display: "flex", justifyContent: "center" }}>
+          <PetMascot pet={pet} size={72} />
+        </div>
         {!fed ? (
           <>
             <div style={{ fontSize: 16, fontWeight: 800, color: "var(--shoot-text)", marginTop: 14 }}>{displayName}(이)가 배고파해요</div>

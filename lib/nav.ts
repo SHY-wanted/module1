@@ -33,13 +33,17 @@ export type StackScreen =
   // 2c "카테고리" 항목 클릭(디자인 파일 없음, 2026-09-19 팀 요청으로 신규) — 7(지출 목록)을
   // 그 카테고리로 미리 필터링해서 재사용한다.
   | { id: "categoryExpenses"; category: string }
-  // 저금통 펫 키우기(docs/08-pet-feature-spec.md, 디자인 파일 없음, 2026-09-15 구현) — P1·P2는
-  // scope(개인 또는 특정 그룹)를 받는다. P6(그룹 랭킹)은 그룹 펫 XP 산정 방식이 팀 미정이라 뺐다.
+  // 저금통 펫 키우기 v2(docs/08-pet-feature-spec.md, 디자인 파일 없음, 2026-09-15 구현 →
+  // 같은 날 mg·hybranch·shooTbranch 통합). P1·P2는 scope(개인 또는 특정 그룹)를 받는다.
+  // P6(그룹 랭킹)은 그룹 펫 XP 산정 방식이 팀 미정이라 뺐다.
   | { id: "petSelect"; scope: CategoryScope }
   | { id: "petDetail"; scope: CategoryScope }
   | { id: "myBadges" }
-  | { id: "budgetSetting" }
-  | { id: "weeklyReport" };
+  // 개인 펫 색상 커스텀(참고 이미지 기반 신규) — 그룹 펫엔 없음.
+  | { id: "petCustomize" }
+  // 목표(예산 대체, shooTbranch 통합) — 월별·카테고리별.
+  | { id: "monthlyGoalSetting" }
+  | { id: "monthlyGoalReport" };
 
 // 3a 화면의 카드 id → schema.sql group_type enum 매핑
 export const GROUP_TYPE_CARD_TO_ENUM: Record<string, GroupType> = {

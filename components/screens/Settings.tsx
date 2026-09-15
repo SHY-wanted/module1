@@ -247,13 +247,13 @@ export default function Settings() {
           </div>
         </div>
 
-        {/* §4-1(BudgetSetting, 디자인 파일 없음, 2026-09-15 신규) — 저금통 펫의 주간 절약 리포트가
-            쓰는 예산을 여기서 정한다. */}
+        {/* 목표(예산 대체, shooTbranch 통합, 2026-09-15) — 저금통 펫의 이번 달 목표 리포트가
+            쓰는 카테고리별 목표를 여기서 정한다. */}
         <div style={{ fontSize: 12, fontWeight: 800, color: "var(--shoot-text-muted)", margin: "22px 0 8px" }}>저금통 펫</div>
         <div style={{ background: "var(--shoot-surface)", borderRadius: 16, border: "1px solid var(--shoot-border)", overflow: "hidden" }}>
-          <div onClick={() => nav.push({ id: "budgetSetting" })} style={{ padding: "14px 14px", display: "flex", alignItems: "center", gap: 10, cursor: "pointer" }}>
+          <div onClick={() => nav.push({ id: "monthlyGoalSetting" })} style={{ padding: "14px 14px", display: "flex", alignItems: "center", gap: 10, cursor: "pointer" }}>
             <span style={{ fontSize: 17 }}>🪙</span>
-            <div style={{ flex: 1, fontSize: 14, fontWeight: 700, color: "var(--shoot-text)" }}>주간 예산 설정</div>
+            <div style={{ flex: 1, fontSize: 14, fontWeight: 700, color: "var(--shoot-text)" }}>월별 목표 설정</div>
             <ChevronRightIcon size={16} color="#A9A2B8" />
           </div>
         </div>

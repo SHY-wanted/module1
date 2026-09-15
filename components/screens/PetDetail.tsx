@@ -1,17 +1,16 @@
 "use client";
 // components/screens/PetDetail.tsx — P2. 펫 상세·성장(디자인 파일 없음, docs/08-pet-feature-spec.md §2 근거,
-// 2026-09-15 신규 구현).
-import { useState } from "react";
+// 2026-09-15 신규 구현 → 같은 날 mg·hybranch·shooTbranch 통합: 마스코트+색상, 그룹 펫은 참여도 기반
+// 자동 성장(수동 밥주기 없음)·시무룩 상태, "리포트"는 월별 목표로 교체).
 import { useNav } from "../NavContext";
 import { useStore } from "@/lib/store";
 import type { CategoryScope } from "@/lib/categories";
 import { getGroupPet, getPersonalPet } from "@/lib/selectors";
-import { MAX_STAGE_INDEX, PET_SPECIES_META, PET_STAGE_LABELS } from "@/lib/pets";
+import { GROUP_SULK_AFTER_DAYS, MAX_STAGE_INDEX, PERSONAL_SULK_AFTER_DAYS, PET_STAGE_LABELS, daysBetween } from "@/lib/pets";
 import { TODAY_DATE } from "@/lib/mock";
+import PetMascot, { petMascotSize } from "../PetMascot";
+import { useState } from "react";
 import { ChevronLeftIcon, ChevronRightIcon } from "../icons";
-
-// 펫이 자랄수록 화면에서 좀 더 크게 보이도록 — 실제 이미지 에셋이 없어 이모지 크기로 대신한다.
-const STAGE_EMOJI_SIZE = [56, 68, 80, 92, 108];
 
 export default function PetDetail({ scope }: { scope: CategoryScope }) {
   const nav = useNav();
@@ -41,9 +40,19 @@ export default function PetDetail({ scope }: { scope: CategoryScope }) {
     );
   }
 
-  const meta = PET_SPECIES_META[pet.species];
-  const displayName = pet.pet_name?.trim() || meta.defaultName;
+  const displayName = pet.pet_name?.trim() || (scope.kind === "personal" ? "저금통이" : "우리 펫");
   const fedToday = pet.last_fed_date === TODAY_DATE;
+
+  // 방치 시 "시무룩"(hybranch F22) — 단계는 안 내려가고 화면 표시만 바뀐다.
+  let sulking = false;
+  if (scope.kind === "personal") {
+    const lastActivity = pet.last_fed_date ?? pet.created_at.slice(0, 10);
+    sulking = daysBetween(lastActivity, TODAY_DATE) > PERSONAL_SULK_AFTER_DAYS;
+  } else {
+    const groupExpenseDates = store.expenses.filter((e) => e.group_id === scope.groupId && e.is_shared).map((e) => e.date);
+    const lastActivity = groupExpenseDates.length > 0 ? groupExpenseDates.reduce((a, b) => (a > b ? a : b)) : pet.created_at.slice(0, 10);
+    sulking = daysBetween(lastActivity, TODAY_DATE) > GROUP_SULK_AFTER_DAYS;
+  }
 
   async function handleFeed() {
     if (!pet || feeding) return;
@@ -63,17 +72,30 @@ export default function PetDetail({ scope }: { scope: CategoryScope }) {
         <div onClick={() => nav.back()} style={{ cursor: "pointer", display: "flex" }}>
           <ChevronLeftIcon size={18} color="var(--shoot-text)" />
         </div>
-        <div style={{ fontSize: 18, fontWeight: 800, color: "var(--shoot-text)" }}>
+        <div style={{ fontSize: 18, fontWeight: 800, color: "var(--shoot-text)", flex: 1 }}>
           {scope.kind === "personal" ? "내 저금통 펫" : "그룹 저금통 펫"}
         </div>
+        {scope.kind === "personal" && (
+          <div onClick={() => nav.push({ id: "petCustomize" })} style={{ fontSize: 12, fontWeight: 700, color: "var(--shoot-accent)", cursor: "pointer" }}>
+            꾸미기
+          </div>
+        )}
       </div>
 
       <div style={{ flex: 1, overflowY: "auto", padding: "10px 24px 28px", display: "flex", flexDirection: "column", alignItems: "center" }}>
-        <div className="shoot-pet-bounce" style={{ fontSize: STAGE_EMOJI_SIZE[pet.stage_index - 1] ?? 92, marginTop: 12 }}>
-          {meta.emoji}
+        <div style={{ marginTop: 12 }}>
+          <PetMascot pet={pet} size={petMascotSize(pet.stage_index) + 20} sulking={sulking} />
         </div>
         <div style={{ fontSize: 18, fontWeight: 800, color: "var(--shoot-text)", marginTop: 8 }}>{displayName}</div>
-        <div style={{ fontSize: 12, color: "var(--shoot-text-muted)", fontWeight: 700, marginTop: 2 }}>{PET_STAGE_LABELS[pet.stage_index - 1]}</div>
+        <div style={{ fontSize: 12, color: "var(--shoot-text-muted)", fontWeight: 700, marginTop: 2 }}>
+          {PET_STAGE_LABELS[pet.stage_index - 1]}
+          {sulking && " · 시무룩해요"}
+        </div>
+        {sulking && (
+          <div style={{ fontSize: 11, color: "#A15A1E", fontWeight: 600, marginTop: 4, textAlign: "center" }}>
+            {scope.kind === "personal" ? "며칠째 밥을 못 먹었어요" : "며칠째 그룹 지출 기록이 없어요"}
+          </div>
+        )}
 
         {/* 성장 트래커 — 현재 단계까지는 선명, 이후는 잠금(회색조) */}
         <div style={{ display: "flex", gap: 8, marginTop: 18 }}>
@@ -82,8 +104,8 @@ export default function PetDetail({ scope }: { scope: CategoryScope }) {
             const reached = stageNum <= pet.stage_index;
             return (
               <div key={label} style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 4, opacity: reached ? 1 : 0.35 }}>
-                <div style={{ width: 34, height: 34, borderRadius: "50%", background: reached ? "var(--shoot-surface-alt)" : "var(--shoot-divider)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 15 }}>
-                  {reached ? meta.emoji : "🔒"}
+                <div style={{ width: 34, height: 34, borderRadius: "50%", background: reached ? "var(--shoot-surface-alt)" : "var(--shoot-divider)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 14 }}>
+                  {reached ? "🌱" : "🔒"}
                 </div>
                 <div style={{ fontSize: 10, fontWeight: 700, color: reached ? "var(--shoot-text)" : "var(--shoot-text-muted)" }}>{label}</div>
               </div>
@@ -109,36 +131,44 @@ export default function PetDetail({ scope }: { scope: CategoryScope }) {
           </div>
         )}
 
-        {feedMessage && <div style={{ marginTop: 16, fontSize: 13, fontWeight: 700, color: "var(--shoot-accent)", textAlign: "center" }}>{feedMessage}</div>}
-
-        <div
-          onClick={handleFeed}
-          style={{
-            width: "100%",
-            marginTop: 16,
-            height: 50,
-            borderRadius: 16,
-            background: fedToday ? "var(--shoot-surface-alt)" : "linear-gradient(135deg,#E3DFFB 0%,#BDB2F2 100%)",
-            color: fedToday ? "var(--shoot-text-muted)" : "#3F3480",
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            fontSize: 15,
-            fontWeight: 800,
-            cursor: fedToday ? "default" : "pointer",
-            opacity: feeding ? 0.6 : 1,
-          }}
-        >
-          {fedToday ? "오늘은 이미 밥을 줬어요" : "밥 주기"}
-        </div>
+        {/* 그룹 펫은 수동 밥주기가 없다(hybranch F22 통합 — 참여도로 자동 성장) */}
+        {scope.kind === "personal" ? (
+          <>
+            {feedMessage && <div style={{ marginTop: 16, fontSize: 13, fontWeight: 700, color: "var(--shoot-accent)", textAlign: "center" }}>{feedMessage}</div>}
+            <div
+              onClick={handleFeed}
+              style={{
+                width: "100%",
+                marginTop: 16,
+                height: 50,
+                borderRadius: 16,
+                background: fedToday ? "var(--shoot-surface-alt)" : "linear-gradient(135deg,#E3DFFB 0%,#BDB2F2 100%)",
+                color: fedToday ? "var(--shoot-text-muted)" : "#3F3480",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                fontSize: 15,
+                fontWeight: 800,
+                cursor: fedToday ? "default" : "pointer",
+                opacity: feeding ? 0.6 : 1,
+              }}
+            >
+              {fedToday ? "오늘은 이미 밥을 줬어요" : "밥 주기"}
+            </div>
+          </>
+        ) : (
+          <div style={{ width: "100%", marginTop: 16, fontSize: 11, color: "var(--shoot-text-muted)", textAlign: "center", lineHeight: 1.5 }}>
+            그룹원들이 지출을 골고루 기록하면 저절로 자라요 — 한 명만 계속 기록하면 절반만 자라요.
+          </div>
+        )}
 
         {scope.kind === "personal" && (
           <div style={{ display: "flex", gap: 8, width: "100%", marginTop: 10 }}>
             <div
-              onClick={() => nav.push({ id: "weeklyReport" })}
+              onClick={() => nav.push({ id: "monthlyGoalReport" })}
               style={{ flex: 1, height: 44, borderRadius: 14, border: "1.5px solid var(--shoot-border)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 13, fontWeight: 700, color: "var(--shoot-text)", cursor: "pointer" }}
             >
-              이번 주 리포트
+              이번 달 목표
             </div>
             <div
               onClick={() => nav.push({ id: "myBadges" })}

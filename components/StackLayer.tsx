@@ -24,9 +24,10 @@ import ReceiptProcessing from "./screens/ReceiptProcessing";
 import ExpenseList from "./screens/ExpenseList";
 import PetSelect from "./screens/PetSelect";
 import PetDetail from "./screens/PetDetail";
+import PetCustomize from "./screens/PetCustomize";
 import MyBadges from "./screens/MyBadges";
-import BudgetSetting from "./screens/BudgetSetting";
-import WeeklySavingsReward from "./screens/WeeklySavingsReward";
+import MonthlyGoalSetting from "./screens/MonthlyGoalSetting";
+import MonthlyGoalReport from "./screens/MonthlyGoalReport";
 
 export type StackPhase = "entering" | "settled" | "leaving";
 
@@ -88,10 +89,12 @@ function renderScreen(screen: StackScreen) {
       return <PetDetail scope={screen.scope} />;
     case "myBadges":
       return <MyBadges />;
-    case "budgetSetting":
-      return <BudgetSetting />;
-    case "weeklyReport":
-      return <WeeklySavingsReward />;
+    case "petCustomize":
+      return <PetCustomize />;
+    case "monthlyGoalSetting":
+      return <MonthlyGoalSetting />;
+    case "monthlyGoalReport":
+      return <MonthlyGoalReport />;
     default:
       return null;
   }
