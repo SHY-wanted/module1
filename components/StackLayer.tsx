@@ -22,6 +22,7 @@ import MyInfoEdit from "./screens/MyInfoEdit";
 import ReceiptCapture from "./screens/ReceiptCapture";
 import ReceiptProcessing from "./screens/ReceiptProcessing";
 import ExpenseList from "./screens/ExpenseList";
+import MonthlyGoalSetting from "./MonthlyGoalSetting";
 
 export type StackPhase = "entering" | "settled" | "leaving";
 
@@ -77,6 +78,8 @@ function renderScreen(screen: StackScreen) {
       return <ReceiptProcessing />;
     case "categoryExpenses":
       return <ExpenseList initialCategoryFilter={screen.category} pushed />;
+    case "monthlyGoalSetting":
+      return <MonthlyGoalSetting />;
     default:
       return null;
   }

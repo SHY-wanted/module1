@@ -1,15 +1,14 @@
 "use client";
-// components/MonthlyGoalSetting.tsx — 월별 목표(예산) 설정 화면.
-//
-// 독립 데모 컴포넌트다: lib/store.tsx(전역 상태)·NavContext에는 연결하지 않는다 — 2026-09-17 팀 결정
-// (store.tsx의 NotificationSettings 주석, docs/07-screens.md 알림 항목)으로 "예산 기능 자체가 없다"며
-// 관련 알림까지 들어냈던 적이 있어서, 이 화면을 실제 앱 화면(components/screens/)·스토어에 그대로
-// 편입시키지 않고 그 결정과 별개로 먼저 컴포넌트만 보여주기로 했다(대화 중 확인).
+// components/MonthlyGoalSetting.tsx — 월별 목표(예산) 설정 화면. 디자인 파일 없음(2026-09-20 팀 요청으로
+// 신규) — 2b(홈) 목표 카드 · 10(마이페이지) "월별 목표 설정" 행에서 push로 들어온다(lib/nav.ts
+// monthlyGoalSetting). 2026-09-17 "예산 기능 자체가 없다"던 결정(store.tsx NotificationSettings 주석)과
+// 별개로 이번에 새로 추가하기로 한 기능이라, 저장은 아직 store에 얹지 않고 화면 안에서만 확인만 준다.
 // 카테고리 정의(라벨·색·아이콘)는 lib/categories.ts의 PERSONAL_CATS를 그대로 재사용해 앱과 톤을 맞췄다.
 import { useMemo, useState } from "react";
+import { useNav } from "./NavContext";
 import { PERSONAL_CATS, type CategoryDef } from "@/lib/categories";
 import { formatWon } from "@/lib/format";
-import { CategoryIcon } from "./icons";
+import { ChevronLeftIcon, CategoryIcon } from "./icons";
 import type { CategoryIconKey } from "./icons";
 
 // 지난 3개월 지출(샘플) — 실제 지출 이력이 없는 독립 컴포넌트라, 카테고리별로 그럴듯한 샘플값을 붙였다.
@@ -53,6 +52,7 @@ function encouragementMessage(category: CategoryDef, amount: number, recommended
 }
 
 export default function MonthlyGoalSetting() {
+  const nav = useNav();
   const categories = PERSONAL_CATS;
   const [selectedCategoryId, setSelectedCategoryId] = useState(categories[0].id);
   const category = categories.find((c) => c.id === selectedCategoryId) ?? categories[0];
@@ -102,15 +102,16 @@ export default function MonthlyGoalSetting() {
       style={{
         height: "100%",
         width: "100%",
-        maxWidth: 420,
-        margin: "0 auto",
         boxSizing: "border-box",
         background: "var(--shoot-bg)",
         display: "flex",
         flexDirection: "column",
       }}
     >
-      <div style={{ padding: "20px 20px 16px", textAlign: "center", background: "var(--shoot-surface-alt)", flexShrink: 0 }}>
+      <div style={{ padding: "20px 20px 16px", textAlign: "center", background: "var(--shoot-surface-alt)", flexShrink: 0, position: "relative" }}>
+        <div onClick={() => nav.back()} style={{ position: "absolute", top: 20, left: 20, cursor: "pointer", display: "flex" }}>
+          <ChevronLeftIcon size={18} color="var(--shoot-text)" />
+        </div>
         <div style={{ fontSize: 12, fontWeight: 700, color: "var(--shoot-text-muted)" }}>이번 달 목표</div>
         <div style={{ fontSize: 20, fontWeight: 800, color: "var(--shoot-text)", marginTop: 4 }}>월별 목표 설정</div>
       </div>
