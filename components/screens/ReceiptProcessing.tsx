@@ -30,6 +30,10 @@ export default function ReceiptProcessing() {
           image_url: null,
           is_shared: false,
         })
+        .then((result) => {
+          // P3 "데일리 먹이주기 팝업" — 영수증으로 기록한 것도 "지출을 하나라도 기록한 직후"에 해당한다.
+          if (result.ok) store.openFeedPopupIfEligible();
+        })
         .finally(() => nav.resetStackToTab("expenses"));
     }, PROCESSING_DELAY_MS);
     return () => window.clearTimeout(timer);

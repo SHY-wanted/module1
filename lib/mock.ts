@@ -312,3 +312,71 @@ export const INITIAL_INCOMES: MockIncome[] = [
     created_at: "2026-09-01T09:00:00+09:00",
   },
 ];
+
+// ------------------------------------------------------------------
+// 저금통 펫 키우기 — docs/08-pet-feature-spec.md 기반, 2026-09-15 같은 날 mg·hybranch·shooTbranch
+// 3개 브랜치 통합(사용자 확인)으로 v2 반영: 종(species) 선택 대신 마스코트+색상 커스텀(개인 펫만),
+// 그룹 펫은 hybranch F22(반려 캐릭터)와 합쳐 참여도 기반 자동 성장, 예산은 shooTbranch식 월별·
+// 카테고리별 목표로 교체. 완전히 새로운 실제 기능이라 INITIAL_* 배열이 없다 — 로그인 후 store가
+// Supabase에서 실제로 읽어온 값으로만 채워진다.
+// ------------------------------------------------------------------
+
+// E9. Pet — schema.sql: id, user_id, group_id, pet_name, stage_index, xp_progress, total_coins,
+// last_fed_date, body_color, ledger_color, bag_color, eye_color, leaf_color, created_at.
+// user_id·group_id는 배타적(개인 펫 또는 그룹 펫). 색상 5종은 개인 펫만 커스텀 가능(그룹 펫은
+// 기본값 그대로 — "개인용 펫... 색상 변경 가능"이라는 사용자 발화 그대로).
+export interface Pet {
+  id: string;
+  user_id: string | null;
+  group_id: string | null;
+  pet_name: string | null;
+  stage_index: number;
+  xp_progress: number;
+  total_coins: number;
+  last_fed_date: string | null;
+  body_color: string;
+  ledger_color: string;
+  bag_color: string;
+  eye_color: string;
+  leaf_color: string;
+  created_at: string;
+}
+
+// E12. CategoryGoal(목표) — schema.sql: id, user_id, category, month, goal_amount, created_at,
+// updated_at. shooTbranch의 "월별 목표 설정"을 실제 저장소에 연결한 것 — mg의 주간 예산(E11 Budget)을
+// 대체한다(2026-09-15 사용자 확인). category는 expenses.category와 같은 자유 텍스트 라벨.
+export interface CategoryGoal {
+  id: string;
+  user_id: string;
+  category: string;
+  month: string; // "YYYY-MM"
+  goal_amount: number;
+  created_at: string;
+  updated_at: string;
+}
+
+// E13. GoalReward(목표 보상) — schema.sql: id, user_id, category, month, spent_amount, goal_amount,
+// achieved, coins_earned, xp_gained, created_at. mg의 WeeklySettlement(E10)를 대체 — "퀘스트 달성"
+// 개념이라 절약 비율이 아니라 달성 여부(achieved)에 따른 고정 보상을 준다.
+export interface GoalReward {
+  id: string;
+  user_id: string;
+  category: string;
+  month: string;
+  spent_amount: number;
+  goal_amount: number;
+  achieved: boolean;
+  coins_earned: number;
+  xp_gained: number;
+  created_at: string;
+}
+
+// E14. ExpenseReaction(이모지 반응) — schema.sql: id, expense_id, user_id, emoji, created_at.
+// hybranch F23 — 그룹 피드 지출 카드에 이모지로 반응.
+export interface ExpenseReaction {
+  id: string;
+  expense_id: string;
+  user_id: string;
+  emoji: string;
+  created_at: string;
+}

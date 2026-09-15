@@ -10,7 +10,7 @@ import { useNav } from "../NavContext";
 import { useStore } from "@/lib/store";
 import type { CategoryScope } from "@/lib/categories";
 import { getGroupsForUser } from "@/lib/selectors";
-import { BellIcon, ChevronLeftIcon, MoonIcon, MoreHorizontalIcon, PlusIcon, ThreeLinesIcon } from "../icons";
+import { BellIcon, ChevronLeftIcon, ChevronRightIcon, MoonIcon, MoreHorizontalIcon, PlusIcon, ThreeLinesIcon } from "../icons";
 
 function Toggle({ on, onClick }: { on: boolean; onClick: () => void }) {
   return (
@@ -244,6 +244,17 @@ export default function Settings() {
               <div style={{ fontSize: 11, color: "var(--shoot-text-muted)", marginTop: 2 }}>예: &quot;민준 &amp; 서연 · 민준님이 기념일 비용을 저장하였어요&quot;</div>
             </div>
             <Toggle on={store.notificationSettings.groupMemberRecord} onClick={() => store.toggleNotification("groupMemberRecord")} />
+          </div>
+        </div>
+
+        {/* 목표(예산 대체, shooTbranch 통합, 2026-09-15) — 저금통 펫의 이번 달 목표 리포트가
+            쓰는 카테고리별 목표를 여기서 정한다. */}
+        <div style={{ fontSize: 12, fontWeight: 800, color: "var(--shoot-text-muted)", margin: "22px 0 8px" }}>저금통 펫</div>
+        <div style={{ background: "var(--shoot-surface)", borderRadius: 16, border: "1px solid var(--shoot-border)", overflow: "hidden" }}>
+          <div onClick={() => nav.push({ id: "monthlyGoalSetting" })} style={{ padding: "14px 14px", display: "flex", alignItems: "center", gap: 10, cursor: "pointer" }}>
+            <span style={{ fontSize: 17 }}>🪙</span>
+            <div style={{ flex: 1, fontSize: 14, fontWeight: 700, color: "var(--shoot-text)" }}>월별 목표 설정</div>
+            <ChevronRightIcon size={16} color="#A9A2B8" />
           </div>
         </div>
 
