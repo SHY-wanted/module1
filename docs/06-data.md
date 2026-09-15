@@ -2,6 +2,7 @@
 > 이 문서를 읽는 에이전트에게: 여기 없는 것은 지어내지 말고 질문으로 돌려라. [?] 는 팀이 아직 모르는 것이다.
 > 종합 메모: 03-requirements.md(유형 "데이터"인 R) · 04-features.md(입력·결과 열) · 05-policy.md(규칙·상태값)과 `모듈 1 SHY프로젝트 주제 세분화.md`(SHY 스펙, "3. DB 스키마" Supabase/Postgres SQL)를 기본 근거로 삼고, `ShooT 하윤.dc.html`(디자인) 화면에 실제로 쓰인 필드·목록을 대조해 채웠다. SHY 스펙 DB 스키마에 없는 저금(Saving)은 03-05의 R19~R21·F19~F21·P11·P12를 근거로 새로 추가했고, 수입(Income)은 03~05 어디에도 없이 디자인에만 있어 전부 [?]로 표시했다. 이 문서를 만들기 전 팀 인터뷰는 진행하지 않았다 — 기존 문서·디자인만으로 채운 초안이라, [?] 항목은 반드시 팀 확인이 필요하다.
 > **2026-09-15 추가**: docs/08-pet-feature-spec.md(저금통 펫 키우기 — 클로드 디자인 프로토타입 기반 신규 제안)를 E9 Pet·E10 WeeklySettlement로 병합했다. 이 두 엔티티는 01~05 어디에도 근거가 없고, 특히 E10은 이 앱에 아직 없는 "예산" 개념에 의존하고 있어 **정책이 정해지기 전엔 구현 착수 금지**(기획 문서 반영만 완료된 상태) — 사용자 요청으로 문서 병합 범위만 진행함.
+> **2026-09-15 갱신(종민 확인)**: 아래 E9 `user_id 또는 group_id` 항목과 E10 `budget_amount`·배치 실행 방식 항목 중 일부가 정해졌다 — docs/08-pet-feature-spec.md §9 참고. 나머지 [?]는 그대로 남아 있다.
 
 ## 엔티티 목록
 | E | 엔티티 | 설명 | 출처 |
@@ -15,7 +16,8 @@
 | E7 | Income (수입) | 월별 수입 금액·항목 | `ShooT 하윤.dc.html` 화면 "2b-1·2b-1a" — **[?] 01~05 어디에도 이 개념이 없다. 팀이 새로 정한 요구인지, 디자이너가 임의로 넣은 화면인지 확인 필요** |
 | E8 | CategoryPreset | 그룹 유형별 기본 카테고리 목록(정적 상수, DB 테이블 아님) | SHY 스펙 "Task 2-3" · 03-requirements.md R16 · 디자인 `FAMILY_CATS`/`COUPLE_CATS`/`DEFAULT_CATS` |
 | E9 | Pet (저금통 펫) | 지출 절약을 게이미피케이션하는 펫 1마리(성장 단계·XP·코인) | docs/08-pet-feature-spec.md — **01~05엔 근거 없음, 아직 미구현(기획 문서 반영만)** |
-| E10 | WeeklySettlement (주간 정산) | 주간 예산 대비 지출을 계산해 코인·XP를 지급한 기록 | docs/08-pet-feature-spec.md §4·§8 — **01~05엔 근거 없음, 아직 미구현. "예산" 개념 자체가 이 앱에 없어 blocked(아래 E10 표 참고)** |
+| E10 | WeeklySettlement (주간 정산) | 주간 예산 대비 지출을 계산해 코인·XP를 지급한 기록 | docs/08-pet-feature-spec.md §4·§8 — **01~05엔 근거 없음, 아직 미구현. 2026-09-15 종민 확인으로 예산 출처는 정해짐(E11 참고), 배치 실행 방식(Supabase Edge Function+cron)도 정해짐 — 단 정확한 요일·시각·타임존은 여전히 [?]** |
+| E11 | Budget (예산) | 사용자가 직접 설정하는 주간 예산 금액 | docs/08-pet-feature-spec.md §4-1 — **신규, 2026-09-15 종민 확인으로 추가(예산 개념이 이 앱에 없던 문제 해결용)** |
 
 ## 엔티티별 필드
 
@@ -122,7 +124,7 @@
 | 필드 | 타입 | 필수(추정) | 설명 | 출처 |
 |---|---|---|---|---|
 | id | uuid | 필수 | | [제안] 다른 엔티티와 동일한 PK 관례 |
-| user_id 또는 group_id | uuid (FK) | [?] | **08-pet-feature-spec.md 자체가 "user_id 또는 group_id"라고 모호하게 적어 뒀다.** §1은 "사용자/그룹 단위로 1마리만 존재"라 하고, §6(그룹 랭킹)은 "그룹 멤버들의 XP 획득량 순위"라고 해서 멤버 개개인이 각자 펫을 갖는 쪽(개인 펫 + 그룹은 멤버별 개인 펫을 모아 보여주는 랭킹)처럼 읽힌다. 개인 전용 / 그룹 전용 / 개인+그룹 둘 다 중 팀이 정해야 함 | docs/08-pet-feature-spec.md §1, §8 |
+| user_id 또는 group_id | uuid (FK) | 필수(배타적) | **2026-09-15 종민 확인**: 개인 전용도 그룹 전용도 아닌 **개인+그룹 둘 다** — 한 Profile당 개인 펫 1행(`user_id`만 채움), 한 Group당 그룹 펫 1행(`group_id`만 채움)이 따로 존재한다. §6 그룹 랭킹은 개인 펫들의 XP를 비교하는 것이고, 그룹 펫은 별개로 그룹원이 함께 키운다. **[?] 남은 것**: 그룹 펫이 정확히 어떻게 XP를 얻는지(개인 활동 합산? 그룹 전용 예산·정산?)는 미정 | docs/08-pet-feature-spec.md §1, §6, §9 |
 | species | enum(TIGER, DOG, CAT, DRAGON) | 필수 | 백호·강아지·고양이·흑룡 | docs/08-pet-feature-spec.md §0 |
 | pet_name | text | 선택 | 비우면 종별 기본 이름(백설/몽이/나비/칠흑) | docs/08-pet-feature-spec.md §1 |
 | stage_index | int(1~5) | 필수, 기본 1 | 알→유년기→청소년기→성체→전설 | docs/08-pet-feature-spec.md §0, §2 |
@@ -138,8 +140,8 @@
 |---|---|---|---|---|
 | id | uuid | 필수 | | [제안] 다른 엔티티와 동일한 PK 관례 |
 | user_id | uuid (FK → Profile) | 필수 | | docs/08-pet-feature-spec.md §8 |
-| week_start | date | 필수 | 정산 기준 주(예: 매주 월요일) — 몇 시·어느 타임존 기준인지 미정 [?] | docs/08-pet-feature-spec.md §4, §8 |
-| budget_amount | integer | [?] | **이 앱엔 "예산" 개념 자체가 없다** — 2c(설정)에서 "예산 초과 시 알림"도 예산 기능이 없어서 아예 뺀 전례가 있다(07-screens.md 2c 참고). budgetAmount를 어디서 가져올지(사용자가 직접 설정하는 새 기능? 과거 지출 평균으로 자동 산정?) 팀이 정하지 않으면 이 테이블 전체가 동작할 수 없다 | docs/08-pet-feature-spec.md §4, §8 |
+| week_start | date | 필수 | 정산 기준 주(예: 매주 월요일) — 몇 시·어느 타임존 기준인지 미정 [?] | docs/08-pet-feature-spec.md §4, §8, §9 |
+| budget_amount | integer | 필수 | **2026-09-15 종민 확인**: 새 `budgets` 테이블(§4-1 예산 설정 화면 BudgetSetting에서 사용자가 직접 입력)에서 조회 — 자동 산정 방식은 채택 안 함. **주의 [?]**: 2c(설정)에서 "예산 초과 시 알림"을 예산 기능이 없어서 뺀 전례(07-screens.md 2c, 2026-09-17 팀 결정)와 이번에 예산 개념이 다시 생기는 것이 어떻게 맞물릴지는 팀이 아직 정하지 않음 | docs/08-pet-feature-spec.md §4, §4-1, §8, §9 |
 | spent_amount | integer | 필수(추정) | 그 주 실제 지출 합계 | docs/08-pet-feature-spec.md §4 |
 | coins_earned | integer | [?] | 절약액→코인 환산 비율 미정(예: "절약 1,000원당 1코인" 등 — 스펙 문서 자체가 "정책 필요"라고 표시) | docs/08-pet-feature-spec.md §4 |
 | xp_gained | integer | [?] | 값 미정 | docs/08-pet-feature-spec.md §4 |
@@ -147,7 +149,16 @@
 
 **[?] 절약액이 음수(예산 초과)일 때 처리 방식 미정** — 스펙 문서는 "0으로 표시하거나 리포트 자체를 생략하는 방식 추천"이라고 제안만 해뒀을 뿐 팀이 정하지 않았다. 출처: docs/08-pet-feature-spec.md §4
 
-**[?] 주간 정산을 어떤 방식으로 돌릴지(Supabase Edge Function 스케줄, pg_cron 등) 미정** — 배치 실행 인프라 자체가 이번 프로젝트에 아직 없다. 출처: docs/08-pet-feature-spec.md §8
+**주간 정산 배치 실행 방식(2026-09-15 종민 확인)**: Supabase Edge Function + cron으로 하기로 정했다(pg_cron 등 다른 방식은 검토 안 함). **[?] 남은 것**: 정확한 기준 요일·시각·타임존, 배치 실패·중복 실행 시 처리는 아직 미정. 출처: docs/08-pet-feature-spec.md §8, §9
+
+### E11. Budget (예산) — docs/08-pet-feature-spec.md §4-1 근거, 신규(2026-09-15 종민 확인으로 추가)
+| 필드 | 타입 | 필수(추정) | 설명 | 출처 |
+|---|---|---|---|---|
+| id | uuid | 필수 | | [제안] 다른 엔티티와 동일한 PK 관례 |
+| user_id | uuid (FK → Profile) | 필수 | 개인 단위 예산만 가정 — 그룹 예산은 없음(§9 참고, 그룹 펫 XP 산정 방식이 아직 미정이라 그룹 예산 필요 여부도 함께 미정) | docs/08-pet-feature-spec.md §4-1 |
+| weekly_amount | integer | 필수 | 이번 주 예산 금액, 사용자가 직접 입력 | docs/08-pet-feature-spec.md §4-1 |
+| auto_repeat | boolean | 필수, 기본 true | "매주 같은 금액으로 자동 반복" 토글 | docs/08-pet-feature-spec.md §4-1 |
+| created_at / updated_at | timestamptz | 필수(자동) | | [제안] 다른 엔티티와 동일한 감사 필드 관례 |
 
 참고: "나의 배지"(MyBadges)는 별도 테이블이 필요 없다 — stage_index 하나로 5단계 배지 획득 여부를 계산만 하면 된다고 스펙 문서에 명시돼 있어, 새 엔티티를 추가하지 않았다. 출처: docs/08-pet-feature-spec.md §5
 
@@ -162,7 +173,9 @@
 | Profile 1 — N Saving | | 04-features.md F19 |
 | Group 1 — N Saving | type=GROUP인 경우만 | 04-features.md F19 |
 | Profile 1 — N Income | [?] 그룹 연결 여부 확정 안 됨 | 디자인 화면 2b-1 |
-| Profile 1 — 1 Pet | [?] 그룹 단위일 수도 있음(E9 참고) | docs/08-pet-feature-spec.md §1 |
+| Profile 1 — 1 Pet(개인용) | **2026-09-15 종민 확인**: 개인 펫 1인당 1마리 — 그룹 펫과 별개(E9 참고) | docs/08-pet-feature-spec.md §1, §9 |
+| Group 1 — 1 Pet(그룹 공유용) | **2026-09-15 종민 확인, 신규**: 그룹당 1마리, 그룹원이 함께 키움 — XP 획득 방식은 [?] 미정(E9 참고) | docs/08-pet-feature-spec.md §1, §6, §9 |
+| Profile 1 — 1 Budget | 신규(E11) | docs/08-pet-feature-spec.md §4-1 |
 | Profile 1 — N WeeklySettlement | | docs/08-pet-feature-spec.md §8 |
 
 ## 상태값과 데이터 연동
