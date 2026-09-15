@@ -31,7 +31,7 @@ interface PetAsset {
   parts: readonly PetAssetPart[];
 }
 const STAGE_ASSET: Record<1 | 2 | 3 | 4, PetAsset> = {
-  1: { key: "stage-1-egg", w: 265, h: 330, parts: [] },
+  1: { key: "stage-1-egg", w: 265, h: 330, parts: ["leaf"] },
   2: { key: "stage-2", w: 278, h: 345, parts: ["leaf"] },
   3: { key: "stage-3", w: 286, h: 425, parts: ["leaf", "ledger"] },
   4: { key: "stage-4", w: 361, h: 515, parts: ["leaf", "bag"] },

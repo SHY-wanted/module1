@@ -5,7 +5,7 @@ import { useState } from "react";
 import { useNav } from "../NavContext";
 import { useStore } from "@/lib/store";
 import { getPersonalPet } from "@/lib/selectors";
-import { PET_COLOR_PALETTE, PET_COLOR_PARTS, type PetColorPart } from "@/lib/pets";
+import { PET_COLOR_PALETTE, PET_COLOR_PARTS, PET_STAGE_LABELS, type PetColorPart } from "@/lib/pets";
 import PetMascot from "../PetMascot";
 import { ChevronLeftIcon } from "../icons";
 
@@ -20,6 +20,9 @@ export default function PetCustomize() {
       : { body: "#8C81E0", ledger: "#6A5ECF", bag: "#BDB2F2", eyes: "#2D2A3E", leaf: "#6FC5BA" }
   );
   const [saving, setSaving] = useState(false);
+  // 개발 중 미리보기용 — 실제 XP를 안 쌓아도 4단계 그림을 전부 볼 수 있게 임시로 넣었다(2026-09-15
+  // 사용자 요청 "다 해금 해서 보여줘"). pet.stage_index 자체는 안 바꾸고 화면 미리보기만 바꾼다.
+  const [previewStage, setPreviewStage] = useState(pet?.stage_index ?? 1);
 
   function setPart(part: PetColorPart, color: string) {
     setColors((prev) => ({ ...prev, [part]: color }));
@@ -60,7 +63,32 @@ export default function PetCustomize() {
 
       <div style={{ flex: 1, overflowY: "auto", padding: "10px 20px 24px" }}>
         <div style={{ display: "flex", justifyContent: "center", padding: "12px 0 20px" }}>
-          <PetMascot pet={{ stage_index: pet.stage_index, body_color: colors.body, ledger_color: colors.ledger, bag_color: colors.bag, eye_color: colors.eyes, leaf_color: colors.leaf }} size={120} />
+          <PetMascot pet={{ stage_index: previewStage, body_color: colors.body, ledger_color: colors.ledger, bag_color: colors.bag, eye_color: colors.eyes, leaf_color: colors.leaf }} size={120} />
+        </div>
+
+        {/* 개발 중 미리보기 — 실제 성장 단계(pet.stage_index)와 무관하게 4단계를 다 볼 수 있다. */}
+        <div style={{ display: "flex", justifyContent: "center", gap: 6, marginBottom: 18 }}>
+          {PET_STAGE_LABELS.map((label, i) => {
+            const stage = i + 1;
+            const selected = stage === previewStage;
+            return (
+              <div
+                key={stage}
+                onClick={() => setPreviewStage(stage)}
+                style={{
+                  padding: "6px 12px",
+                  borderRadius: 999,
+                  fontSize: 12,
+                  fontWeight: 700,
+                  cursor: "pointer",
+                  background: selected ? "var(--shoot-accent)" : "var(--shoot-surface-alt)",
+                  color: selected ? "#fff" : "var(--shoot-text-muted)",
+                }}
+              >
+                {label}
+              </div>
+            );
+          })}
         </div>
 
         <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
