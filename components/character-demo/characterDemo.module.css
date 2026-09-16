@@ -125,6 +125,110 @@
   margin-top: 2px;
 }
 
+.characterCanvas {
+  display: block;
+  margin: 0 auto;
+}
+
+.canvasError {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 12px;
+  color: var(--demo-ink-soft);
+  text-align: center;
+}
+
+/* ---------- 캐릭터 꾸미기 ---------- */
+
+.customizer {
+  background: var(--demo-surface);
+  border: 1px solid var(--demo-border);
+  border-radius: 20px;
+  padding: 18px 20px 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.partList {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.partRow {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding-bottom: 12px;
+  border-bottom: 1px solid var(--demo-border);
+}
+
+.partRow:last-child {
+  padding-bottom: 0;
+  border-bottom: none;
+}
+
+.partHead {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.partLabel {
+  font-size: 14px;
+  font-weight: 700;
+}
+
+.colorInput {
+  width: 40px;
+  height: 28px;
+  padding: 0;
+  border: 1px solid var(--demo-border);
+  border-radius: 8px;
+  background: none;
+  cursor: pointer;
+}
+
+.presetRow {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.presetDot {
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  border: 2px solid var(--demo-border);
+  padding: 0;
+  cursor: pointer;
+  transition: transform 120ms ease-out;
+}
+
+.presetDot:hover {
+  transform: scale(1.1);
+}
+
+.presetDotOn {
+  border-color: var(--demo-ink);
+  box-shadow: 0 0 0 2px var(--demo-surface) inset;
+}
+
+.presetDot:focus-visible,
+.colorInput:focus-visible {
+  outline: 2px solid var(--demo-accent);
+  outline-offset: 2px;
+}
+
+.customizerNote {
+  margin: 0;
+  font-size: 12px;
+  color: var(--demo-ink-soft);
+}
+
 /* ---------- 성장 진행도 ---------- */
 
 .progressCard {

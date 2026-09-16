@@ -15,10 +15,13 @@ import { useEffect, useState } from "react";
 import {
   FINAL_STAGE,
   STORAGE_KEYS,
+  parseColors,
   parseStage,
   type CharacterStage,
+  type ColorPart,
 } from "@/lib/characterStages";
 import Character from "./Character";
+import CharacterCustomizer from "./CharacterCustomizer";
 import CharacterSelector from "./CharacterSelector";
 import GrowthControls from "./GrowthControls";
 import GrowthProgress from "./GrowthProgress";
@@ -36,6 +39,12 @@ export default function CharacterDemo() {
     return savedSelected > savedMax ? savedMax : savedSelected;
   });
 
+  // 꾸미기 색상. Stage와 무관하게 한 벌만 두고, 각 Stage에서는 존재하는 부위만 골라 쓴다
+  // (예: 알에서 몸 색을 바꿔두면 유년기로 자란 뒤에도 그 색이 그대로 이어진다).
+  const [colors, setColors] = useState<Record<ColorPart, string>>(() =>
+    parseColors(localStorage.getItem(STORAGE_KEYS.colors))
+  );
+
   // 값이 바뀔 때마다 저장 — effect의 정석적인 용도(React 상태를 외부 시스템에 반영).
   useEffect(() => {
     localStorage.setItem(STORAGE_KEYS.maxStage, String(maxStage));
@@ -44,6 +53,10 @@ export default function CharacterDemo() {
   useEffect(() => {
     localStorage.setItem(STORAGE_KEYS.selectedStage, String(selectedStage));
   }, [selectedStage]);
+
+  useEffect(() => {
+    localStorage.setItem(STORAGE_KEYS.colors, JSON.stringify(colors));
+  }, [colors]);
 
   function handleGrow() {
     if (maxStage >= FINAL_STAGE) return;
@@ -59,18 +72,24 @@ export default function CharacterDemo() {
     setSelectedStage(stage);
   }
 
+  function handleColorChange(part: ColorPart, hex: string) {
+    setColors((prev) => ({ ...prev, [part]: hex }));
+  }
+
   return (
     <main className={styles.page}>
       <div className={styles.inner}>
         <h1 className={styles.title}>나의 캐릭터</h1>
 
-        <Character selectedStage={selectedStage} maxStage={maxStage} />
+        <Character selectedStage={selectedStage} maxStage={maxStage} colors={colors} />
         <GrowthProgress maxStage={maxStage} selectedStage={selectedStage} />
         <GrowthControls maxStage={maxStage} onGrow={handleGrow} />
+        <CharacterCustomizer stage={selectedStage} colors={colors} onChange={handleColorChange} />
         <CharacterSelector
           maxStage={maxStage}
           selectedStage={selectedStage}
           onSelect={handleSelect}
+          colors={colors}
         />
       </div>
     </main>

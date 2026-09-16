@@ -56,11 +56,91 @@ export const stageImageCrop: Record<CharacterStage, { x: number; y: number; widt
   3: { x: 8, y: 50, width: 367, height: 492 },
 };
 
-/** localStorage 키 — 두 값은 의미가 다르므로 절대 한 키로 합치지 않는다. */
+// ============================================================
+// 색상 커스터마이징
+// ============================================================
+
+export type ColorPart = "body" | "eyes" | "leaf" | "wallet" | "bag";
+
+/**
+ * Stage마다 "실제 그림에 존재하는" 부위만 커스터마이징할 수 있다.
+ * UI도 Mask도 전부 이 표를 기준으로 한다.
+ *
+ *   Stage | 몸 | 눈동자 | 잎사귀 | 가계부 | 가방 | 코인
+ *   0 알      | O | X | O | X | X | 금색 고정
+ *   1 유년기  | O | O | O | X | X | 금색 고정
+ *   2 청소년기| O | O | O | O | X | 금색 고정
+ *   3 성년기  | O | O | O | X | O | 금색 고정
+ *
+ * 코인은 어떤 Mask에도 들어있지 않아서 무슨 색을 골라도 원본 금색 그대로 남는다.
+ */
+export const stageCustomization: Record<CharacterStage, readonly ColorPart[]> = {
+  0: ["body", "leaf"],
+  1: ["body", "eyes", "leaf"],
+  2: ["body", "eyes", "leaf", "wallet"],
+  3: ["body", "eyes", "leaf", "bag"],
+};
+
+export const colorPartNames: Record<ColorPart, string> = {
+  body: "몸 색상",
+  eyes: "눈동자 색상",
+  leaf: "잎사귀 색상",
+  wallet: "가계부 색상",
+  bag: "가방 색상",
+};
+
+/** 원본과 같은 느낌의 기본값(보라 계열). */
+export const DEFAULT_COLORS: Record<ColorPart, string> = {
+  body: "#b8a7f0",
+  eyes: "#3b2d63",
+  leaf: "#9b86ef",
+  wallet: "#7b63d8",
+  bag: "#8f77e6",
+};
+
+/** 파일명 접두사 — public/masks/{prefix}_{part}_mask.png */
+const maskPrefix: Record<CharacterStage, string> = {
+  0: "stage_0_egg",
+  1: "stage_1_child",
+  2: "stage_2_teen",
+  3: "stage_3_adult",
+};
+
+/** 마스크 파일명은 eyes → eye 로 쓴다(스펙에 적힌 파일명 그대로). */
+const maskFilePart: Record<ColorPart, string> = {
+  body: "body",
+  eyes: "eye",
+  leaf: "leaf",
+  wallet: "wallet",
+  bag: "bag",
+};
+
+export function maskPath(stage: CharacterStage, part: ColorPart): string {
+  return `/masks/${maskPrefix[stage]}_${maskFilePart[part]}_mask.png`;
+}
+
+/** localStorage 키 — maxStage와 selectedStage는 의미가 다르므로 절대 한 키로 합치지 않는다. */
 export const STORAGE_KEYS = {
   maxStage: "characterMaxStage",
   selectedStage: "characterSelectedStage",
+  colors: "characterColors",
 } as const;
+
+/** 저장된 색상 JSON을 안전하게 읽는다. 없거나 손상됐으면 기본값. */
+export function parseColors(raw: string | null): Record<ColorPart, string> {
+  if (!raw) return { ...DEFAULT_COLORS };
+  try {
+    const parsed = JSON.parse(raw) as Partial<Record<ColorPart, unknown>>;
+    const out = { ...DEFAULT_COLORS };
+    for (const part of Object.keys(DEFAULT_COLORS) as ColorPart[]) {
+      const v = parsed[part];
+      if (typeof v === "string" && /^#[0-9a-fA-F]{6}$/.test(v)) out[part] = v;
+    }
+    return out;
+  } catch {
+    return { ...DEFAULT_COLORS };
+  }
+}
 
 /**
  * localStorage에서 읽은 문자열을 CharacterStage로 안전하게 변환한다.

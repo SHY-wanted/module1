@@ -1,28 +1,25 @@
 "use client";
 // components/character-demo/Character.tsx — 지금 선택된 캐릭터(selectedStage)를 크게 보여준다.
-// public/ 원본 PNG를 그대로 쓴다(SVG·CSS 도형으로 다시 그리지 않는다). 단계마다 원본 비율이
-// 달라서 next/image의 fill + object-fit: contain으로 비율을 유지한 채 프레임에 맞춘다.
-import { stageNames, type CharacterStage } from "@/lib/characterStages";
-import StageImage from "./StageImage";
+// 원본 PNG + 부위별 Pixel Mask + 사용자 색상을 캔버스에서 합쳐 그린다(CharacterCanvas).
+// PNG를 SVG나 도형으로 다시 그리지 않고, 원본 파일도 수정하지 않는다.
+import { stageNames, type CharacterStage, type ColorPart } from "@/lib/characterStages";
+import CharacterCanvas from "./CharacterCanvas";
 import styles from "./characterDemo.module.css";
 
 export default function Character({
   selectedStage,
   maxStage,
+  colors,
 }: {
   selectedStage: CharacterStage;
   maxStage: CharacterStage;
+  colors: Record<ColorPart, string>;
 }) {
   return (
     <section className={styles.characterCard} aria-label="선택된 캐릭터">
       {/* key를 단계로 두면 단계가 바뀔 때마다 새로 마운트되어 페이드+스케일 애니메이션이 다시 재생된다. */}
       <div key={selectedStage} className={styles.characterEnter}>
-        <StageImage
-          stage={selectedStage}
-          height={240}
-          alt={`${stageNames[selectedStage]} 캐릭터`}
-          priority
-        />
+        <CharacterCanvas stage={selectedStage} colors={colors} height={240} />
       </div>
 
       <div className={styles.characterMeta}>
