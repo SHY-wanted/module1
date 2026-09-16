@@ -106,7 +106,7 @@ const STAGES = {
   3: {
     file: "stage_3_adult.png",
     prefix: "stage_3_adult",
-    crop: { x: 8, y: 50, w: 379, h: 492 }, // 코인 복원으로 캔버스가 12px 넓어짐
+    crop: { x: 5, y: 50, w: 375, h: 492 }, // 코인 복원으로 캔버스가 5px 넓어짐
     leafMaxY: 140,
     hasEye: true,
     hasMouth: true,
