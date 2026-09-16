@@ -11,17 +11,19 @@
 // 코인은 어떤 마스크에도 없으므로 어떤 색을 골라도 금색 그대로 남는다.
 import { useEffect, useRef, useState } from "react";
 import {
-  fixedMaskPath,
+  cheekMaskPath,
+  grooveMaskPath,
   maskPath,
-  outlineMaskPath,
   stageCustomization,
+  stageHasCheek,
+  stageHasGroove,
   stageImageCrop,
   stageImageSizes,
   stageImages,
   type CharacterStage,
   type ColorPart,
 } from "@/lib/characterStages";
-import { applyMaskColor, desaturateOutline, restoreFixedArea } from "@/lib/recolor";
+import { applyMaskColor, paintCheek, paintPureWhite } from "@/lib/recolor";
 import styles from "./characterDemo.module.css";
 
 /** 이미지를 ImageData로 한 번만 읽어두고 재사용한다(색을 바꿀 때마다 다시 디코딩하지 않도록). */
@@ -82,13 +84,19 @@ export default function CharacterCanvas({
           const mask = await loadImageData(maskPath(stage, part), size.width, size.height);
           applyMaskColor(working.data, mask.data, colors[part]);
         }
-        const outline = await loadImageData(outlineMaskPath(stage), size.width, size.height);
-        desaturateOutline(working.data, outline.data);
 
-        // 입·볼터치는 맨 마지막에 원본 픽셀로 덮어써서(= "맨 앞으로 보내기") 어떤 부위 색을
-        // 골라도 물들지 않게 한다.
-        const fixed = await loadImageData(fixedMaskPath(stage), size.width, size.height);
-        restoreFixedArea(working.data, base.data, fixed.data);
+        // 볼터치는 부위 색을 다 입힌 뒤 고정색으로 얹는다. 몸 마스크에서 빼내지 않으므로
+        // 두 영역이 어긋나 가장자리가 번지거나 흰 얼룩으로 남는 일이 없다.
+        if (stageHasCheek[stage]) {
+          const cheek = await loadImageData(cheekMaskPath(stage), size.width, size.height);
+          paintCheek(working.data, cheek.data);
+        }
+
+        // 가계부 안쪽 밝은 홈은 어떤 색을 골라도 순백색으로 고정한다.
+        if (stageHasGroove[stage]) {
+          const groove = await loadImageData(grooveMaskPath(stage), size.width, size.height);
+          paintPureWhite(working.data, groove.data);
+        }
         if (cancelled) return;
 
         const canvas = canvasRef.current;

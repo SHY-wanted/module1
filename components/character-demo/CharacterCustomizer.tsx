@@ -22,7 +22,7 @@ const PRESETS = [
   "#f0c95a",
   "#f08a5a",
   "#ef7ba8",
-  "#3b2d63",
+  "#18191A",
 ];
 
 export default function CharacterCustomizer({

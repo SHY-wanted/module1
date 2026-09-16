@@ -37,9 +37,9 @@ export const stageImageSizes: Record<CharacterStage, { width: number; height: nu
   0: { width: 305, height: 630 },
   1: { width: 285, height: 630 },
   2: { width: 295, height: 640 },
-  // 성년기는 원본에서 코인이 오른쪽 끝에 잘려 있어서 캔버스를 12px 넓히고 잘린 호를 복원했다
-  // (scripts/repair-stage3-coin.js 참고). 그래서 375 → 387.
-  3: { width: 387, height: 640 },
+  // 성년기는 원본에서 코인이 오른쪽 끝에 잘려 있어서 캔버스를 5px 넓히고 잘린 호를 복원했다
+  // (scripts/repair-stage3-coin.js 참고). 그래서 375 → 380.
+  3: { width: 380, height: 640 },
 };
 
 /**
@@ -55,7 +55,7 @@ export const stageImageCrop: Record<CharacterStage, { x: number; y: number; widt
   0: { x: 50, y: 225, width: 200, height: 300 },
   1: { x: 5, y: 209, width: 236, height: 316 },
   2: { x: 5, y: 137, width: 261, height: 398 },
-  3: { x: 8, y: 50, width: 379, height: 492 }, // 코인 복원으로 넓어진 만큼 함께 넓힘
+  3: { x: 5, y: 50, width: 375, height: 492 }, // 코인 복원으로 넓어진 만큼 함께 넓힘
 };
 
 // ============================================================
@@ -93,11 +93,13 @@ export const colorPartNames: Record<ColorPart, string> = {
 
 /** 원본과 같은 느낌의 기본값(보라 계열). */
 export const DEFAULT_COLORS: Record<ColorPart, string> = {
-  body: "#b8a7f0",
-  eyes: "#3b2d63",
-  leaf: "#9b86ef",
-  wallet: "#7b63d8",
-  bag: "#8f77e6",
+  // 각 부위의 원본 평균색. 색 바꾸기가 고른 색의 밝기까지 반영하게 되면서, 기본값이 원본 평균과
+  // 같아야 아무것도 안 골랐을 때 원본 그림 그대로 보인다.
+  body: "#d5befa",
+  eyes: "#524094",
+  leaf: "#a389f3",
+  wallet: "#8b72e7",
+  bag: "#7d64de",
 };
 
 /** 파일명 접두사 — public/masks/{prefix}_{part}_mask.png */
@@ -119,22 +121,6 @@ const maskFilePart: Record<ColorPart, string> = {
 
 export function maskPath(stage: CharacterStage, part: ColorPart): string {
   return `/masks/${maskPrefix[stage]}_${maskFilePart[part]}_mask.png`;
-}
-
-/**
- * 서로 다른 두 부위 사이의 경계선 마스크 — 색은 바꾸지 않고 채도만 낮춘다(lib/recolor.ts 참고).
- * 부위 마스크와 달리 색상 파트가 없으므로 Stage마다 하나뿐이다.
- */
-export function outlineMaskPath(stage: CharacterStage): string {
-  return `/masks/${maskPrefix[stage]}_outline_mask.png`;
-}
-
-/**
- * 입·볼터치 고정 마스크 — 파워포인트의 "맨 앞으로 보내기"처럼, 색을 다 칠한 뒤 이 자리만
- * 원본 픽셀로 덮어써서 어떤 부위 색을 고르든 입·볼터치가 물들지 않게 한다(lib/recolor.ts 참고).
- */
-export function fixedMaskPath(stage: CharacterStage): string {
-  return `/masks/${maskPrefix[stage]}_fixed_mask.png`;
 }
 
 /** localStorage 키 — maxStage와 selectedStage는 의미가 다르므로 절대 한 키로 합치지 않는다. */
@@ -174,4 +160,37 @@ export function parseStage(raw: string | null): CharacterStage {
 /** 진행률(%)은 언제나 maxStage 기준 — 선택한 캐릭터(selectedStage)와 무관하다. */
 export function growthProgress(maxStage: CharacterStage): number {
   return (maxStage / FINAL_STAGE) * 100;
+}
+
+/**
+ * 볼터치가 원본 그림에서 몸통 색조와 구분되는 단계.
+ * 알 단계는 볼터치가 몸통 색조 안에 묻혀 있어(색조 290 이상 픽셀이 236개뿐, 그마저 흩어져 있음)
+ * 따로 뽑을 대상이 없다 — 그래서 마스크 파일도 만들지 않는다.
+ */
+export const stageHasCheek: Record<CharacterStage, boolean> = {
+  0: false,
+  1: true,
+  2: true,
+  3: true,
+};
+
+/** 볼터치 마스크 경로 — 색을 바꾸는 용도가 아니라 홍조를 진하게 올리는 데 쓴다. */
+export function cheekMaskPath(stage: CharacterStage): string {
+  return `/masks/${maskPrefix[stage]}_cheek_mask.png`;
+}
+
+/**
+ * 가계부 안쪽 밝은 홈이 있는 단계. 이 영역은 색상 커스터마이징 대상이 아니라 항상 순백색으로 칠한다.
+ * 청소년기의 가계부에만 있다.
+ */
+export const stageHasGroove: Record<CharacterStage, boolean> = {
+  0: false,
+  1: false,
+  2: true,
+  3: false,
+};
+
+/** 가계부 홈 마스크 경로 — 이 픽셀은 항상 #FFFFFF로 칠한다. */
+export function grooveMaskPath(stage: CharacterStage): string {
+  return `/masks/${maskPrefix[stage]}_groove_mask.png`;
 }
