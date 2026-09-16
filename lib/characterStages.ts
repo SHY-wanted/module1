@@ -159,3 +159,20 @@ export function parseStage(raw: string | null): CharacterStage {
 export function growthProgress(maxStage: CharacterStage): number {
   return (maxStage / FINAL_STAGE) * 100;
 }
+
+/**
+ * 볼터치가 원본 그림에서 몸통 색조와 구분되는 단계.
+ * 알 단계는 볼터치가 몸통 색조 안에 묻혀 있어(색조 290 이상 픽셀이 236개뿐, 그마저 흩어져 있음)
+ * 따로 뽑을 대상이 없다 — 그래서 마스크 파일도 만들지 않는다.
+ */
+export const stageHasCheek: Record<CharacterStage, boolean> = {
+  0: false,
+  1: true,
+  2: true,
+  3: true,
+};
+
+/** 볼터치 마스크 경로 — 색을 바꾸는 용도가 아니라 홍조를 진하게 올리는 데 쓴다. */
+export function cheekMaskPath(stage: CharacterStage): string {
+  return `/masks/${maskPrefix[stage]}_cheek_mask.png`;
+}

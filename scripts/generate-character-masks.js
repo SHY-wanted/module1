@@ -637,6 +637,29 @@ async function buildStage(key) {
       .toFile(path.join(OUT_DIR, name));
     console.log(`  ${name}  (${count} px)`);
   }
+
+  // 볼터치 마스크 — 색을 바꾸는 용도가 아니라 화면에서 홍조를 진하게 올리는 데 쓴다.
+  // 원본은 눈 쪽으로 갈수록 흰색에 묻혀 밝아지는데(밝기 93 → 99, 채도 78 → 50) 그래서 홍조가
+  // 흐릿하게 비쳐 보인다. 이 마스크가 가리키는 픽셀만 렌더링 단계에서 채도를 올리고 밝기를 눌러
+  // 또렷한 홍조로 만든다(lib/recolor.ts 의 intensifyCheek).
+  if (KEEP_CHEEK_PINK) {
+    const out = Buffer.alloc(W * H * 4);
+    let count = 0;
+    for (let i = 0; i < W * H; i++) {
+      if (!solidPink[i]) continue;
+      const o = i * 4;
+      out[o] = 255; out[o + 1] = 255; out[o + 2] = 255;
+      out[o + 3] = data[o + 3];
+      count++;
+    }
+    if (count > 0) {
+      const name = `${cfg.prefix}_cheek_mask.png`;
+      await sharp(out, { raw: { width: W, height: H, channels: 4 } })
+        .png()
+        .toFile(path.join(OUT_DIR, name));
+      console.log(`  ${name}  (${count} px)`);
+    }
+  }
 }
 
 (async () => {

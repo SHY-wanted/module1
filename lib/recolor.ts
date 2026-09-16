@@ -78,3 +78,33 @@ export function applyMaskColor(
     // 알파는 건드리지 않는다 — 원본 실루엣 유지.
   }
 }
+
+/**
+ * 볼터치를 또렷하게 올린다.
+ *
+ * 원본 그림의 볼터치는 눈 쪽으로 갈수록 흰 눈두덩에 묻혀 밝아진다(밝기 93 → 99, 채도 78 → 50).
+ * 그래서 몸 색을 바꾸면 홍조가 반투명하게 비쳐 보인다. 여기서는 볼터치 마스크가 가리키는 픽셀만
+ * 채도를 올리고 밝기 상한을 눌러, 번지는 가장자리까지 같은 진하기로 보이게 만든다.
+ * 색조(분홍)는 원본 그대로 두므로 홍조 색 자체는 변하지 않는다.
+ */
+export function intensifyCheek(
+  base: Uint8ClampedArray,
+  mask: Uint8ClampedArray,
+  /** 0이면 원본 그대로, 1이면 최대로 진하게. */
+  strength = 1
+): void {
+  if (strength <= 0) return;
+  const MAX_L = 0.85; // 이보다 밝은 볼터치 픽셀은 눌러서 흰색에 묻히지 않게 한다
+  const SAT_GAIN = 1.9; // 더 진하게 하려면 이 값만 올리면 된다(2.4쯤이면 꽤 선명해진다)
+  for (let i = 0; i < mask.length; i += 4) {
+    const w = (mask[i + 3] / 255) * strength;
+    if (w <= 0) continue;
+    const [h, s, l] = rgbToHsl(base[i], base[i + 1], base[i + 2]);
+    const boostedS = Math.min(1, s * SAT_GAIN);
+    const cappedL = l > MAX_L ? MAX_L + (l - MAX_L) * 0.35 : l;
+    const [r, g, b] = hslToRgb(h, boostedS, cappedL);
+    base[i] = base[i] * (1 - w) + r * w;
+    base[i + 1] = base[i + 1] * (1 - w) + g * w;
+    base[i + 2] = base[i + 2] * (1 - w) + b * w;
+  }
+}

@@ -11,15 +11,17 @@
 // 코인은 어떤 마스크에도 없으므로 어떤 색을 골라도 금색 그대로 남는다.
 import { useEffect, useRef, useState } from "react";
 import {
+  cheekMaskPath,
   maskPath,
   stageCustomization,
+  stageHasCheek,
   stageImageCrop,
   stageImageSizes,
   stageImages,
   type CharacterStage,
   type ColorPart,
 } from "@/lib/characterStages";
-import { applyMaskColor } from "@/lib/recolor";
+import { applyMaskColor, intensifyCheek } from "@/lib/recolor";
 import styles from "./characterDemo.module.css";
 
 /** 이미지를 ImageData로 한 번만 읽어두고 재사용한다(색을 바꿀 때마다 다시 디코딩하지 않도록). */
@@ -79,6 +81,13 @@ export default function CharacterCanvas({
         for (const part of parts) {
           const mask = await loadImageData(maskPath(stage, part), size.width, size.height);
           applyMaskColor(working.data, mask.data, colors[part]);
+        }
+
+        // 볼터치는 색을 바꾸지 않고 진하기만 올린다 — 원본에서 눈 쪽으로 갈수록 흰색에 묻혀
+        // 반투명하게 비쳐 보이기 때문이다. 부위 색을 다 입힌 뒤에 적용해야 몸 색 위로 또렷하게 얹힌다.
+        if (stageHasCheek[stage]) {
+          const cheek = await loadImageData(cheekMaskPath(stage), size.width, size.height);
+          intensifyCheek(working.data, cheek.data);
         }
         if (cancelled) return;
 
