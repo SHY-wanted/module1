@@ -77,10 +77,39 @@ function isGold(r, g, b) {
         .ensureAlpha().raw().toBuffer();
     }
 
+    // "코인"은 금색 낱개 픽셀이 아니라 덩어리로 센다. 눈 가장자리의 안티에일리어싱 픽셀이 색조상
+    // 금색 범위로 넘어오는 일이 있어서(코인이 없는 1·2단계에도 수십 픽셀 있다), 낱개로 세면 실제
+    // 코인과 구분이 안 된다. 마스크 생성 쪽과 같은 기준(100px 이상 덩어리)을 쓴다.
+    const GOLD_MIN_BLOB = 100;
     const goldIdx = [];
-    for (let i = 0; i < W * H; i++) {
-      const o = i * 4;
-      if (base.data[o + 3] > 60 && isGold(base.data[o], base.data[o + 1], base.data[o + 2])) goldIdx.push(i);
+    {
+      const isG = (i) => {
+        const o = i * 4;
+        return base.data[o + 3] > 60 && isGold(base.data[o], base.data[o + 1], base.data[o + 2]);
+      };
+      const seen = new Uint8Array(W * H);
+      for (let i = 0; i < W * H; i++) {
+        if (seen[i] || !isG(i)) continue;
+        const blob = [];
+        const stack = [i];
+        seen[i] = 1;
+        while (stack.length) {
+          const cur = stack.pop();
+          blob.push(cur);
+          const cx = cur % W, cy = (cur - cx) / W;
+          const nb = [];
+          if (cx > 0) nb.push(cur - 1);
+          if (cx < W - 1) nb.push(cur + 1);
+          if (cy > 0) nb.push(cur - W);
+          if (cy < H - 1) nb.push(cur + W);
+          for (const ni of nb) {
+            if (seen[ni] || !isG(ni)) continue;
+            seen[ni] = 1;
+            stack.push(ni);
+          }
+        }
+        if (blob.length >= GOLD_MIN_BLOB) goldIdx.push(...blob);
+      }
     }
 
     for (const target of cfg.parts) {

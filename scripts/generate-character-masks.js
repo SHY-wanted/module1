@@ -60,6 +60,15 @@ const OUT_DIR = path.join(PUBLIC_DIR, "masks");
 
 /** 인접 픽셀 색 변화량이 이 값 이상이면 "오브젝트 경계"로 본다(안쪽 0~5, 경계 38~74). */
 const EDGE_THRESHOLD = 9;
+/**
+ * 볼터치를 원본 분홍색 그대로 남길지 여부.
+ * false면 볼터치도 몸 마스크에 포함돼 몸 색을 따라간다(분홍 대신 몸 색조의 옅은 홍조가 된다).
+ * 2026-09-16 사용자 요청("눈 주변은 깨끗하고 균일한 흰색으로")에 맞춰 false로 둔다 — 볼터치
+ * 덩어리 크기가 단계마다 54~148px로 제각각이라, 남기면 어떤 단계는 분홍이고 어떤 단계는 아닌
+ * 들쭉날쭉한 상태가 된다. 분홍 볼터치를 되살리려면 이 값만 true로 바꾸면 된다.
+ */
+const KEEP_CHEEK_PINK = false;
+
 /** 이보다 큰 구멍은 물건 안쪽 무늬가 아니라 몸이 비쳐 보이는 것으로 본다. */
 const MAX_HOLE = 1500;
 
@@ -203,8 +212,92 @@ async function buildStage(key) {
   }
 
   // ── 3. 조각을 부위에 배정한다 ──────────────────────────────────────────
-  const isGoldPatch = (p) => p.hsl[0] >= 25 && p.hsl[0] <= 70 && p.hsl[1] > 35;
-  const isPinkPatch = (p) => (p.hsl[0] >= 300 || p.hsl[0] < 25) && p.hsl[1] > 20 && p.hsl[2] > 55;
+  // 금색도 분홍과 같은 이유로 덩어리 단위로 본다 — 눈 가장자리에서 보라 몸통과 남색 눈동자가
+  // 섞인 픽셀이 색조상 금색 범위로 넘어와, 코인이 없는 유년기·청소년기에도 주황색 점이 흩뿌려졌다.
+  // 진짜 코인·반짝임은 182px 이상의 큼직한 덩어리라 아래 기준으로 안전하게 지켜진다.
+  const goldAt = (x, y) => {
+    const [h, s] = toHsl(...rgba(x, y).slice(0, 3));
+    return h >= 25 && h <= 70 && s > 35;
+  };
+  const GOLD_MIN_BLOB = 100;
+  const solidGold = new Uint8Array(W * H);
+  {
+    const seen = new Uint8Array(W * H);
+    for (let y = 0; y < H; y++) {
+      for (let x = 0; x < W; x++) {
+        const id = y * W + x;
+        if (seen[id] || data[id * 4 + 3] < 60 || !goldAt(x, y)) continue;
+        const blob = [];
+        const stack = [id];
+        seen[id] = 1;
+        while (stack.length) {
+          const cur = stack.pop();
+          blob.push(cur);
+          for (const ni of neighbors(cur)) {
+            if (seen[ni] || data[ni * 4 + 3] < 60) continue;
+            const nx = ni % W, ny = (ni - nx) / W;
+            if (!goldAt(nx, ny)) continue;
+            seen[ni] = 1;
+            stack.push(ni);
+          }
+        }
+        if (blob.length < GOLD_MIN_BLOB) continue;
+        for (const bid of blob) solidGold[bid] = 1;
+      }
+    }
+  }
+
+  const isGoldPatch = (p) => {
+    let hit = 0;
+    for (const id of p.pixels) if (solidGold[id]) hit++;
+    return hit * 2 > p.pixels.length;
+  };
+  // 분홍 픽셀 판정. 문제는 눈 가장자리의 안티에일리어싱 픽셀(보라 몸통 + 남색 눈동자가 섞인 색)이
+  // 색조상 분홍 범위로 넘어와 볼터치로 오인된다는 것이다. 그대로 두면 눈 둘레에 분홍 점이 흩뿌려지고
+  // 그 픽셀들이 어느 마스크에도 안 들어가서, 몸 색을 바꿨을 때 눈 주위만 지저분하게 남는다
+  // (사용자 신고: "큰 검은 원 바깥쪽의 점·선·얼룩"). 그래서 낱개 픽셀이 아니라 "덩어리"로 본다 —
+  // 진짜 볼터치는 큼직한 덩어리이고, 오인된 것들은 잘게 흩어져 있다.
+  const pinkAt = (x, y) => {
+    const [h, s, l] = toHsl(...rgba(x, y).slice(0, 3));
+    return (h >= 300 || h < 25) && s > 20 && l > 55;
+  };
+  const PINK_MIN_BLOB = 120; // 이보다 작은 분홍 덩어리는 볼터치가 아니라 경계 얼룩으로 본다
+  const solidPink = new Uint8Array(W * H);
+  const pinkBlobs = [];
+  {
+    const seen = new Uint8Array(W * H);
+    for (let y = 0; y < H; y++) {
+      for (let x = 0; x < W; x++) {
+        const id = y * W + x;
+        if (seen[id] || !isOpaque(x, y) || !pinkAt(x, y)) continue;
+        const blob = [];
+        const stack = [id];
+        seen[id] = 1;
+        while (stack.length) {
+          const cur = stack.pop();
+          blob.push(cur);
+          for (const ni of neighbors(cur)) {
+            if (seen[ni]) continue;
+            const nx = ni % W, ny = (ni - nx) / W;
+            if (!isOpaque(nx, ny) || !pinkAt(nx, ny)) continue;
+            seen[ni] = 1;
+            stack.push(ni);
+          }
+        }
+        if (!KEEP_CHEEK_PINK || blob.length < PINK_MIN_BLOB) continue;
+        let sx = 0, sy = 0;
+        for (const bid of blob) { const bx = bid % W; sx += bx; sy += (bid - bx) / W; }
+        pinkBlobs.push({ pixels: blob, cx: sx / blob.length, cy: sy / blob.length });
+        for (const bid of blob) solidPink[bid] = 1;
+      }
+    }
+  }
+
+  const isPinkPatch = (p) => {
+    let hit = 0;
+    for (const id of p.pixels) if (solidPink[id]) hit++;
+    return hit * 2 > p.pixels.length; // 절반 넘게 볼터치면 볼터치 조각으로 본다
+  };
   const isAttached = (p) => attached[p.pixels[0]] === 1;
 
   const usable = patches.filter((p) => isAttached(p) && !isGoldPatch(p) && !isPinkPatch(p));
@@ -219,6 +312,19 @@ async function buildStage(key) {
       .sort((a, b) => b.n - a.n)
       .slice(0, 2);
     for (const p of dark) assigned.set(p.index, cfg.hasEye ? "eye" : "_fixed");
+
+    // 입은 볼터치와 달리 몸에 포함시킨다(사용자 요청: "두 큰 원 사이 중앙의 작은 조각은 삭제하고
+    // 주변과 같은 흰색으로 채운다"). 입과 볼터치는 둘 다 분홍 덩어리라 위치로 가른다 —
+    // 입은 두 눈 사이(가운데)에 있고, 볼터치는 눈 바깥쪽에 있다.
+    if (dark.length === 2 && pinkBlobs.length) {
+      const eyeCx = dark.map((p) => (p.x0 + p.x1) / 2).sort((a, b) => a - b);
+      const eyeCy = dark.reduce((sum, p) => sum + (p.y0 + p.y1) / 2, 0) / 2;
+      for (const blob of pinkBlobs) {
+        const between = blob.cx > eyeCx[0] && blob.cx < eyeCx[1];
+        if (!between || blob.cy < eyeCy) continue; // 두 눈 사이 + 눈보다 아래 = 입
+        for (const id of blob.pixels) solidPink[id] = 0;
+      }
+    }
   }
 
   // 잎사귀: 머리 위쪽에만 있는 조각 중 가장 큰 것(하트 같은 장식은 이미 걸러졌고, 크기로도 밀린다)
@@ -382,10 +488,12 @@ async function buildStage(key) {
   }
 
   // ── 5. 물건 안쪽에 갇힌 작은 무늬(책등의 밝은 띠, ₩, 나비)를 그 물건에 포함 ──
-  // 몸에는 적용하지 않는다 — 몸 안쪽에는 눈·입·볼터치처럼 "일부러 뺀" 것들이 있어서
-  // 구멍 메우기를 하면 도로 들어와 버린다(실제로 알 단계 감은 눈이 그렇게 다시 들어왔었다).
+  // 몸에도 적용한다 — 입처럼 몸에 완전히 둘러싸인 구멍을 메우기 위해서다(사용자 요청: "두 큰 원
+  // 사이 중앙의 작은 조각을 삭제하고 주변과 같은 흰색으로 채운다"). 눈은 아래 blocked 검사에서
+  // "다른 부위 마스크에 속한 구멍"으로 걸러지므로 도로 들어오지 않는다. 캐릭터에서 떨어져 있는
+  // 장식(하트·효과선)과 코인은 애초에 둘러싸인 구멍이 아니라 바깥과 이어져 있어 해당 없다.
   for (const part of parts) {
-    if (part === "body" || part === "eye") continue;
+    if (part === "eye") continue;
     const bits = masks[part];
     const outside = new Uint8Array(W * H);
     const queue = [];
@@ -429,7 +537,7 @@ async function buildStage(key) {
         if (blocked) break;
         const x = id % W, y = (id - x) / W;
         const [h, s, l] = toHsl(...rgba(x, y).slice(0, 3));
-        if ((h >= 25 && h <= 70 && s > 35) || ((h >= 300 || h < 25) && s > 20 && l > 55)) {
+        if (solidGold[id] || solidPink[id]) {
           blocked = true;
           break;
         }
@@ -453,9 +561,8 @@ async function buildStage(key) {
       if (!bits[i]) continue;
       const x = i % W, y = (i - x) / W;
       const [h, s, l] = toHsl(...rgba(x, y).slice(0, 3));
-      const gold = h >= 25 && h <= 70 && s > 35;
-      const pink = (h >= 300 || h < 25) && s > 20 && l > 55;
-      if (gold || pink) bits[i] = 0;
+
+      if (solidGold[i] || solidPink[i]) bits[i] = 0;
     }
   }
 
