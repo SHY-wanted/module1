@@ -13,6 +13,12 @@
 
 /** 색을 바꿀 때 원본의 명암 폭을 얼마나 유지할지. 1이면 그대로, 낮출수록 평평해진다. */
 const SHADING_KEEP = 0.85;
+/**
+ * 평균보다 밝은 쪽(하이라이트)을 흰색까지 얼마나 끌어올릴지.
+ * 1로 두면 검정을 골라도 하이라이트가 흰색까지 올라가 검게 안 보인다. 낮추면 고른 색의 어두움이
+ * 살아나되 하이라이트는 여전히 "더 밝은 톤"으로 남는다.
+ */
+const HIGHLIGHT_KEEP = 0.6;
 
 export function hexToRgb(hex: string): [number, number, number] {
   const n = parseInt(hex.replace("#", ""), 16);
@@ -87,8 +93,16 @@ export function applyMaskColor(
     const w = mask[i + 3] / 255;
     if (w <= 0) continue;
     const [, , l] = rgbToHsl(base[i], base[i + 1], base[i + 2]);
-    // SHADING_KEEP이 1이면 원본의 명암 폭을 그대로, 낮추면 평평해진다.
-    const shaded = cl + (l - meanL) * SHADING_KEEP;
+    // 평균보다 어두운 쪽은 "몇 배로 어두운가"를, 밝은 쪽은 "흰색까지 얼마나 남았나"를 기준으로
+    // 옮긴다. 예전에는 밝기 차이를 그대로 더했는데(cl + (l - meanL)), 그러면 오브젝트 사이의
+    // 진한 외곽선처럼 평균보다 한참 어두운 픽셀이 음수로 내려가 새까맣게 뭉개졌다 — 진한 색을
+    // 고르면 가방·눈 둘레에 검은 점선이 둘러진 것처럼 보였다(사용자 신고). 비율로 옮기면 고른
+    // 색이 아무리 어두워도 외곽선은 "그 색의 더 어두운 톤"으로 남는다.
+    const target =
+      l <= meanL
+        ? cl * (meanL > 0 ? l / meanL : 1)
+        : cl + (1 - cl) * ((l - meanL) / (1 - meanL)) * HIGHLIGHT_KEEP;
+    const shaded = cl + (target - cl) * SHADING_KEEP;
     const nl = shaded < 0 ? 0 : shaded > 1 ? 1 : shaded;
     const [nr, ng, nb] = hslToRgb(ch, cs, nl);
     base[i] = base[i] * (1 - w) + nr * w;
