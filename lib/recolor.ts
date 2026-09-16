@@ -3,13 +3,16 @@
 // 원칙:
 //   1. 마스크가 지정하지 않은 픽셀은 원본 그대로 둔다. 캔버스 전체를 색으로 덮는 방식은 쓰지 않는다.
 //   2. 색을 바꿔도 원본의 명암·그림자·하이라이트는 유지한다 — 색조(H)와 채도(S)만 사용자 색으로
-//      바꾸고 밝기(L)는 원본 픽셀 값을 그대로 쓴다. 그래서 몸을 파란색으로 바꾸면 몸의 그림자는
+//      바꾸고, 밝기(L)는 고른 색의 밝기를 기준으로 원본의 음영 폭을 얹는다. 그래서 몸을 파란색으로 바꾸면 그림자는
 //      어두운 파랑, 하이라이트는 밝은 파랑이 된다.
 //   3. 코인은 어떤 마스크에도 들어있지 않으므로 무슨 색을 골라도 원본 금색 그대로 남는다.
 //
 // 2번이 성립하려면 "부위의 음영까지 마스크에 포함"되어야 한다. 진한 외곽선만 마스크에서 빼서
 // 윤곽은 원본 그대로 남긴다 — 이 방침은 2026-09-16 사용자 확정 사항이고, 마스크를 만드는 쪽
 // (scripts/generate-character-masks.js 헤더 주석)에 근거를 자세히 적어뒀다.
+
+/** 색을 바꿀 때 원본의 명암 폭을 얼마나 유지할지. 1이면 그대로, 낮출수록 평평해진다. */
+const SHADING_KEEP = 0.85;
 
 export function hexToRgb(hex: string): [number, number, number] {
   const n = parseInt(hex.replace("#", ""), 16);
@@ -66,12 +69,28 @@ export function applyMaskColor(
   hex: string
 ): void {
   const [cr, cg, cb] = hexToRgb(hex);
-  const [ch, cs] = rgbToHsl(cr, cg, cb);
+  const [ch, cs, cl] = rgbToHsl(cr, cg, cb);
+
+  // 이 부위의 원래 평균 밝기. 고른 색의 밝기를 여기에 맞춰 옮겨 놓고, 각 픽셀은 평균에서 얼마나
+  // 밝고 어두운지(=음영)를 그대로 유지한다. 예전에는 밝기를 아예 원본 그대로 뒀는데, 그러면
+  // 검정을 골라도 원래 밝기(몸통 86%)가 남아 회색빛으로만 보이고 검게 되지 않았다.
+  let sum = 0;
+  let count = 0;
+  for (let i = 0; i < mask.length; i += 4) {
+    if (mask[i + 3] === 0) continue;
+    sum += rgbToHsl(base[i], base[i + 1], base[i + 2])[2];
+    count++;
+  }
+  const meanL = count ? sum / count : 0.5;
+
   for (let i = 0; i < mask.length; i += 4) {
     const w = mask[i + 3] / 255;
     if (w <= 0) continue;
     const [, , l] = rgbToHsl(base[i], base[i + 1], base[i + 2]);
-    const [nr, ng, nb] = hslToRgb(ch, cs, l);
+    // SHADING_KEEP이 1이면 원본의 명암 폭을 그대로, 낮추면 평평해진다.
+    const shaded = cl + (l - meanL) * SHADING_KEEP;
+    const nl = shaded < 0 ? 0 : shaded > 1 ? 1 : shaded;
+    const [nr, ng, nb] = hslToRgb(ch, cs, nl);
     base[i] = base[i] * (1 - w) + nr * w;
     base[i + 1] = base[i + 1] * (1 - w) + ng * w;
     base[i + 2] = base[i + 2] * (1 - w) + nb * w;
@@ -106,5 +125,22 @@ export function intensifyCheek(
     base[i] = base[i] * (1 - w) + r * w;
     base[i + 1] = base[i + 1] * (1 - w) + g * w;
     base[i + 2] = base[i + 2] * (1 - w) + b * w;
+  }
+}
+
+/**
+ * 마스크가 가리키는 픽셀을 순백색(255,255,255)으로 칠한다.
+ *
+ * 가계부 바깥 테두리와 안쪽 테두리 사이의 밝은 홈에 쓴다. 원본은 아주 밝은 연보라(약 224,210,254)
+ * 라서 가계부 색을 바꾸면 연보라 띠로 보였는데, 어떤 색을 골라도 항상 흰 홈으로 고정하기 위해
+ * 원본 색을 쓰지 않고 흰색으로 덮는다. 마스크 알파를 가중치로 써서 가장자리는 부드럽게 이어진다.
+ */
+export function paintPureWhite(base: Uint8ClampedArray, mask: Uint8ClampedArray): void {
+  for (let i = 0; i < mask.length; i += 4) {
+    const w = mask[i + 3] / 255;
+    if (w <= 0) continue;
+    base[i] = base[i] * (1 - w) + 255 * w;
+    base[i + 1] = base[i + 1] * (1 - w) + 255 * w;
+    base[i + 2] = base[i + 2] * (1 - w) + 255 * w;
   }
 }

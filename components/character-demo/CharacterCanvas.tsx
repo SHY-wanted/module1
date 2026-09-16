@@ -12,16 +12,18 @@
 import { useEffect, useRef, useState } from "react";
 import {
   cheekMaskPath,
+  grooveMaskPath,
   maskPath,
   stageCustomization,
   stageHasCheek,
+  stageHasGroove,
   stageImageCrop,
   stageImageSizes,
   stageImages,
   type CharacterStage,
   type ColorPart,
 } from "@/lib/characterStages";
-import { applyMaskColor, intensifyCheek } from "@/lib/recolor";
+import { applyMaskColor, intensifyCheek, paintPureWhite } from "@/lib/recolor";
 import styles from "./characterDemo.module.css";
 
 /** 이미지를 ImageData로 한 번만 읽어두고 재사용한다(색을 바꿀 때마다 다시 디코딩하지 않도록). */
@@ -88,6 +90,12 @@ export default function CharacterCanvas({
         if (stageHasCheek[stage]) {
           const cheek = await loadImageData(cheekMaskPath(stage), size.width, size.height);
           intensifyCheek(working.data, cheek.data);
+        }
+
+        // 가계부 안쪽 밝은 홈은 어떤 색을 골라도 순백색으로 고정한다.
+        if (stageHasGroove[stage]) {
+          const groove = await loadImageData(grooveMaskPath(stage), size.width, size.height);
+          paintPureWhite(working.data, groove.data);
         }
         if (cancelled) return;
 

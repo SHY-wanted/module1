@@ -573,6 +573,7 @@ async function buildStage(key) {
   // 가계부 윗변의 홈(원본 L 90 이상의 밝은 띠)이 몸 마스크에 들어가 있어서 몸 색을 따라 노랗게
   // 변했다(사용자 신고). 가계부 바깥 테두리 안쪽에 있으면서 밝은 픽셀은 가계부의 하이라이트이므로,
   // 몸에서 빼내 원본 밝은 색 그대로 두면 어떤 색을 골라도 흰 홈으로 고정된다.
+  const grooveBits = new Uint8Array(W * H);
   if (masks.wallet && masks.body) {
     // 가계부 바깥 테두리 안쪽(구멍 포함) 영역을 구한다 — 바깥에서 못 닿는 칸이 곧 안쪽이다.
     const outsideWallet = new Uint8Array(W * H);
@@ -594,6 +595,7 @@ async function buildStage(key) {
       const x = i % W, y = (i - x) / W;
       if (toHsl(...rgba(x, y).slice(0, 3))[2] < 85) continue; // 밝은 홈만
       masks.body[i] = 0;
+      grooveBits[i] = 1;
       freed++;
     }
     if (freed) console.log(`  (가계부 안쪽 밝은 홈 ${freed}px을 몸에서 제외)`);
@@ -638,20 +640,87 @@ async function buildStage(key) {
     console.log(`  ${name}  (${count} px)`);
   }
 
+  // 가계부 홈 마스크 — 화면에서 이 부분만 순백색(255,255,255)으로 칠한다.
+  // 원본은 아주 밝은 연보라(약 224,210,254)라 가계부 색을 바꾸면 연보라 띠로 보였는데,
+  // 사용자 요청대로 어떤 색을 골라도 항상 흰 홈으로 고정하기 위해 따로 뽑는다.
+  {
+    let count = 0;
+    const out = Buffer.alloc(W * H * 4);
+    for (let i = 0; i < W * H; i++) {
+      if (!grooveBits[i]) continue;
+      const o = i * 4;
+      out[o] = 255; out[o + 1] = 255; out[o + 2] = 255;
+      // 원본 알파(252~253)를 물려받으면 흰색을 덮어도 254에서 멈춘다. 홈은 캐릭터 안쪽이라
+      // 실루엣 가장자리가 아니므로 알파를 꽉 채워서 정확히 (255,255,255)가 되게 한다.
+      out[o + 3] = 255;
+      count++;
+    }
+    if (count > 0) {
+      const name = `${cfg.prefix}_groove_mask.png`;
+      await sharp(out, { raw: { width: W, height: H, channels: 4 } })
+        .png()
+        .toFile(path.join(OUT_DIR, name));
+      console.log(`  ${name}  (${count} px)`);
+    }
+  }
+
   // 볼터치 마스크 — 색을 바꾸는 용도가 아니라 화면에서 홍조를 진하게 올리는 데 쓴다.
   // 원본은 눈 쪽으로 갈수록 흰색에 묻혀 밝아지는데(밝기 93 → 99, 채도 78 → 50) 그래서 홍조가
   // 흐릿하게 비쳐 보인다. 이 마스크가 가리키는 픽셀만 렌더링 단계에서 채도를 올리고 밝기를 눌러
   // 또렷한 홍조로 만든다(lib/recolor.ts 의 intensifyCheek).
+  //
+  // 색으로 주워담은 영역은 가장자리가 삐뚤빼뚤하고 몸 쪽으로 번진 픽셀이 붙는다(사용자 신고).
+  // 그래서 각 볼터치 덩어리의 무게중심과 퍼진 정도(2차 모멘트)로 타원을 구해 그 안쪽만 남긴다.
+  // 타원 경계는 1.5px에 걸쳐 부드럽게 흐려서, 딱딱한 도형이 아니라 원본 같은 안티앨리어싱을 유지한다.
   if (KEEP_CHEEK_PINK) {
     const out = Buffer.alloc(W * H * 4);
     let count = 0;
-    for (let i = 0; i < W * H; i++) {
-      if (!solidPink[i]) continue;
-      const o = i * 4;
-      out[o] = 255; out[o + 1] = 255; out[o + 2] = 255;
-      out[o + 3] = data[o + 3];
-      count++;
+    for (const blob of pinkBlobs) {
+      if (!blob.pixels.length || !blob.pixels.some((id) => solidPink[id])) continue;
+      // 무게중심과 공분산 → 타원의 방향과 반지름
+      let sxx = 0, syy = 0, sxy = 0;
+      for (const id of blob.pixels) {
+        const bx = id % W, by = (id - bx) / W;
+        const dx = bx - blob.cx, dy = by - blob.cy;
+        sxx += dx * dx; syy += dy * dy; sxy += dx * dy;
+      }
+      const n = blob.pixels.length;
+      sxx /= n; syy /= n; sxy /= n;
+      // 공분산 행렬의 고유값·고유벡터
+      const tr = sxx + syy, det = sxx * syy - sxy * sxy;
+      const disc = Math.sqrt(Math.max(0, (tr / 2) * (tr / 2) - det));
+      const e1 = tr / 2 + disc, e2 = tr / 2 - disc;
+      const angle = 0.5 * Math.atan2(2 * sxy, sxx - syy);
+      const ca = Math.cos(angle), sa = Math.sin(angle);
+      // 균일한 타원이면 2차 모멘트는 (반지름^2)/4 이므로 반지름 = 2*sqrt(고유값)
+      const r1 = 2 * Math.sqrt(Math.max(e1, 0.5));
+      const r2 = 2 * Math.sqrt(Math.max(e2, 0.5));
+      const FEATHER = 1.5;
+      const x0 = Math.max(0, Math.floor(blob.cx - r1 - 3));
+      const x1 = Math.min(W - 1, Math.ceil(blob.cx + r1 + 3));
+      const y0 = Math.max(0, Math.floor(blob.cy - r1 - 3));
+      const y1 = Math.min(H - 1, Math.ceil(blob.cy + r1 + 3));
+      for (let y = y0; y <= y1; y++) {
+        for (let x = x0; x <= x1; x++) {
+          if (!isOpaque(x, y)) continue;
+          const dx = x - blob.cx, dy = y - blob.cy;
+          const u = (dx * ca + dy * sa) / r1;
+          const v = (-dx * sa + dy * ca) / r2;
+          const d = Math.sqrt(u * u + v * v); // 1이면 타원 경계
+          if (d >= 1 + FEATHER / Math.min(r1, r2)) continue;
+          // 경계에서 부드럽게 0으로 떨어뜨린다
+          const edge = (1 - d) * Math.min(r1, r2) / FEATHER;
+          const soft = edge >= 1 ? 1 : edge <= 0 ? 0 : edge * edge * (3 - 2 * edge);
+          if (soft <= 0) continue;
+          const o = (y * W + x) * 4;
+          const a = Math.round(data[o + 3] * soft);
+          if (a <= out[o + 3]) continue;
+          out[o] = 255; out[o + 1] = 255; out[o + 2] = 255;
+          out[o + 3] = a;
+        }
+      }
     }
+    for (let i = 0; i < W * H; i++) if (out[i * 4 + 3] > 0) count++;
     if (count > 0) {
       const name = `${cfg.prefix}_cheek_mask.png`;
       await sharp(out, { raw: { width: W, height: H, channels: 4 } })

@@ -93,11 +93,13 @@ export const colorPartNames: Record<ColorPart, string> = {
 
 /** 원본과 같은 느낌의 기본값(보라 계열). */
 export const DEFAULT_COLORS: Record<ColorPart, string> = {
-  body: "#b8a7f0",
-  eyes: "#3b2d63",
-  leaf: "#9b86ef",
-  wallet: "#7b63d8",
-  bag: "#8f77e6",
+  // 각 부위의 원본 평균색. 색 바꾸기가 고른 색의 밝기까지 반영하게 되면서, 기본값이 원본 평균과
+  // 같아야 아무것도 안 골랐을 때 원본 그림 그대로 보인다.
+  body: "#d5befa",
+  eyes: "#524094",
+  leaf: "#a389f3",
+  wallet: "#8b72e7",
+  bag: "#7d64de",
 };
 
 /** 파일명 접두사 — public/masks/{prefix}_{part}_mask.png */
@@ -175,4 +177,20 @@ export const stageHasCheek: Record<CharacterStage, boolean> = {
 /** 볼터치 마스크 경로 — 색을 바꾸는 용도가 아니라 홍조를 진하게 올리는 데 쓴다. */
 export function cheekMaskPath(stage: CharacterStage): string {
   return `/masks/${maskPrefix[stage]}_cheek_mask.png`;
+}
+
+/**
+ * 가계부 안쪽 밝은 홈이 있는 단계. 이 영역은 색상 커스터마이징 대상이 아니라 항상 순백색으로 칠한다.
+ * 청소년기의 가계부에만 있다.
+ */
+export const stageHasGroove: Record<CharacterStage, boolean> = {
+  0: false,
+  1: false,
+  2: true,
+  3: false,
+};
+
+/** 가계부 홈 마스크 경로 — 이 픽셀은 항상 #FFFFFF로 칠한다. */
+export function grooveMaskPath(stage: CharacterStage): string {
+  return `/masks/${maskPrefix[stage]}_groove_mask.png`;
 }
