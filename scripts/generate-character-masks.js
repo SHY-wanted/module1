@@ -63,8 +63,11 @@ const STAGES = {
     crop: { x: 5, y: 137, w: 261, h: 398 },
     leaf: { seed: [100, 60], maxL: 84, window: { y1: 120 } },
     eye: { count: 2 },
-    // 가계부: 몸 앞에 안고 있는 책. 몸통(L 80 이상)보다 확실히 어둡다.
-    wallet: { seed: [150, 290], maxL: 74, window: { y0: 200 } },
+    // 가계부: 몸 앞에 안고 있는 책.
+    // 밝기(L)만으로는 책과 "책 밑에 깔린 배(몸) 그림자"가 겹쳐서 아래로 새어나간다
+    // (사용자 신고: 가계부 색을 바꾸면 뒤·아래 몸까지 같이 바뀜). 실측해보니 채도(S)가
+    // 확실한 구분점이다 — 책 안쪽 S 62~71, 배/다리 S 76~94. 그래서 S 상한을 같이 건다.
+    wallet: { seed: [150, 290], maxL: 74, maxS: 74, window: { y0: 200 } },
   },
   3: {
     file: "stage_3_adult.png",
@@ -72,8 +75,9 @@ const STAGES = {
     crop: { x: 8, y: 50, w: 367, h: 492 },
     leaf: { seed: [120, 80], maxL: 84, window: { y1: 140 } },
     eye: { count: 2 },
-    // 가방: 왼쪽 옆구리에 멘 파우치.
-    bag: { seed: [50, 390], maxL: 74, window: { y0: 280, x1: 175 } },
+    // 가방: 왼쪽 옆구리에 멘 파우치(+스트랩 고리). 가계부와 같은 이유로 채도 상한을 건다
+    // (파우치 S 53~73, 주변 몸·다리 S 76~85).
+    bag: { seed: [50, 390], maxL: 74, maxS: 74, window: { y0: 280, x1: 175 } },
   },
 };
 
@@ -253,11 +257,56 @@ async function run() {
         if (w.y0 !== undefined && gy < w.y0) return false;
         if (w.y1 !== undefined && gy > w.y1) return false;
         if (w.x1 !== undefined && gx > w.x1) return false;
-        const [, , l] = toHsl(...at(x, y).slice(0, 3));
+        const [, s, l] = toHsl(...at(x, y).slice(0, 3));
+        if (conf.maxS !== undefined && s >= conf.maxS) return false;
         return l < conf.maxL && l >= 42;
       };
       const seed = [cfg.crop.x + conf.seed[0], cfg.crop.y + conf.seed[1]];
-      masks[part] = floodFrom([seed], FW, FH, pred);
+      const core = floodFrom([seed], FW, FH, pred);
+
+      // 물건 안쪽에 갇힌 밝은 부분(책등의 밝은 띠, ₩ 표시, 가방의 나비 무늬)은 그 물건의
+      // 하이라이트이므로 같이 포함한다 — "가계부의 그림자/하이라이트는 포함" 규칙.
+      // 바깥 배경에서 시작해 core가 아닌 곳을 훑고, 못 닿은 칸이 곧 '갇힌 구멍'이다.
+      // 단 가방 고리(스트랩) 안쪽에는 몸(팔)이 들어와 있으므로, 작은 구멍만 메운다.
+      const outside = new Uint8Array(FW * FH);
+      const queue = [];
+      for (let x = 0; x < FW; x++) {
+        for (const y of [0, FH - 1]) {
+          const id = y * FW + x;
+          if (!core[id] && !outside[id]) { outside[id] = 1; queue.push(id); }
+        }
+      }
+      for (let y = 0; y < FH; y++) {
+        for (const x of [0, FW - 1]) {
+          const id = y * FW + x;
+          if (!core[id] && !outside[id]) { outside[id] = 1; queue.push(id); }
+        }
+      }
+      while (queue.length) {
+        const cur = queue.pop();
+        const cx = cur % FW, cy = (cur - cx) / FW;
+        const nb = [];
+        if (cx > 0) nb.push(cur - 1);
+        if (cx < FW - 1) nb.push(cur + 1);
+        if (cy > 0) nb.push(cur - FW);
+        if (cy < FH - 1) nb.push(cur + FW);
+        for (const ni of nb) {
+          if (outside[ni] || core[ni]) continue;
+          outside[ni] = 1;
+          queue.push(ni);
+        }
+      }
+      const holePred = (x, y) => {
+        const id = y * FW + x;
+        return !core[id] && !outside[id];
+      };
+      const MAX_HOLE = 1500; // 이보다 큰 구멍은 물건 안쪽이 아니라 몸이 비쳐 보이는 것으로 본다
+      for (const hole of allComponents(FW, FH, holePred)) {
+        if (hole.length > MAX_HOLE) continue;
+        for (const id of hole) core[id] = 1;
+      }
+
+      masks[part] = core;
     }
 
     // ---- 몸통 = 남은 전부 (코인·볼·잉크·다른 부위 제외) ----
