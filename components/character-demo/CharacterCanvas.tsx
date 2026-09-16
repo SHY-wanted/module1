@@ -11,7 +11,9 @@
 // 코인은 어떤 마스크에도 없으므로 어떤 색을 골라도 금색 그대로 남는다.
 import { useEffect, useRef, useState } from "react";
 import {
+  fixedMaskPath,
   maskPath,
+  outlineMaskPath,
   stageCustomization,
   stageImageCrop,
   stageImageSizes,
@@ -19,7 +21,7 @@ import {
   type CharacterStage,
   type ColorPart,
 } from "@/lib/characterStages";
-import { applyMaskColor } from "@/lib/recolor";
+import { applyMaskColor, desaturateOutline, restoreFixedArea } from "@/lib/recolor";
 import styles from "./characterDemo.module.css";
 
 /** 이미지를 ImageData로 한 번만 읽어두고 재사용한다(색을 바꿀 때마다 다시 디코딩하지 않도록). */
@@ -80,6 +82,13 @@ export default function CharacterCanvas({
           const mask = await loadImageData(maskPath(stage, part), size.width, size.height);
           applyMaskColor(working.data, mask.data, colors[part]);
         }
+        const outline = await loadImageData(outlineMaskPath(stage), size.width, size.height);
+        desaturateOutline(working.data, outline.data);
+
+        // 입·볼터치는 맨 마지막에 원본 픽셀로 덮어써서(= "맨 앞으로 보내기") 어떤 부위 색을
+        // 골라도 물들지 않게 한다.
+        const fixed = await loadImageData(fixedMaskPath(stage), size.width, size.height);
+        restoreFixedArea(working.data, base.data, fixed.data);
         if (cancelled) return;
 
         const canvas = canvasRef.current;

@@ -78,3 +78,41 @@ export function applyMaskColor(
     // 알파는 건드리지 않는다 — 원본 실루엣 유지.
   }
 }
+
+/**
+ * 서로 다른 두 부위 사이의 경계선(outline mask)은 어느 색으로도 바꾸지 않고 원본 그대로 두는데,
+ * 원본 색 자체가 두 오브젝트 색이 섞인 색이라 부위 색을 원본과 많이 다르게 바꾸면 그 자리만
+ * 원본 색으로 "삐져나온" 것처럼 보인다. 그래서 채도만 0으로 낮춰(밝기는 유지) 중립적인 그림자
+ * 선으로 보이게 한다 — 무슨 색을 고르든 자연스러운 외곽선처럼 보인다.
+ */
+export function desaturateOutline(base: Uint8ClampedArray, outline: Uint8ClampedArray): void {
+  for (let i = 0; i < outline.length; i += 4) {
+    const w = outline[i + 3] / 255;
+    if (w <= 0) continue;
+    const [, , l] = rgbToHsl(base[i], base[i + 1], base[i + 2]);
+    const [nr, ng, nb] = hslToRgb(0, 0, l);
+    base[i] = base[i] * (1 - w) + nr * w;
+    base[i + 1] = base[i + 1] * (1 - w) + ng * w;
+    base[i + 2] = base[i + 2] * (1 - w) + nb * w;
+  }
+}
+
+/**
+ * 입·볼터치는 색 커스터마이징 대상이 아닌 "기본 구조"라서, 색을 다 칠한 뒤 이 자리만 원본
+ * 픽셀로 무조건 덮어쓴다 — 파워포인트에서 겹친 도형을 "맨 앞으로 보내기" 하는 것과 같다.
+ * 어떤 부위 색을 고르든, 부위 마스크가 입·볼터치 언저리를 살짝 물들였더라도 이 단계가 항상
+ * 마지막에 원래 모습으로 되돌린다.
+ */
+export function restoreFixedArea(
+  working: Uint8ClampedArray,
+  original: Uint8ClampedArray,
+  fixedMask: Uint8ClampedArray
+): void {
+  for (let i = 0; i < fixedMask.length; i += 4) {
+    const w = fixedMask[i + 3] / 255;
+    if (w <= 0) continue;
+    working[i] = working[i] * (1 - w) + original[i] * w;
+    working[i + 1] = working[i + 1] * (1 - w) + original[i + 1] * w;
+    working[i + 2] = working[i + 2] * (1 - w) + original[i + 2] * w;
+  }
+}

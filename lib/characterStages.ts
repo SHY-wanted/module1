@@ -121,6 +121,22 @@ export function maskPath(stage: CharacterStage, part: ColorPart): string {
   return `/masks/${maskPrefix[stage]}_${maskFilePart[part]}_mask.png`;
 }
 
+/**
+ * 서로 다른 두 부위 사이의 경계선 마스크 — 색은 바꾸지 않고 채도만 낮춘다(lib/recolor.ts 참고).
+ * 부위 마스크와 달리 색상 파트가 없으므로 Stage마다 하나뿐이다.
+ */
+export function outlineMaskPath(stage: CharacterStage): string {
+  return `/masks/${maskPrefix[stage]}_outline_mask.png`;
+}
+
+/**
+ * 입·볼터치 고정 마스크 — 파워포인트의 "맨 앞으로 보내기"처럼, 색을 다 칠한 뒤 이 자리만
+ * 원본 픽셀로 덮어써서 어떤 부위 색을 고르든 입·볼터치가 물들지 않게 한다(lib/recolor.ts 참고).
+ */
+export function fixedMaskPath(stage: CharacterStage): string {
+  return `/masks/${maskPrefix[stage]}_fixed_mask.png`;
+}
+
 /** localStorage 키 — maxStage와 selectedStage는 의미가 다르므로 절대 한 키로 합치지 않는다. */
 export const STORAGE_KEYS = {
   maxStage: "characterMaxStage",

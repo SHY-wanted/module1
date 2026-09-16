@@ -204,21 +204,47 @@ async function buildStage(key) {
 
   // ── 3. 조각을 부위에 배정한다 ──────────────────────────────────────────
   const isGoldPatch = (p) => p.hsl[0] >= 25 && p.hsl[0] <= 70 && p.hsl[1] > 35;
-  const isPinkPatch = (p) => (p.hsl[0] >= 300 || p.hsl[0] < 25) && p.hsl[1] > 20 && p.hsl[2] > 55;
+  const isPinkPatch = (p) => (p.hsl[0] >= 280 || p.hsl[0] < 25) && p.hsl[1] > 20 && p.hsl[2] > 55;
   const isAttached = (p) => attached[p.pixels[0]] === 1;
 
   const usable = patches.filter((p) => isAttached(p) && !isGoldPatch(p) && !isPinkPatch(p));
   const assigned = new Map(); // patch index -> part
 
-  // 눈: 어두운 조각 중 가장 큰 2개(입은 그보다 작아서 안 걸린다).
+  // 눈: 어두운 조각 중 가장 큰 2개. 입: 그다음으로 큰 어두운 조각 1개 — 실측 결과 눈 2개와
+  // 뚜렷이 차이 나는 크기로 항상 3번째에 오고(예: 1393·1223·284, 노이즈는 10px대로 뚝 떨어짐),
+  // 그 아래는 잡음이라 무시한다.
   // 알 단계는 눈이 "감은 선"이라 커스터마이징 대상이 아니지만, 그렇다고 몸에 딸려 들어가면
   // 몸 색을 바꿀 때 눈까지 물드므로 어느 마스크에도 넣지 않는다(_fixed 로 표시만 해둔다).
+  // 입도 사용자가 색을 바꿀 수 있는 영역이 아니므로(원본 색·음영 그대로 유지) 같은 이유로
+  // _fixed 로 빼서 BODY 마스크에 물들지 않게 한다(hasMouth 인 Stage 1·2·3에만 적용, Stage 0은 대상 아님).
   {
     const dark = usable
       .filter((p) => p.hsl[2] < 55 && p.n >= 150)
-      .sort((a, b) => b.n - a.n)
-      .slice(0, 2);
-    for (const p of dark) assigned.set(p.index, cfg.hasEye ? "eye" : "_fixed");
+      .sort((a, b) => b.n - a.n);
+    const eyes = dark.slice(0, 2);
+    for (const p of eyes) assigned.set(p.index, cfg.hasEye ? "eye" : "_fixed");
+    if (cfg.hasMouth) {
+      const mouth = dark[2];
+      if (mouth) {
+        assigned.set(mouth.index, "_fixed");
+        // 입은 어두운 윗입술과 그보다 밝은 안쪽(혀 색)이 서로 다른 조각으로 쪼개진다. 윗입술에
+        // 바로 맞닿은 조각(안쪽 혀 색)도 함께 _fixed로 묶는다 — 안 그러면 "몸에 둘러싸인 조각"으로
+        // 보여 몸 색에 물든다(6-3 참고). 몸통처럼 큰 조각까지 끌려오지 않도록 크기 상한을 둔다.
+        const touching = new Set();
+        for (const id of mouth.pixels) {
+          for (const ni of neighbors(id)) {
+            const np = patchOf[ni];
+            if (np !== -1 && np !== mouth.index) touching.add(np);
+          }
+        }
+        for (const idx of touching) {
+          const p = patches[idx];
+          if (assigned.has(idx) || !isAttached(p) || isGoldPatch(p) || isPinkPatch(p)) continue;
+          if (p.n > 2000) continue;
+          assigned.set(idx, "_fixed");
+        }
+      }
+    }
   }
 
   // 잎사귀: 머리 위쪽에만 있는 조각 중 가장 큰 것(하트 같은 장식은 이미 걸러졌고, 크기로도 밀린다)
@@ -294,6 +320,7 @@ async function buildStage(key) {
       }
       if (!changed) break;
     }
+    var outlineExcluded = excluded; // step 4-4에서 재사용
   }
 
   // ── 4. 픽셀 마스크로 펼친다 ────────────────────────────────────────────
@@ -429,7 +456,7 @@ async function buildStage(key) {
         if (blocked) break;
         const x = id % W, y = (id - x) / W;
         const [h, s, l] = toHsl(...rgba(x, y).slice(0, 3));
-        if ((h >= 25 && h <= 70 && s > 35) || ((h >= 300 || h < 25) && s > 20 && l > 55)) {
+        if ((h >= 25 && h <= 70 && s > 35) || ((h >= 280 || h < 25) && s > 20 && l > 55)) {
           blocked = true;
           break;
         }
@@ -454,9 +481,69 @@ async function buildStage(key) {
       const x = i % W, y = (i - x) / W;
       const [h, s, l] = toHsl(...rgba(x, y).slice(0, 3));
       const gold = h >= 25 && h <= 70 && s > 35;
-      const pink = (h >= 300 || h < 25) && s > 20 && l > 55;
+      const pink = (h >= 280 || h < 25) && s > 20 && l > 55;
       if (gold || pink) bits[i] = 0;
     }
+  }
+
+  // ── 6-2. 외곽선 마스크(서로 다른 두 오브젝트 사이 경계) ──────────────────
+  // 3-2에서 끝내 배정되지 못한 조각 = 두 오브젝트에 걸친 실제 외곽선. 원본 색(대개 두 오브젝트
+  // 색이 섞인 애매한 색)을 그대로 두면, 부위 색을 원본과 많이 다른 색으로 바꿨을 때 이 테두리만
+  // 원본 색으로 남아 "색이 살짝 삐져나온" 것처럼 보인다(사용자 신고). 그래서 이 자리를 따로
+  // 마스크로 뽑아, 렌더링 쪽에서 채도만 낮춰(밝기 유지) 중립적인 그림자 선으로 보이게 한다
+  // (lib/recolor.ts, CharacterCanvas.tsx).
+  const outlineBits = new Uint8Array(W * H);
+  for (const p of patches) {
+    if (assigned.has(p.index) || outlineExcluded.has(p.index)) continue;
+    for (const id of p.pixels) outlineBits[id] = 1;
+  }
+  for (let i = 0; i < outlineBits.length; i++) {
+    if (!outlineBits[i]) continue;
+    const x = i % W, y = (i - x) / W;
+    const [h, s, l] = toHsl(...rgba(x, y).slice(0, 3));
+    const gold = h >= 25 && h <= 70 && s > 35;
+    const pink = (h >= 280 || h < 25) && s > 20 && l > 55;
+    if (gold || pink) outlineBits[i] = 0;
+  }
+
+  // ── 6-3. 고정 마스크(입·볼터치 — 파워포인트로 치면 "맨 앞으로 보내기") ──────
+  // 입과 볼터치는 색 커스터마이징 대상이 아니라 항상 원본 그대로 있어야 하는 "기본 구조"다.
+  // 그런데 원본 그림에서 입·볼터치와 몸 사이의 안티에일리어싱 전환 픽셀(1~2px)은 "이웃한 오브젝트가
+  // 몸 하나뿐"으로 보여서(3-2 단계는 _fixed·분홍을 이웃 개수에서 빼고 세므로) 몸 마스크에 편입되고,
+  // 몸을 원본과 많이 다른 색으로 바꾸면 그 전환 픽셀 테두리만 새 몸 색으로 물들어 입·볼터치
+  // 가장자리에 색이 살짝 "삐져나온" 것처럼 보인다(사용자 신고).
+  // 기하로 경계를 더 정교하게 가르는 대신, 입·볼터치 영역을 몇 픽셀 넓혀(dilate) 그 전환 픽셀까지
+  // 통째로 포함시키고, 렌더링 마지막 단계에서 이 자리만 원본 픽셀로 덮어써 버린다 — 다른 마스크가
+  // 먼저 색을 칠하더라도 이 마스크가 항상 맨 위에 그려지므로(z-order 최상단), 어떤 부위 색을
+  // 고르든 입·볼터치 언저리가 물들 수 없다.
+  // 볼터치는 부드러운 그라데이션이라 "조각(patch)" 하나로 안 뭉치고 여러 조각으로 쪼개지는 일이
+  // 많다. 조각 평균색으로 판정하면(isPinkPatch) 쪼개진 조각 중 일부가 문턱값을 못 넘어 빠진다.
+  // 그래서 조각이 아니라 픽셀 하나하나를 직접 검사한다(6번 단계의 최종 제외와 같은 방식).
+  const isPinkPixel = (x, y) => {
+    const [h, s, l] = toHsl(...rgba(x, y).slice(0, 3));
+    return (h >= 280 || h < 25) && s > 20 && l > 55;
+  };
+  const fixedBits = new Uint8Array(W * H);
+  for (const [idx, part] of assigned) {
+    if (part !== "_fixed") continue;
+    for (const id of patches[idx].pixels) fixedBits[id] = 1;
+  }
+  for (let y = 0; y < H; y++) {
+    for (let x = 0; x < W; x++) {
+      if (isOpaque(x, y) && isPinkPixel(x, y)) fixedBits[y * W + x] = 1;
+    }
+  }
+  for (let round = 0; round < 2; round++) {
+    const additions = [];
+    for (let i = 0; i < W * H; i++) {
+      if (fixedBits[i]) continue;
+      const x = i % W, y = (i - x) / W;
+      if (!isOpaque(x, y)) continue;
+      for (const ni of neighbors(i)) {
+        if (fixedBits[ni]) { additions.push(i); break; }
+      }
+    }
+    for (const i of additions) fixedBits[i] = 1;
   }
 
   // ── 7. PNG로 저장(원본 알파를 물려받아 실루엣 가장자리를 매끄럽게) ──────
@@ -473,6 +560,38 @@ async function buildStage(key) {
       count++;
     }
     const name = `${cfg.prefix}_${part}_mask.png`;
+    await sharp(out, { raw: { width: W, height: H, channels: 4 } })
+      .png()
+      .toFile(path.join(OUT_DIR, name));
+    console.log(`  ${name}  (${count} px)`);
+  }
+  {
+    const out = Buffer.alloc(W * H * 4);
+    let count = 0;
+    for (let i = 0; i < outlineBits.length; i++) {
+      if (!outlineBits[i]) continue;
+      const o = i * 4;
+      out[o] = 255; out[o + 1] = 255; out[o + 2] = 255;
+      out[o + 3] = data[o + 3];
+      count++;
+    }
+    const name = `${cfg.prefix}_outline_mask.png`;
+    await sharp(out, { raw: { width: W, height: H, channels: 4 } })
+      .png()
+      .toFile(path.join(OUT_DIR, name));
+    console.log(`  ${name}  (${count} px)`);
+  }
+  {
+    const out = Buffer.alloc(W * H * 4);
+    let count = 0;
+    for (let i = 0; i < fixedBits.length; i++) {
+      if (!fixedBits[i]) continue;
+      const o = i * 4;
+      out[o] = 255; out[o + 1] = 255; out[o + 2] = 255;
+      out[o + 3] = data[o + 3];
+      count++;
+    }
+    const name = `${cfg.prefix}_fixed_mask.png`;
     await sharp(out, { raw: { width: W, height: H, channels: 4 } })
       .png()
       .toFile(path.join(OUT_DIR, name));
