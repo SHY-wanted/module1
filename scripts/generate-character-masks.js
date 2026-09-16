@@ -285,10 +285,32 @@ async function buildStage(key) {
           }
         }
         if (!KEEP_CHEEK_PINK || blob.length < PINK_MIN_BLOB) continue;
+
+        // 볼터치는 가장자리가 부드럽게 번지면서 색조가 300 → 280 → 260(몸통)으로 서서히 옮겨간다.
+        // 위의 엄격한 기준(색조 300 이상)으로는 한가운데만 잡혀서, 번지는 가장자리가 몸에 흡수돼
+        // 홍조가 흐릿하게 묻혀 보였다(사용자 요청: "볼터치를 맨 앞에 나오게"). 그래서 잡아낸
+        // 중심에서 색조 275까지 느슨한 기준으로 넓혀 번짐 전체를 살린다. 몸통은 258~265라
+        // 275에서 멈추고, 눈 흰자는 채도가 0이라 넘어가지 않는다.
+        const grown = blob.slice();
+        const inGrown = new Set(blob);
+        const gstack = blob.slice();
+        while (gstack.length) {
+          const cur = gstack.pop();
+          for (const ni of neighbors(cur)) {
+            if (inGrown.has(ni) || seen[ni]) continue;
+            const nx = ni % W, ny = (ni - nx) / W;
+            if (!isOpaque(nx, ny)) continue;
+            const [nh, ns, nl] = toHsl(...rgba(nx, ny).slice(0, 3));
+            if (!((nh >= 275 || nh < 25) && ns > 20 && nl > 55)) continue;
+            inGrown.add(ni);
+            grown.push(ni);
+            gstack.push(ni);
+          }
+        }
         let sx = 0, sy = 0;
-        for (const bid of blob) { const bx = bid % W; sx += bx; sy += (bid - bx) / W; }
-        pinkBlobs.push({ pixels: blob, cx: sx / blob.length, cy: sy / blob.length });
-        for (const bid of blob) solidPink[bid] = 1;
+        for (const bid of grown) { const bx = bid % W; sx += bx; sy += (bid - bx) / W; }
+        pinkBlobs.push({ pixels: grown, cx: sx / grown.length, cy: sy / grown.length });
+        for (const bid of grown) solidPink[bid] = 1;
       }
     }
   }
@@ -545,6 +567,36 @@ async function buildStage(key) {
       if (blocked) continue;
       for (const id of hole) bits[id] = 1;
     }
+  }
+
+  // ── 5-2. 가계부 안쪽의 밝은 홈은 어느 마스크에도 넣지 않는다 ────────────
+  // 가계부 윗변의 홈(원본 L 90 이상의 밝은 띠)이 몸 마스크에 들어가 있어서 몸 색을 따라 노랗게
+  // 변했다(사용자 신고). 가계부 바깥 테두리 안쪽에 있으면서 밝은 픽셀은 가계부의 하이라이트이므로,
+  // 몸에서 빼내 원본 밝은 색 그대로 두면 어떤 색을 골라도 흰 홈으로 고정된다.
+  if (masks.wallet && masks.body) {
+    // 가계부 바깥 테두리 안쪽(구멍 포함) 영역을 구한다 — 바깥에서 못 닿는 칸이 곧 안쪽이다.
+    const outsideWallet = new Uint8Array(W * H);
+    const q = [];
+    const push = (id) => { if (!masks.wallet[id] && !outsideWallet[id]) { outsideWallet[id] = 1; q.push(id); } };
+    for (let x = 0; x < W; x++) { push(x); push((H - 1) * W + x); }
+    for (let y = 0; y < H; y++) { push(y * W); push(y * W + W - 1); }
+    while (q.length) {
+      const cur = q.pop();
+      for (const ni of neighbors(cur)) {
+        if (outsideWallet[ni] || masks.wallet[ni]) continue;
+        outsideWallet[ni] = 1;
+        q.push(ni);
+      }
+    }
+    let freed = 0;
+    for (let i = 0; i < W * H; i++) {
+      if (!masks.body[i] || outsideWallet[i] || masks.wallet[i]) continue;
+      const x = i % W, y = (i - x) / W;
+      if (toHsl(...rgba(x, y).slice(0, 3))[2] < 85) continue; // 밝은 홈만
+      masks.body[i] = 0;
+      freed++;
+    }
+    if (freed) console.log(`  (가계부 안쪽 밝은 홈 ${freed}px을 몸에서 제외)`);
   }
 
   // ── 6. 픽셀 단위 최종 제외 (반드시 구멍 메우기 "뒤"에 와야 한다) ──────────
