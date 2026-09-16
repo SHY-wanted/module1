@@ -68,6 +68,11 @@ export default function LoginInput() {
           </div>
           {error && <div style={{ fontSize: 12, fontWeight: 700, color: "#B23B3B" }}>{error}</div>}
         </div>
+        <div style={{ textAlign: "right", marginTop: 10 }}>
+          <span style={{ fontSize: 12, color: "var(--shoot-text-muted)", fontWeight: 700, cursor: "pointer" }} onClick={() => nav.goAuthScreen("passwordResetInput")}>
+            비밀번호를 잊으셨나요?
+          </span>
+        </div>
         <div onClick={() => setKeepLoggedIn((v) => !v)} style={{ display: "flex", alignItems: "center", gap: 10, marginTop: 18, cursor: "pointer" }}>
           <div style={{ width: 42, height: 24, borderRadius: 12, background: keepLoggedIn ? "var(--shoot-accent)" : "#D8D3C8", position: "relative", transition: "background 0.15s" }}>
             <div style={{ width: 18, height: 18, borderRadius: "50%", background: "var(--shoot-surface)", position: "absolute", top: 3, left: keepLoggedIn ? 21 : 3, boxShadow: "0 2px 5px rgba(0,0,0,0.2)", transition: "left 0.15s" }} />

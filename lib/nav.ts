@@ -5,7 +5,9 @@ export type TabId = "home" | "groups" | "expenses" | "mypage";
 
 // 0·1·1b·2·2a — 로그인 전 화면. 07-screens.md 「화면 전환 방식」(3) 로그인 전 화면 전환
 // — 2026-09-11 팀 결정: 애니메이션 없이 즉시 전환, 별도 스택 관리 없음.
-export type AuthScreenId = "splash" | "signupInput" | "signupSuccess" | "loginInput" | "loginSuccess";
+// passwordResetInput — 2026-09-22 팀 요청(신규) "비밀번호를 잊으셨나요?" 진입. 실제 재설정(새 비밀번호
+// 입력)은 이메일로 온 링크를 타고 app/reset-password(SPA 밖의 별도 Next.js 라우트)에서 이뤄진다.
+export type AuthScreenId = "splash" | "signupInput" | "signupSuccess" | "loginInput" | "loginSuccess" | "passwordResetInput";
 
 // (2) 화면 쌓기 대상 — 07-screens.md 「화면ID별 분류」
 export type StackScreen =
