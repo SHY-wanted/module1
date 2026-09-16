@@ -1,6 +1,14 @@
-> 문서: 06-data.md · 상태: 초안 · 열린 질문 [?] 11개 · 채택한 [제안] 3개 · 마지막 갱신: 금
+> 문서: 06-data.md · 상태: 초안 · 열린 질문 [?] 19개 · 채택한 [제안] 3개 · 마지막 갱신: 화
 > 이 문서를 읽는 에이전트에게: 여기 없는 것은 지어내지 말고 질문으로 돌려라. [?] 는 팀이 아직 모르는 것이다.
 > 종합 메모: 03-requirements.md(유형 "데이터"인 R) · 04-features.md(입력·결과 열) · 05-policy.md(규칙·상태값)과 `모듈 1 SHY프로젝트 주제 세분화.md`(SHY 스펙, "3. DB 스키마" Supabase/Postgres SQL)를 기본 근거로 삼고, `ShooT 하윤.dc.html`(디자인) 화면에 실제로 쓰인 필드·목록을 대조해 채웠다. SHY 스펙 DB 스키마에 없는 저금(Saving)은 03-05의 R19~R21·F19~F21·P11·P12를 근거로 새로 추가했고, 수입(Income)은 03~05 어디에도 없이 디자인에만 있어 전부 [?]로 표시했다. 이 문서를 만들기 전 팀 인터뷰는 진행하지 않았다 — 기존 문서·디자인만으로 채운 초안이라, [?] 항목은 반드시 팀 확인이 필요하다.
+> **2026-09-15 추가**: docs/08-pet-feature-spec.md(저금통 펫 키우기 — 클로드 디자인 프로토타입 기반 신규 제안)를 E9 Pet·E10 WeeklySettlement로 병합했다. 이 두 엔티티는 01~05 어디에도 근거가 없고, 특히 E10은 이 앱에 아직 없는 "예산" 개념에 의존하고 있어 **정책이 정해지기 전엔 구현 착수 금지**(기획 문서 반영만 완료된 상태) — 사용자 요청으로 문서 병합 범위만 진행함.
+> **2026-09-15 갱신(종민 확인)**: 아래 E9 `user_id 또는 group_id` 항목과 E10 `budget_amount`·배치 실행 방식 항목 중 일부가 정해졌다 — docs/08-pet-feature-spec.md §9 참고. 나머지 [?]는 그대로 남아 있다.
+> **2026-09-15 구현(v1)**: E9·E10·E11을 `supabase/005_pet_feature.sql`(schema.sql에도 반영)로 실제로 만들었다 — P6(그룹 랭킹)만 빼고 P1~P5·P7 화면까지 전부 실제 코드로 연결했다(07-screens.md 「저금통 펫 키우기」 절 참고). E10의 배치 실행은 종민이 정한 Edge Function+cron 대신, 화면을 열 때 그 자리에서 계산하는 방식으로 구현했다 — 이유·상세는 07-screens.md 6번 항목 참고.
+> **2026-09-15 통합(v2, 같은 날)**: 사용자가 hybranch·shooTbranch·mg 세 브랜치를 통합 요청 — 참고 이미지("캐릭터 커스텀" 화면)·hybranch의 다마고치형 그룹 공통 반려 캐릭터(F22)·shooTbranch의 목표(예산 대체) 퀘스트 개념·F23(그룹 피드 이모지 반응)을 이번 문서에 반영한다. 충돌 지점은 AskUserQuestion으로 사용자에게 직접 확인했다(아래 각주 참고). 이 통합으로 v1의 `species`(동물 종)·E11 Budget·E10 WeeklySettlement 개념은 폐기됐다 — `supabase/006_pet_v2_and_goals_and_reactions.sql`로 실제 스키마 변경까지 반영, schema.sql도 갱신했다.
+> - **개인 펫 vs 그룹 펫 병합 여부**: 사용자 확인 — "하나로 합침(추천)". v1처럼 개인 펫 1마리(user_id)·그룹 펫 1마리(group_id)가 같은 `pets` 테이블 한 행 형태를 그대로 유지하되, 그룹 펫은 hybranch의 F22 반려 캐릭터 개념으로 대체(자동 성장, 수동 밥주기 없음).
+> - **성장 단계 수**: 사용자 확인 — "이미지대로 4단계(추천)". v1의 5단계(알→유년기→청소년기→성체→전설)에서 "전설" 단계를 없애고 참고 이미지의 4단계(알→유년기→청소년기→성체)로 축소. 이미지의 "2-Sulking(특별한 상태)"는 5번째 단계가 아니라 청소년기의 "시무룩" 시각 변형이라, DB 컬럼이 아니라 화면에서 계산하는 파생 상태로 구현했다(아래 E9 참고).
+> - **마스코트 종류**: 사용자 확인 — "마스코트 하나로 통일(추천)". v1의 종(species: 백호/강아지/고양이/흑룡) 선택 개념을 없애고, 참고 이미지처럼 마스코트 모양은 고정한 채 몸/가계부/가방/눈/잎사귀 5개 부위 색상만 고른다.
+> - **목표(예산) 시스템**: 사용자 확인 — "목표 설정으로 대체". shooTbranch의 월별·카테고리별 목표(퀘스트) 개념으로 v1의 E11 Budget(주간 예산)·E10 WeeklySettlement(주간 정산, 절약 비율 비례 보상)를 완전히 대체했다. 목표는 "달성/미달성"만 판정하고 보상은 절약액 비례가 아니라 고정값(퀘스트 클리어 보상)이다.
 
 ## 엔티티 목록
 | E | 엔티티 | 설명 | 출처 |
@@ -13,6 +21,10 @@
 | E6 | Saving (저금) | 개인 또는 그룹 단위 저금 1건 | 03-requirements.md R19~R21 · 04-features.md F19~F21 · 05-policy.md P11·P12 — SHY 스펙 DB 스키마엔 없어 이번에 새로 추가 |
 | E7 | Income (수입) | 월별 수입 금액·항목 | `ShooT 하윤.dc.html` 화면 "2b-1·2b-1a" — **[?] 01~05 어디에도 이 개념이 없다. 팀이 새로 정한 요구인지, 디자이너가 임의로 넣은 화면인지 확인 필요** |
 | E8 | CategoryPreset | 그룹 유형별 기본 카테고리 목록(정적 상수, DB 테이블 아님) | SHY 스펙 "Task 2-3" · 03-requirements.md R16 · 디자인 `FAMILY_CATS`/`COUPLE_CATS`/`DEFAULT_CATS` |
+| E9 | Pet (저금통 펫) | 개인 펫(색상 커스텀 가능) 또는 그룹 공통 반려 캐릭터(F22, 자동 성장) 1마리 | docs/08-pet-feature-spec.md + hybranch F22 + 참고 이미지 — **2026-09-15 v2로 재구현**(supabase/006_pet_v2_and_goals_and_reactions.sql), v1의 species는 폐기 |
+| E12 | CategoryGoal (월별 목표) | 사용자가 카테고리별로 직접 설정하는 이번 달 지출 목표 금액 | shooTbranch 통합, 04-features.md F19류 지출 카테고리 개념 재사용 — **2026-09-15 신규(E11 Budget 대체)** |
+| E13 | GoalReward (목표 달성 보상) | 월이 끝난 뒤(또는 화면을 열 때) 카테고리별 목표 달성 여부를 계산해 고정 코인·XP를 지급한 기록 | shooTbranch 통합("퀘스트 달성" 개념) — **2026-09-15 신규(E10 WeeklySettlement 대체)**, 절약 비율 비례가 아니라 달성 시 고정 보상 |
+| E14 | ExpenseReaction (그룹 피드 이모지 반응) | 그룹 피드의 지출 카드에 그룹원이 남기는 이모지 반응(F23) | hybranch 통합 — **2026-09-15 신규** |
 
 ## 엔티티별 필드
 
@@ -115,6 +127,70 @@
 
 **[제안] 디자인(`ShooT 하윤.dc.html`)의 지출 입력 화면(6번)은 그룹 유형이 FAMILY·COUPLE일 때만 각각 다른 프리셋을 쓰고, 그 외(SIBLING·ROOMMATE·MARRIED_COUPLE·CLUB·OTHER)는 전부 DEFAULT_CATS로 통일해 보여준다(`Component.GROUP_TO_CATS` 함수가 'couple'·'family'만 분기).** SHY 스펙 Task 2-3은 7개 유형 모두 다른 프리셋을 쓰라고 정했으므로, 이 부분은 디자인이 데모 편의상 3종류로 줄인 것으로 보인다 — 근거: 디자인 스크립트에 SIBLING·ROOMMATE·MARRIED_COUPLE·CLUB용 카테고리 배열 자체가 없음. 실제 구현 범위를 SHY 스펙 7종 그대로 할지, 디자인처럼 3종(가족·커플·기타)으로 줄일지는 팀이 정해야 한다.
 
+### E9. Pet (저금통 펫) — v2, 2026-09-15 브랜치 통합으로 재구현
+| 필드 | 타입 | 필수(추정) | 설명 | 출처 |
+|---|---|---|---|---|
+| id | uuid | 필수 | | [제안] 다른 엔티티와 동일한 PK 관례 |
+| user_id 또는 group_id | uuid (FK) | 필수(배타적, DB CHECK `pets_owner_exclusive`) | 개인 펫 1행(`user_id`만 채움) 또는 그룹 펫 1행(`group_id`만 채움) — v1과 동일 구조 유지(사용자 확인: "하나로 합침") | docs/08-pet-feature-spec.md §1, §9 + hybranch F22 |
+| pet_name | text | 선택 | 비우면 기본 이름("저금이") | docs/08-pet-feature-spec.md §1 |
+| stage_index | int(1~4) | 필수, 기본 1 | **v2로 4단계 축소**(사용자 확인: "이미지대로 4단계") — 1=알, 2=유년기, 3=청소년기, 4=성체. v1의 "전설"(5단계) 폐기 | 참고 이미지("캐릭터 커스텀" 화면 성장 단계 미리보기) |
+| xp_progress | numeric(0~100) | 필수, 기본 0 | 현재 단계 내 진행률(%) — 100 넘으면 stage_index+1(3에서 캡), 초과분 이월 | docs/08-pet-feature-spec.md §2, §8 |
+| total_coins | int | 필수, 기본 0 | 누적 저금통 코인(개인 펫만 의미 있음, 그룹 펫은 코인 없이 XP만) | docs/08-pet-feature-spec.md §4, §7 |
+| last_fed_date | date | 선택 | 개인 펫 전용 — 데일리 밥주기 하루 1회 제한. 그룹 펫은 수동 밥주기가 없어 이 컬럼을 안 씀 | docs/08-pet-feature-spec.md §3, §8 |
+| body_color / ledger_color / bag_color / eye_color / leaf_color | text (hex) | 필수, 기본값 있음 | **v2 신규** — 참고 이미지의 "캐릭터 커스텀" 화면(몸/가계부/가방/눈/잎사귀 5개 부위 색상). 개인 펫만 변경 가능(PetCustomize 화면), 그룹 펫은 기본값 고정(사용자 확인: "마스코트 하나로 통일"이라 종 선택 대신 색상만 개인화) | 참고 이미지 + 사용자 요청 |
+| created_at | timestamptz | 필수(자동) | | [제안] 다른 엔티티와 동일한 감사 필드 관례 |
+
+**"시무룩(sulking)" 상태는 DB 컬럼이 아니라 화면에서 계산하는 파생 상태다** — 참고 이미지의 "2-Sulking"은 별도 성장 단계가 아니라 청소년기(stage_index=2) 그림의 시각 변형이라, 최근 활동(개인 펫: `last_fed_date`, 그룹 펫: 그룹 공유 지출 최근 날짜)과 오늘 날짜의 차이가 기준일(개인 2일/그룹 3일, `lib/pets.ts` 상수)을 넘으면 그 자리에서 `sulking=true`로 렌더링만 다르게 한다. 방치해도 stage_index는 내려가지 않는다(성장 역행 없음) — 이 부분은 스펙에 명시가 없어 "가장 덜 침습적인 해석"으로 구현, 사용자에게 별도 확인은 안 받음.
+
+**그룹 펫(F22) XP 획득 방식 — hybranch 스펙("그룹원 참여도에 따라 성장")이 알고리즘까지 정하진 않아 아래처럼 구현, [?] 표시로 남김**: 공유 지출(`is_shared=true`)이 그룹에 새로 기록될 때마다, 그 지출 날짜 기준 최근 7일 내에 그 그룹에서 공유 지출을 기록한 사람이 몇 명인지 센다(방금 지출도 포함). 2명 이상이면 정상 XP(`GROUP_XP_PER_SHARED_EXPENSE`=15), 1명뿐이면 절반(반올림)만 준다 — "여럿이 골고루 기록하면 정상 성장, 한 명만 계속 기록하면 절반 성장"이라는 hybranch 취지를 그대로 코드화한 것이며, 정확한 창(window) 길이(7일)·정상/절반 경계(2명)는 팀이 재확인 전까지는 잠정값이다. 출처: `lib/store.tsx`의 `growGroupPetFromSharedExpense`, `lib/pets.ts`.
+
+**[?] xpGained(밥주기 1회당 XP) 기본값 15는 스펙 문서 자체가 "실제 값은 서버 정책으로 결정"이라고 못박아 뒀다** — 팀이 정해야 확정값이다. 출처: docs/08-pet-feature-spec.md §3
+
+참고: "나의 배지"(MyBadges)는 별도 테이블이 필요 없다 — stage_index 하나로 4단계 배지 획득 여부를 계산만 하면 된다. 출처: docs/08-pet-feature-spec.md §5 (v2에서 5단계→4단계로 조정)
+
+### E12. CategoryGoal (월별 목표) — v2 신규, E11 Budget 대체(shooTbranch 통합)
+| 필드 | 타입 | 필수 | 설명 | 출처 |
+|---|---|---|---|---|
+| id | uuid | 필수 | | [제안] 다른 엔티티와 동일한 PK 관례 |
+| user_id | uuid (FK → Profile) | 필수 | 개인 단위만 있음 — 그룹 목표는 없음(그룹 펫은 목표가 아니라 참여도로 자란다) | shooTbranch 통합 |
+| category | text | 필수 | E8 카테고리 프리셋 값 또는 직접 입력 카테고리 — 카테고리별로 목표를 따로 설정 | shooTbranch 통합, 사용자 요청("퀘스트 형식으로 달성하면...") |
+| month | text(YYYY-MM) | 필수 | 이 목표가 적용되는 달 | shooTbranch 통합 |
+| goal_amount | integer | 필수 | 그 달 그 카테고리 지출 목표 금액(이 금액 이하로 쓰면 달성) | shooTbranch 통합 |
+| created_at | timestamptz | 필수(자동) | | [제안] 다른 엔티티와 동일한 감사 필드 관례 |
+
+유니크 제약: (user_id, category, month) — 같은 달·같은 카테고리에 목표 중복 불가.
+
+### E13. GoalReward (목표 달성 보상) — v2 신규, E10 WeeklySettlement 대체(shooTbranch 통합)
+| 필드 | 타입 | 필수 | 설명 | 출처 |
+|---|---|---|---|---|
+| id | uuid | 필수 | | [제안] 다른 엔티티와 동일한 PK 관례 |
+| user_id | uuid (FK → Profile) | 필수 | | shooTbranch 통합 |
+| category | text | 필수 | E12와 동일 카테고리 | shooTbranch 통합 |
+| month | text(YYYY-MM) | 필수 | | shooTbranch 통합 |
+| goal_amount | integer | 필수 | 계산 시점의 E12 goal_amount 스냅샷 | shooTbranch 통합 |
+| spent_amount | integer | 필수 | 계산 시점까지의 그 카테고리·그 달 실제 지출 합계 | shooTbranch 통합 |
+| achieved | boolean | 필수 | `spent_amount <= goal_amount` | shooTbranch 통합, 사용자 요청("퀘스트 형식으로 달성하면") |
+| coins_earned | integer | 필수, 기본 0 | **v1과 다르게 절약 비율 비례가 아니라 고정값**(`GOAL_ACHIEVED_REWARD_COINS`=10) — 달성 못 하면 0 | 사용자 요청("먹이를 더 주는 형식이나 경험치를 더 주는 형식" — 절약액 비례가 아니라 퀘스트 클리어형 보상으로 해석) |
+| xp_gained | integer | 필수, 기본 0 | 고정값(`GOAL_ACHIEVED_REWARD_XP`=30), 미달성 시 0 — 개인 펫에 즉시 반영 | 상동 |
+| created_at | timestamptz | 필수(자동) | | [제안] 다른 엔티티와 동일한 감사 필드 관례 |
+
+유니크 제약: (user_id, category, month) — 한 달·한 카테고리당 보상 1번만(중복 지급 방지, v1과 동일한 "화면 열 때 그 자리에서 계산 + DB 유니크 제약으로 멱등성 확보" 패턴).
+
+**배치 실행 방식은 v1과 동일하게 cron 대신 화면(MonthlyGoalReport)을 열 때 그 자리에서 계산한다** — v1에서 이미 "정확한 배치 요일·시각·타임존 미정"이라 화면 계산으로 대체했던 결정을 그대로 이어받음(07-screens.md 참고).
+
+### E14. ExpenseReaction (그룹 피드 이모지 반응, F23) — v2 신규(hybranch 통합)
+| 필드 | 타입 | 필수 | 설명 | 출처 |
+|---|---|---|---|---|
+| id | uuid | 필수 | | [제안] 다른 엔티티와 동일한 PK 관례 |
+| expense_id | uuid (FK → Expense) | 필수 | 그룹 피드에 보이는 지출(공유 지출)에만 반응 가능 | hybranch 통합, 사용자 요청("그룹 피드 이모지 반응(F23) 추가") |
+| user_id | uuid (FK → Profile) | 필수 | 반응을 남긴 그룹원 | hybranch 통합 |
+| emoji | text | 필수 | 이모지 1개(고정 팔레트에서 선택, `lib/pets.ts` REACTION_EMOJI_PALETTE) | hybranch 통합 |
+| created_at | timestamptz | 필수(자동) | | [제안] 다른 엔티티와 동일한 감사 필드 관례 |
+
+유니크 제약: (expense_id, user_id, emoji) — 같은 사람이 같은 지출에 같은 이모지를 중복으로 남길 수 없음(토글 방식: 이미 남겼으면 취소).
+
+**[?] 반응 가능한 이모지 종류·개수 제한은 문서 근거가 없어 임의로 24종 팔레트를 만들었다** — 정확한 목록은 팀이 정해야 확정이다.
+
 ## 관계
 | 관계 | 설명 | 출처 |
 |---|---|---|
@@ -126,6 +202,11 @@
 | Profile 1 — N Saving | | 04-features.md F19 |
 | Group 1 — N Saving | type=GROUP인 경우만 | 04-features.md F19 |
 | Profile 1 — N Income | [?] 그룹 연결 여부 확정 안 됨 | 디자인 화면 2b-1 |
+| Profile 1 — 1 Pet(개인용) | 개인 펫 1인당 1마리 — 그룹 펫과 별개(E9 참고) | docs/08-pet-feature-spec.md §1, §9 |
+| Group 1 — 1 Pet(그룹 공유용, F22) | 그룹당 1마리, 그룹원이 함께 키움 — XP 획득 방식은 공유 지출 참여도 기반(E9 참고, [?] 잠정값) | docs/08-pet-feature-spec.md §1, §6, §9 + hybranch F22 |
+| Profile 1 — N CategoryGoal | 카테고리·달마다 하나씩(E12) | shooTbranch 통합 |
+| Profile 1 — N GoalReward | 카테고리·달마다 하나씩(E13) | shooTbranch 통합 |
+| Expense 1 — N ExpenseReaction | 지출 하나에 그룹원 여럿이 각자 이모지 반응(E14) | hybranch 통합 |
 
 ## 상태값과 데이터 연동
 - 그룹장(Role) 상태(05-policy.md 상태값1): `group_members.role`이 OWNER↔MEMBER로 전환됨. 그룹원이 OWNER 혼자뿐이면 위임 없이 `groups` 행 자체를 삭제 — 이때 `expenses.group_id`는 null로, `group_members`는 cascade로 함께 삭제(SHY 스펙 "설계 포인트").

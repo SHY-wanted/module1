@@ -5,7 +5,7 @@
 // 읽어와 아래 React 상태를 "캐시"로 채우고, 이후 각 액션이 실제로 Supabase에 쓴 다음 그 결과로 캐시를 갱신한다.
 // 카테고리(개인·그룹, DB 테이블 없음)·수입(schema.sql에 없는 E7)만 아직 목업 상태로 남아있다.
 
-import { createContext, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
+import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import type { Session } from "@supabase/supabase-js";
 import { createClient } from "./supabase/client";
 import {
@@ -16,17 +16,34 @@ import {
   INITIAL_INCOMES,
   INITIAL_PROFILES,
   INITIAL_SAVINGS,
+  TODAY_DATE,
   generateId,
   generateInviteCode,
+  type CategoryGoal,
   type Expense,
+  type ExpenseReaction,
+  type GoalReward,
   type Group,
   type GroupMember,
   type GroupType,
   type MockIncome,
+  type Pet,
   type Profile,
   type Saving,
 } from "./mock";
 import { PERSONAL_CATS, groupToCats, makeCategory, type CategoryDef, type CategoryScope } from "./categories";
+import {
+  DEFAULT_PET_COLORS,
+  FEED_XP_DEFAULT,
+  GOAL_ACHIEVED_REWARD_COINS,
+  GOAL_ACHIEVED_REWARD_XP,
+  GROUP_PARTICIPATION_WINDOW_DAYS,
+  GROUP_XP_HALF_RATE_DIVISOR,
+  GROUP_XP_PER_SHARED_EXPENSE,
+  applyXpGain,
+  currentMonthString,
+  type PetColorPart,
+} from "./pets";
 
 // signUp/signIn/updateUser 실패 시 화면에 그대로 보여줄 결과 — Supabase 에러 메시지(영어)를 흔한 경우만
 // 한국어로 바꾸고, 나머지는 그대로 보여준다(계정 잠김 등 팀이 문구를 아직 안 정한 경우들 [?]).
@@ -74,6 +91,17 @@ interface StoreState {
   isLoggedIn: boolean;
   notificationSettings: NotificationSettings;
   darkMode: boolean;
+  // 저금통 펫 키우기 v2(2026-09-15, mg·hybranch·shooTbranch 통합) — 내 개인 펫 + 내가 속한 그룹들의
+  // 그룹 펫이 함께 들어있다(RLS가 이미 "내가 볼 수 있는 펫"만 걸러준다). 그룹 펫은 hybranch F22(반려
+  // 캐릭터)와 합쳐져 참여도 기반으로 자동 성장한다(수동 밥주기는 개인 펫만).
+  pets: Pet[];
+  // 목표(예산) — shooTbranch식 월별·카테고리별 목표로 mg의 주간 예산을 대체(2026-09-15 사용자 확인).
+  categoryGoals: CategoryGoal[];
+  goalRewards: GoalReward[];
+  // F23 그룹 피드 이모지 반응(hybranch, 2026-09-15 추가) — 내가 볼 수 있는 지출의 반응만 들어있다.
+  expenseReactions: ExpenseReaction[];
+  // P3 "데일리 먹이주기 팝업" — 지출을 기록한 직후, 오늘 아직 개인 펫에게 밥을 안 줬으면 연다.
+  feedPopupPetId: string | null;
 }
 
 interface JoinResult {
@@ -155,6 +183,27 @@ interface StoreValue extends StoreState {
   delegateOwner: (groupId: string, newOwnerUserId: string) => Promise<void>;
   // 10a "그룹 나가기" — P10: OWNER는 위임 없이 나갈 수 없다(단, 혼자뿐이면 예외로 그룹·지출·저금 함께 삭제).
   leaveGroup: (groupId: string) => Promise<LeaveGroupResult>;
+
+  // ------- 저금통 펫 키우기 v2(2026-09-15, mg·hybranch·shooTbranch 통합) -------
+  // scope는 카테고리(lib/categories.ts CategoryScope)와 같은 모양을 그대로 재사용한다 —
+  // { kind: "personal" }(개인 펫) | { kind: "group", groupId }(그룹 펫).
+  createPet: (scope: CategoryScope, name: string) => Promise<MutationResult<Pet>>;
+  // P3 "밥 주기" — 개인 펫 전용(그룹 펫은 참여도로 자동 성장, 수동 밥주기 없음). 오늘 이미 줬으면
+  // ok:false를 돌려준다.
+  feedPet: (petId: string) => Promise<MutationResult<{ xpGained: number; leveledUp: boolean }>>;
+  // 지출 기록 성공 직후 호출 — 개인 펫이 있고 오늘 아직 안 먹였으면 팝업을 연다(§3 노출 조건).
+  openFeedPopupIfEligible: () => void;
+  closeFeedPopup: () => void;
+  // 개인 펫 색상 커스텀 — 그룹 펫엔 안 쓴다(사용자 확인: "개인용 펫만" 색상 변경 가능).
+  setPetColors: (petId: string, colors: Partial<Record<PetColorPart, string>>) => Promise<MutationResult<Pet>>;
+  // 월별·카테고리별 목표(shooTbranch 통합, mg의 주간 예산 대체) — 없으면 새로 만들고 있으면 갱신(upsert).
+  setCategoryGoal: (category: string, month: string, amount: number) => Promise<MutationResult<CategoryGoal>>;
+  // 이번 달 설정된 목표들을 각각 달성했는지 계산해서 저장한다(배치 대신 화면을 열 때, 카테고리별로
+  // 이미 보상을 줬으면 다시 안 준다). "퀘스트 달성" 개념이라 고정 보상(coins·xp)을 준다.
+  getOrCreateGoalRewardsForMonth: () => Promise<MutationResult<GoalReward[]>>;
+  // F23 그룹 피드 이모지 반응(hybranch) — 그룹 멤버만 남길 수 있다.
+  addReaction: (expenseId: string, emoji: string) => Promise<MutationResult<ExpenseReaction>>;
+  removeReaction: (expenseId: string, emoji: string) => Promise<boolean>;
 }
 
 const StoreContext = createContext<StoreValue | null>(null);
@@ -186,6 +235,12 @@ export function StoreProvider({ children }: { children: ReactNode }) {
   const [groupCategoriesById, setGroupCategoriesById] = useState<Record<string, CategoryDef[]>>({});
   const [notificationSettings, setNotificationSettings] = useState<NotificationSettings>(DEFAULT_NOTIFICATION_SETTINGS);
   const [darkMode, setDarkMode] = useState(false);
+  // 저금통 펫 키우기 — 완전히 새 기능이라 목업 시드가 없다(빈 배열로 시작, 로그인 후 실제로 채워짐).
+  const [pets, setPets] = useState<Pet[]>([]);
+  const [categoryGoals, setCategoryGoals] = useState<CategoryGoal[]>([]);
+  const [goalRewards, setGoalRewards] = useState<GoalReward[]>([]);
+  const [expenseReactions, setExpenseReactions] = useState<ExpenseReaction[]>([]);
+  const [feedPopupPetId, setFeedPopupPetId] = useState<string | null>(null);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
   const toastTimerRef = useRef<number | null>(null);
 
@@ -198,6 +253,30 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       toastTimerRef.current = null;
     }, 2200);
   }
+
+  // hybranch F22(반려 캐릭터) 통합 — 그룹에 공유 지출이 새로 기록될 때마다 그 그룹의 그룹 펫을
+  // 참여도 기반으로 자동 성장시킨다(수동 밥주기 없음, addExpense가 공유 지출일 때만 호출한다).
+  // "최근 며칠 안에 몇 명이 기록했는지"로 정상/절반 성장을 가른다 — 기준은 lib/pets.ts 참고([?] placeholder).
+  const growGroupPetFromSharedExpense = useCallback(
+    async (groupId: string, expenseUserId: string, expenseDate: string) => {
+      const pet = pets.find((p) => p.group_id === groupId);
+      if (!pet) return;
+      const windowStart = new Date(expenseDate + "T00:00:00");
+      windowStart.setDate(windowStart.getDate() - (GROUP_PARTICIPATION_WINDOW_DAYS - 1));
+      const windowStartStr = windowStart.toISOString().slice(0, 10);
+      const recentContributors = new Set(
+        expenses.filter((e) => e.group_id === groupId && e.is_shared && e.date >= windowStartStr && e.date <= expenseDate).map((e) => e.user_id)
+      );
+      recentContributors.add(expenseUserId); // setExpenses가 아직 반영 전일 수 있어 방금 넣은 사람도 명시적으로 포함.
+      const xpGained = recentContributors.size >= 2 ? GROUP_XP_PER_SHARED_EXPENSE : Math.round(GROUP_XP_PER_SHARED_EXPENSE / GROUP_XP_HALF_RATE_DIVISOR);
+      const { stageIndex, xpProgress } = applyXpGain(pet.stage_index, pet.xp_progress, xpGained);
+      const { error } = await supabase.from("pets").update({ stage_index: stageIndex, xp_progress: xpProgress }).eq("id", pet.id);
+      if (!error) {
+        setPets((prev) => prev.map((p) => (p.id === pet.id ? { ...p, stage_index: stageIndex, xp_progress: xpProgress } : p)));
+      }
+    },
+    [pets, expenses, supabase]
+  );
 
   // 로그인 전(세션 확인 전 포함)엔 CURRENT_USER_ID(가짜 데모 계정, INITIAL_* 목업 데이터가 이 id로
   // 채워져 있다)를 그대로 쓰지만, 실제 로그인한 사람이 있으면 그 사람의 실제 id를 우선한다.
@@ -253,12 +332,24 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       supabase.from("group_members").select("*"),
       supabase.from("expenses").select("*").order("created_at", { ascending: false }),
       supabase.from("savings").select("*").order("created_at", { ascending: false }),
-    ]).then(([groupsRes, membersRes, expensesRes, savingsRes]) => {
+      // 저금통 펫(내 개인 펫 + 내가 속한 그룹의 그룹 펫) — pets_select_own_or_group_member 정책이
+      // 이미 "내가 볼 수 있는 펫"만 걸러준다.
+      supabase.from("pets").select("*"),
+      // 목표(예산 대체)·목표 보상 — 본인 것만(RLS).
+      supabase.from("category_goals").select("*"),
+      supabase.from("goal_rewards").select("*"),
+      // F23 이모지 반응 — 내가 볼 수 있는 지출의 반응만(RLS).
+      supabase.from("expense_reactions").select("*"),
+    ]).then(([groupsRes, membersRes, expensesRes, savingsRes, petsRes, goalsRes, rewardsRes, reactionsRes]) => {
       if (!active) return;
       if (!groupsRes.error && groupsRes.data) setGroups(groupsRes.data);
       if (!membersRes.error && membersRes.data) setGroupMembers(membersRes.data);
       if (!expensesRes.error && expensesRes.data) setExpenses(expensesRes.data);
       if (!savingsRes.error && savingsRes.data) setSavings(savingsRes.data);
+      if (!petsRes.error && petsRes.data) setPets(petsRes.data);
+      if (!goalsRes.error && goalsRes.data) setCategoryGoals(goalsRes.data);
+      if (!rewardsRes.error && rewardsRes.data) setGoalRewards(rewardsRes.data);
+      if (!reactionsRes.error && reactionsRes.data) setExpenseReactions(reactionsRes.data);
     });
     return () => {
       active = false;
@@ -337,6 +428,11 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       isLoggedIn,
       notificationSettings,
       darkMode,
+      pets,
+      categoryGoals,
+      goalRewards,
+      expenseReactions,
+      feedPopupPetId,
       currentUserId,
 
       // P1: 그룹 이름이 비어 있으면 호출하는 쪽(화면)에서 막아야 한다 — 여기서도 방어적으로 한 번 더 막는다.
@@ -404,6 +500,10 @@ export function StoreProvider({ children }: { children: ReactNode }) {
         const { data, error } = await supabase.from("expenses").insert(input).select().single();
         if (error || !data) return { ok: false, error: error?.message ?? "지출을 저장하지 못했어요" };
         setExpenses((prev) => [data, ...prev]);
+        // hybranch F22 통합 — 공유 지출이면 그 그룹의 그룹 펫을 참여도 기반으로 자동 성장시킨다.
+        if (data.is_shared && data.group_id) {
+          await growGroupPetFromSharedExpense(data.group_id, data.user_id, data.date);
+        }
         return { ok: true, data };
       },
 
@@ -605,8 +705,196 @@ export function StoreProvider({ children }: { children: ReactNode }) {
         setGroupMembers((prev) => prev.filter((m) => !(m.group_id === groupId && m.user_id === currentUserId)));
         return { ok: true };
       },
+
+      // P1(펫 선택) — 개인 펫은 본인 명의로, 그룹 펫은 group_id로 만든다(schema.sql pets_owner_exclusive
+      // 제약 — 배타적). 종(species) 선택은 없앴다 — 마스코트 하나 + 기본 색상으로 시작하고, 개인 펫은
+      // 나중에 setPetColors로 꾸민다. .select() 없이 id·시각을 미리 만들어 넣는다(createGroup과 같은
+      // 이유 — 막 만든 그룹 펫은 아직 RETURNING이 요구하는 select 정책을 못 만족할 수 있어서).
+      async createPet(scope: CategoryScope, name: string): Promise<MutationResult<Pet>> {
+        if (!session) return { ok: false, error: "로그인이 필요해요" };
+        const trimmed = name.trim();
+        const newPet: Pet = {
+          id: crypto.randomUUID(),
+          user_id: scope.kind === "personal" ? session.user.id : null,
+          group_id: scope.kind === "group" ? scope.groupId : null,
+          pet_name: trimmed.length > 0 ? trimmed : null,
+          stage_index: 1,
+          xp_progress: 0,
+          total_coins: 0,
+          last_fed_date: null,
+          body_color: DEFAULT_PET_COLORS.body,
+          ledger_color: DEFAULT_PET_COLORS.ledger,
+          bag_color: DEFAULT_PET_COLORS.bag,
+          eye_color: DEFAULT_PET_COLORS.eyes,
+          leaf_color: DEFAULT_PET_COLORS.leaf,
+          created_at: new Date().toISOString(),
+        };
+        const { error } = await supabase.from("pets").insert(newPet);
+        if (error) return { ok: false, error: error.message };
+        setPets((prev) => [...prev, newPet]);
+        return { ok: true, data: newPet };
+      },
+
+      // P3 "밥 주기" — 개인 펫 전용, 하루 1회 제한(§3). XP 지급·단계 승급은 lib/pets.ts applyXpGain 참고.
+      async feedPet(petId: string): Promise<MutationResult<{ xpGained: number; leveledUp: boolean }>> {
+        const pet = pets.find((p) => p.id === petId);
+        if (!pet) return { ok: false, error: "펫을 찾을 수 없어요" };
+        if (pet.last_fed_date === TODAY_DATE) return { ok: false, error: "오늘은 이미 밥을 줬어요" };
+        const { stageIndex, xpProgress } = applyXpGain(pet.stage_index, pet.xp_progress, FEED_XP_DEFAULT);
+        const { error } = await supabase
+          .from("pets")
+          .update({ stage_index: stageIndex, xp_progress: xpProgress, last_fed_date: TODAY_DATE })
+          .eq("id", petId);
+        if (error) return { ok: false, error: error.message };
+        setPets((prev) => prev.map((p) => (p.id === petId ? { ...p, stage_index: stageIndex, xp_progress: xpProgress, last_fed_date: TODAY_DATE } : p)));
+        return { ok: true, data: { xpGained: FEED_XP_DEFAULT, leveledUp: stageIndex > pet.stage_index } };
+      },
+
+      // 지출 기록(신규) 성공 직후 호출 — 개인 펫이 있고 오늘 아직 안 먹였을 때만 P3 팝업을 연다.
+      openFeedPopupIfEligible() {
+        const personalPet = pets.find((p) => p.user_id === currentUserId);
+        if (personalPet && personalPet.last_fed_date !== TODAY_DATE) {
+          setFeedPopupPetId(personalPet.id);
+        }
+      },
+
+      closeFeedPopup() {
+        setFeedPopupPetId(null);
+      },
+
+      // 개인 펫 색상 커스텀(그룹 펫엔 안 씀 — "개인용 펫만" 색상 변경 가능이라는 사용자 확인 그대로).
+      async setPetColors(petId: string, colors: Partial<Record<PetColorPart, string>>): Promise<MutationResult<Pet>> {
+        const pet = pets.find((p) => p.id === petId);
+        if (!pet) return { ok: false, error: "펫을 찾을 수 없어요" };
+        const patch = {
+          ...(colors.body !== undefined ? { body_color: colors.body } : {}),
+          ...(colors.ledger !== undefined ? { ledger_color: colors.ledger } : {}),
+          ...(colors.bag !== undefined ? { bag_color: colors.bag } : {}),
+          ...(colors.eyes !== undefined ? { eye_color: colors.eyes } : {}),
+          ...(colors.leaf !== undefined ? { leaf_color: colors.leaf } : {}),
+        };
+        const { error } = await supabase.from("pets").update(patch).eq("id", petId);
+        if (error) return { ok: false, error: error.message };
+        const updated: Pet = { ...pet, ...patch };
+        setPets((prev) => prev.map((p) => (p.id === petId ? updated : p)));
+        return { ok: true, data: updated };
+      },
+
+      // shooTbranch 통합 — 월별·카테고리별 목표. 있으면 갱신, 없으면 새로 만든다(upsert, unique(user_id,category,month)).
+      async setCategoryGoal(category: string, month: string, amount: number): Promise<MutationResult<CategoryGoal>> {
+        if (!session) return { ok: false, error: "로그인이 필요해요" };
+        const nowIso = new Date().toISOString();
+        const existing = categoryGoals.find((g) => g.category === category && g.month === month);
+        if (existing) {
+          const { error } = await supabase.from("category_goals").update({ goal_amount: amount, updated_at: nowIso }).eq("id", existing.id);
+          if (error) return { ok: false, error: error.message };
+          const updated: CategoryGoal = { ...existing, goal_amount: amount, updated_at: nowIso };
+          setCategoryGoals((prev) => prev.map((g) => (g.id === existing.id ? updated : g)));
+          return { ok: true, data: updated };
+        }
+        const newGoal: CategoryGoal = {
+          id: crypto.randomUUID(),
+          user_id: session.user.id,
+          category,
+          month,
+          goal_amount: amount,
+          created_at: nowIso,
+          updated_at: nowIso,
+        };
+        const { error } = await supabase.from("category_goals").insert(newGoal);
+        if (error) return { ok: false, error: error.message };
+        setCategoryGoals((prev) => [...prev, newGoal]);
+        return { ok: true, data: newGoal };
+      },
+
+      // "퀘스트 달성하면 보상"(shooTbranch 통합, 2026-09-15 사용자 확인) — 배치 없이 화면을 열 때
+      // 이번 달 설정된 목표들을 전부 계산한다. 카테고리·달마다 한 번만 보상(unique 제약 + 로컬 캐시로 방지).
+      async getOrCreateGoalRewardsForMonth(): Promise<MutationResult<GoalReward[]>> {
+        if (!session) return { ok: false, error: "로그인이 필요해요" };
+        const month = currentMonthString(TODAY_DATE);
+        const thisMonthGoals = categoryGoals.filter((g) => g.month === month);
+        const results: GoalReward[] = [];
+        let totalCoins = 0;
+        let totalXp = 0;
+        for (const goal of thisMonthGoals) {
+          const existing = goalRewards.find((r) => r.category === goal.category && r.month === month);
+          if (existing) {
+            results.push(existing);
+            continue;
+          }
+          const spentAmount = expenses
+            .filter((e) => e.user_id === currentUserId && e.category === goal.category && e.date.startsWith(month))
+            .reduce((sum, e) => sum + e.amount, 0);
+          const achieved = spentAmount <= goal.goal_amount;
+          const coinsEarned = achieved ? GOAL_ACHIEVED_REWARD_COINS : 0;
+          const xpGained = achieved ? GOAL_ACHIEVED_REWARD_XP : 0;
+          const newReward: GoalReward = {
+            id: crypto.randomUUID(),
+            user_id: session.user.id,
+            category: goal.category,
+            month,
+            spent_amount: spentAmount,
+            goal_amount: goal.goal_amount,
+            achieved,
+            coins_earned: coinsEarned,
+            xp_gained: xpGained,
+            created_at: new Date().toISOString(),
+          };
+          const { error } = await supabase.from("goal_rewards").insert(newReward);
+          if (error) continue; // 이 카테고리만 건너뛰고 나머지는 계속 계산한다.
+          results.push(newReward);
+          totalCoins += coinsEarned;
+          totalXp += xpGained;
+        }
+        setGoalRewards((prev) => {
+          const existingIds = new Set(prev.map((r) => r.id));
+          const toAdd = results.filter((r) => !existingIds.has(r.id));
+          return toAdd.length > 0 ? [...prev, ...toAdd] : prev;
+        });
+
+        // 보상 대상은 개인 펫이다(§4 "코인 지급과 동시에 펫 XP도 함께 지급"과 같은 원칙).
+        const personalPet = pets.find((p) => p.user_id === currentUserId);
+        if (personalPet && (totalCoins > 0 || totalXp > 0)) {
+          const { stageIndex, xpProgress } = applyXpGain(personalPet.stage_index, personalPet.xp_progress, totalXp);
+          const newTotalCoins = personalPet.total_coins + totalCoins;
+          await supabase.from("pets").update({ stage_index: stageIndex, xp_progress: xpProgress, total_coins: newTotalCoins }).eq("id", personalPet.id);
+          setPets((prev) =>
+            prev.map((p) => (p.id === personalPet.id ? { ...p, stage_index: stageIndex, xp_progress: xpProgress, total_coins: newTotalCoins } : p))
+          );
+        }
+        return { ok: true, data: results };
+      },
+
+      // F23 그룹 피드 이모지 반응(hybranch) — RLS가 그룹 멤버인지 확인해준다.
+      async addReaction(expenseId: string, emoji: string): Promise<MutationResult<ExpenseReaction>> {
+        if (!session) return { ok: false, error: "로그인이 필요해요" };
+        const newReaction: ExpenseReaction = {
+          id: crypto.randomUUID(),
+          expense_id: expenseId,
+          user_id: session.user.id,
+          emoji,
+          created_at: new Date().toISOString(),
+        };
+        const { error } = await supabase.from("expense_reactions").insert(newReaction);
+        if (error) return { ok: false, error: error.message };
+        setExpenseReactions((prev) => [...prev, newReaction]);
+        return { ok: true, data: newReaction };
+      },
+
+      async removeReaction(expenseId: string, emoji: string): Promise<boolean> {
+        if (!session) return false;
+        const { error } = await supabase
+          .from("expense_reactions")
+          .delete()
+          .eq("expense_id", expenseId)
+          .eq("user_id", session.user.id)
+          .eq("emoji", emoji);
+        if (error) return false;
+        setExpenseReactions((prev) => prev.filter((r) => !(r.expense_id === expenseId && r.user_id === session.user.id && r.emoji === emoji)));
+        return true;
+      },
     }),
-    [profiles, session, authReady, currentUserId, currentUserAvatarUrl, groups, groupMembers, expenses, savings, incomes, personalCategories, groupCategoriesById, toastMessage, isLoggedIn, notificationSettings, darkMode, supabase]
+    [profiles, session, authReady, currentUserId, currentUserAvatarUrl, groups, groupMembers, expenses, savings, incomes, personalCategories, groupCategoriesById, toastMessage, isLoggedIn, notificationSettings, darkMode, pets, categoryGoals, goalRewards, expenseReactions, feedPopupPetId, supabase, growGroupPetFromSharedExpense]
   );
 
   return <StoreContext.Provider value={value}>{children}</StoreContext.Provider>;

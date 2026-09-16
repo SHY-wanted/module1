@@ -3,6 +3,9 @@
 import { useNav } from "../NavContext";
 import { useStore } from "@/lib/store";
 import { initialOf, stripSurname } from "@/lib/format";
+import { getPersonalPet } from "@/lib/selectors";
+import { MAX_STAGE_INDEX } from "@/lib/pets";
+import PetMascot from "../PetMascot";
 import { ChevronRightIcon, GearIcon, UsersIcon } from "../icons";
 
 export default function MyPage() {
@@ -11,6 +14,8 @@ export default function MyPage() {
   const me = store.profiles.find((p) => p.id === store.currentUserId);
   const fullName = me?.name ?? "";
   const givenName = stripSurname(fullName);
+  // 저금통 펫 키우기(docs/08-pet-feature-spec.md §7, 2026-09-15 신규) — 펫이 아직 없으면 만들러 보낸다.
+  const personalPet = getPersonalPet(store.pets, store.currentUserId);
 
   return (
     <div style={{ height: "100%", width: "100%", boxSizing: "border-box", background: "var(--shoot-bg)", display: "flex", flexDirection: "column" }}>
@@ -57,6 +62,37 @@ export default function MyPage() {
             <div style={{ flex: 1, fontSize: 14, fontWeight: 800, color: "var(--shoot-text)" }}>내 그룹 관리</div>
             <ChevronRightIcon size={16} color="#A9A2B8" />
           </div>
+        </div>
+
+        {/* §7 "저금통 코인 카드"·"나의 배지 카드"(디자인 파일 없음, 2026-09-15 신규 구현) */}
+        <div
+          onClick={() => nav.push(personalPet ? { id: "petDetail", scope: { kind: "personal" } } : { id: "petSelect", scope: { kind: "personal" } })}
+          style={{ marginTop: 16, background: "var(--shoot-surface)", borderRadius: 20, padding: 18, display: "flex", alignItems: "center", gap: 14, border: "1px solid var(--shoot-border)", cursor: "pointer" }}
+        >
+          <div style={{ width: 44, height: 44, borderRadius: "50%", background: "var(--shoot-surface-alt)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0, overflow: "hidden" }}>
+            {personalPet ? <PetMascot pet={personalPet} size={38} /> : <span style={{ fontSize: 22 }}>🐣</span>}
+          </div>
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <div style={{ fontSize: 13, fontWeight: 700, color: "var(--shoot-text-muted)" }}>저금통 코인</div>
+            <div style={{ fontSize: 16, fontWeight: 800, color: "var(--shoot-text)", marginTop: 2 }}>
+              {personalPet ? `🪙 ${personalPet.total_coins.toLocaleString("ko-KR")}` : "펫 만들러 가기"}
+            </div>
+          </div>
+          <ChevronRightIcon size={16} color="#A9A2B8" />
+        </div>
+
+        <div
+          onClick={() => nav.push({ id: "myBadges" })}
+          style={{ marginTop: 10, background: "var(--shoot-surface)", borderRadius: 20, padding: 18, display: "flex", alignItems: "center", gap: 14, border: "1px solid var(--shoot-border)", cursor: "pointer" }}
+        >
+          <div style={{ width: 44, height: 44, borderRadius: "50%", background: "var(--shoot-surface-alt)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 20, flexShrink: 0 }}>
+            🏅
+          </div>
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <div style={{ fontSize: 13, fontWeight: 700, color: "var(--shoot-text-muted)" }}>나의 배지</div>
+            <div style={{ fontSize: 16, fontWeight: 800, color: "var(--shoot-text)", marginTop: 2 }}>{personalPet?.stage_index ?? 0} / {MAX_STAGE_INDEX}</div>
+          </div>
+          <ChevronRightIcon size={16} color="#A9A2B8" />
         </div>
 
         <div style={{ flex: 1 }} />
