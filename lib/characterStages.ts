@@ -37,7 +37,9 @@ export const stageImageSizes: Record<CharacterStage, { width: number; height: nu
   0: { width: 305, height: 630 },
   1: { width: 285, height: 630 },
   2: { width: 295, height: 640 },
-  3: { width: 375, height: 640 },
+  // 성년기는 원본에서 코인이 오른쪽 끝에 잘려 있어서 캔버스를 12px 넓히고 잘린 호를 복원했다
+  // (scripts/repair-stage3-coin.js 참고). 그래서 375 → 387.
+  3: { width: 387, height: 640 },
 };
 
 /**
@@ -53,7 +55,7 @@ export const stageImageCrop: Record<CharacterStage, { x: number; y: number; widt
   0: { x: 50, y: 225, width: 200, height: 300 },
   1: { x: 5, y: 209, width: 236, height: 316 },
   2: { x: 5, y: 137, width: 261, height: 398 },
-  3: { x: 8, y: 50, width: 367, height: 492 },
+  3: { x: 8, y: 50, width: 379, height: 492 }, // 코인 복원으로 넓어진 만큼 함께 넓힘
 };
 
 // ============================================================

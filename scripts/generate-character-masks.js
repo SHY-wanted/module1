@@ -78,6 +78,7 @@ const STAGES = {
     crop: { x: 5, y: 209, w: 236, h: 316 },
     leafMaxY: 100,
     hasEye: true,
+    hasMouth: true,
   },
   2: {
     file: "stage_2_teen.png",
@@ -85,15 +86,17 @@ const STAGES = {
     crop: { x: 5, y: 137, w: 261, h: 398 },
     leafMaxY: 120,
     hasEye: true,
+    hasMouth: true,
     // 가계부: 몸 앞에 안고 있는 책. 얼굴 아래쪽에서 찾는다.
     wallet: { window: { y0: 200 } },
   },
   3: {
     file: "stage_3_adult.png",
     prefix: "stage_3_adult",
-    crop: { x: 8, y: 50, w: 367, h: 492 },
+    crop: { x: 8, y: 50, w: 379, h: 492 }, // 코인 복원으로 캔버스가 12px 넓어짐
     leafMaxY: 140,
     hasEye: true,
+    hasMouth: true,
     // 가방: 왼쪽 옆구리의 파우치 + 고리.
     bag: { window: { y0: 280, x1: 180 } },
   },
@@ -302,6 +305,80 @@ async function buildStage(key) {
   for (const [patchIndex, part] of assigned) {
     if (!masks[part]) continue; // "_fixed"(어느 마스크에도 안 넣는 조각)는 건너뛴다
     for (const id of patches[patchIndex].pixels) masks[part][id] = 1;
+  }
+
+  // ── 4-2. 떨어져 나온 파편 제거 ─────────────────────────────────────────
+  // 가계부·가방·잎사귀·눈은 그림에서 한 덩어리로 붙어 있는 물건이다. 그런데 이웃 보고 배정하는
+  // 단계에서 엉뚱한 곳의 작은 조각이 딸려 들어오는 일이 있었다(실제로 가계부 마스크에 입 근처
+  // 파편 5개 125px이 붙어서, 입 주변이 가계부 색으로 물들고 그 옆 픽셀은 "두 오브젝트에 걸침"으로
+  // 판정돼 원본 보라색으로 남았다). 물건은 이어져 있어야 하므로 가장 큰 덩어리만 남긴다.
+  // 몸은 팔·다리가 외곽선으로 끊겨 여러 덩어리일 수 있어 제외한다.
+  for (const part of parts) {
+    if (part === "body") continue;
+    const bits = masks[part];
+    const seen = new Uint8Array(W * H);
+    const blobs = [];
+    for (let i = 0; i < W * H; i++) {
+      if (!bits[i] || seen[i]) continue;
+      const blob = [];
+      const stack = [i];
+      seen[i] = 1;
+      while (stack.length) {
+        const cur = stack.pop();
+        blob.push(cur);
+        for (const ni of neighbors(cur)) {
+          if (seen[ni] || !bits[ni]) continue;
+          seen[ni] = 1;
+          stack.push(ni);
+        }
+      }
+      blobs.push(blob);
+    }
+    if (blobs.length <= 1) continue;
+    blobs.sort((a, b) => b.length - a.length);
+    // "가장 큰 것만 남기기"는 쓰면 안 된다 — 가방은 파우치와 어깨끈 고리가 따로 떨어진 두 덩어리고,
+    // 눈도 좌·우 두 덩어리다. 반대로 잘못 붙은 파편은 훨씬 작았다(입 근처 96·11·8·8·2px).
+    // 그래서 "가장 큰 덩어리에 비해 확연히 작은 것"만 버린다.
+    const minKeep = Math.max(200, blobs[0].length * 0.1);
+    for (const blob of blobs) {
+      if (blob.length >= minKeep) continue;
+      for (const id of blob) bits[id] = 0;
+    }
+  }
+
+  // ── 4-3. 파편을 지운 자리 주변을 다시 판정한다 ─────────────────────────
+  // 파편이 붙어 있는 동안에는 그 옆 픽셀이 "몸과 가계부 두 오브젝트에 걸침"으로 보여 어디에도
+  // 배정되지 않았다(= 원본 보라색으로 남는 픽셀). 파편을 지웠으니 이제 한 오브젝트에만 닿는
+  // 픽셀은 그 오브젝트에 넣어준다. 판정 기준은 앞과 동일하다(닿는 오브젝트가 하나면 내부, 둘이면 경계).
+  {
+    const protectedPixels = new Uint8Array(W * H);
+    for (const [patchIndex, part] of assigned) {
+      if (part !== "_fixed") continue;
+      for (const id of patches[patchIndex].pixels) protectedPixels[id] = 1;
+    }
+    for (let round = 0; round < 3; round++) {
+      const additions = [];
+      for (let i = 0; i < W * H; i++) {
+        const x = i % W, y = (i - x) / W;
+        if (!isOpaque(x, y) || protectedPixels[i]) continue;
+        let owner = null, ambiguous = false;
+        for (const part of parts) {
+          if (masks[part][i]) { owner = null; ambiguous = true; break; } // 이미 주인이 있다
+        }
+        if (ambiguous) continue;
+        for (const ni of neighbors(i)) {
+          for (const part of parts) {
+            if (!masks[part][ni]) continue;
+            if (owner === null) owner = part;
+            else if (owner !== part) ambiguous = true;
+          }
+          if (ambiguous) break;
+        }
+        if (owner && !ambiguous) additions.push([i, owner]);
+      }
+      if (!additions.length) break;
+      for (const [i, part] of additions) masks[part][i] = 1;
+    }
   }
 
   // ── 5. 물건 안쪽에 갇힌 작은 무늬(책등의 밝은 띠, ₩, 나비)를 그 물건에 포함 ──
