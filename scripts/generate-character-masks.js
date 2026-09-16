@@ -67,7 +67,11 @@ const EDGE_THRESHOLD = 9;
  * 덩어리 크기가 단계마다 54~148px로 제각각이라, 남기면 어떤 단계는 분홍이고 어떤 단계는 아닌
  * 들쭉날쭉한 상태가 된다. 분홍 볼터치를 되살리려면 이 값만 true로 바꾸면 된다.
  */
-const KEEP_CHEEK_PINK = true;
+// 볼터치를 마스크에서 빼서 원본 픽셀로 남길지 여부.
+// false로 둔다 — 빼는 영역(색으로 주워담은 삐뚤한 모양)과 진하게 하는 영역(타원)의 모양이 달라서
+// 겹치는 가장자리가 번져 보였다(사용자 신고). 지금은 몸이 얼굴 전체를 고르게 덮고, 그 위에
+// 볼터치 타원 하나로 고정색을 얹는다(lib/recolor.ts 의 paintCheek). 그래서 기준이 하나뿐이다.
+const KEEP_CHEEK_PINK = false;
 
 /** 이보다 큰 구멍은 물건 안쪽 무늬가 아니라 몸이 비쳐 보이는 것으로 본다. */
 const MAX_HOLE = 1500;
@@ -284,7 +288,7 @@ async function buildStage(key) {
             stack.push(ni);
           }
         }
-        if (!KEEP_CHEEK_PINK || blob.length < PINK_MIN_BLOB) continue;
+        if (blob.length < PINK_MIN_BLOB) continue;
 
         // 볼터치는 가장자리가 부드럽게 번지면서 색조가 300 → 280 → 260(몸통)으로 서서히 옮겨간다.
         // 위의 엄격한 기준(색조 300 이상)으로는 한가운데만 잡혀서, 번지는 가장자리가 몸에 흡수돼
@@ -310,7 +314,7 @@ async function buildStage(key) {
         let sx = 0, sy = 0;
         for (const bid of grown) { const bx = bid % W; sx += bx; sy += (bid - bx) / W; }
         pinkBlobs.push({ pixels: grown, cx: sx / grown.length, cy: sy / grown.length });
-        for (const bid of grown) solidPink[bid] = 1;
+        if (KEEP_CHEEK_PINK) for (const bid of grown) solidPink[bid] = 1;
       }
     }
   }
@@ -620,11 +624,38 @@ async function buildStage(key) {
     }
   }
 
+  // ── 6-2. 눈 테두리 다듬기 ───────────────────────────────────────────────
+  // 눈은 픽셀 단위로 주워담은 결과라 테두리가 계단처럼 울퉁불퉁하다. 살짝 흐린 뒤 중간값을
+  // 기준으로 다시 또렷하게 만들면 전체 모양은 그대로 둔 채 튀어나온 계단만 다듬어진다
+  // (사용자 요청: "형태가 변하지 않는 선에서 반듯하게"). 다듬으면서 1~2px 커질 수 있으므로
+  // 그만큼은 다른 마스크에서 빼내 서로 겹치지 않게 한다.
+  let eyeAlpha = null;
+  if (masks.eye) {
+    const raw = Buffer.alloc(W * H * 4);
+    for (let i = 0; i < W * H; i++) {
+      if (!masks.eye[i]) continue;
+      raw[i * 4 + 3] = data[i * 4 + 3];
+    }
+    const blurred = await sharp(raw, { raw: { width: W, height: H, channels: 4 } })
+      .blur(1.4).raw().toBuffer();
+    eyeAlpha = new Uint8Array(W * H);
+    for (let i = 0; i < W * H; i++) {
+      const a = blurred[i * 4 + 3] / 255;
+      const t = (a - 0.35) / 0.3; // 0.35~0.65 사이만 부드럽게 넘기고 나머지는 안/밖으로 확정
+      const v = t <= 0 ? 0 : t >= 1 ? 1 : t * t * (3 - 2 * t);
+      if (v <= 0) continue;
+      eyeAlpha[i] = Math.round(data[i * 4 + 3] * v);
+      for (const other of parts) {
+        if (other !== "eye") masks[other][i] = 0;
+      }
+    }
+  }
+
   // ── 7. PNG로 저장(원본 알파를 물려받아 실루엣 가장자리를 매끄럽게) ──────
   fs.mkdirSync(OUT_DIR, { recursive: true });
   for (const part of parts) {
     const bits = masks[part];
-    const out = Buffer.alloc(W * H * 4);
+    let out = Buffer.alloc(W * H * 4);
     let count = 0;
     for (let i = 0; i < bits.length; i++) {
       if (!bits[i]) continue;
@@ -632,6 +663,17 @@ async function buildStage(key) {
       out[o] = 255; out[o + 1] = 255; out[o + 2] = 255;
       out[o + 3] = data[o + 3];
       count++;
+    }
+    if (part === "eye" && eyeAlpha) {
+      out = Buffer.alloc(W * H * 4);
+      count = 0;
+      for (let i = 0; i < W * H; i++) {
+        if (!eyeAlpha[i]) continue;
+        const o = i * 4;
+        out[o] = 255; out[o + 1] = 255; out[o + 2] = 255;
+        out[o + 3] = eyeAlpha[i];
+        count++;
+      }
     }
     const name = `${cfg.prefix}_${part}_mask.png`;
     await sharp(out, { raw: { width: W, height: H, channels: 4 } })
@@ -672,11 +714,11 @@ async function buildStage(key) {
   // 색으로 주워담은 영역은 가장자리가 삐뚤빼뚤하고 몸 쪽으로 번진 픽셀이 붙는다(사용자 신고).
   // 그래서 각 볼터치 덩어리의 무게중심과 퍼진 정도(2차 모멘트)로 타원을 구해 그 안쪽만 남긴다.
   // 타원 경계는 1.5px에 걸쳐 부드럽게 흐려서, 딱딱한 도형이 아니라 원본 같은 안티앨리어싱을 유지한다.
-  if (KEEP_CHEEK_PINK) {
+  {
     const out = Buffer.alloc(W * H * 4);
     let count = 0;
     for (const blob of pinkBlobs) {
-      if (!blob.pixels.length || !blob.pixels.some((id) => solidPink[id])) continue;
+      if (!blob.pixels.length) continue;
       // 무게중심과 공분산 → 타원의 방향과 반지름
       let sxx = 0, syy = 0, sxy = 0;
       for (const id of blob.pixels) {
@@ -695,7 +737,9 @@ async function buildStage(key) {
       // 균일한 타원이면 2차 모멘트는 (반지름^2)/4 이므로 반지름 = 2*sqrt(고유값)
       const r1 = 2 * Math.sqrt(Math.max(e1, 0.5));
       const r2 = 2 * Math.sqrt(Math.max(e2, 0.5));
-      const FEATHER = 1.5;
+      // 볼터치는 원래 가운데가 진하고 밖으로 갈수록 옅어진다. 경계만 살짝 흐리면 단색 원반처럼
+      // 보이므로, 중심에서 테두리까지 서서히 옅어지는 농도를 직접 만든다.
+      const SOLID_UNTIL = 0.35; // 이 안쪽은 진하게, 여기서부터 테두리까지 서서히 옅어진다
       const x0 = Math.max(0, Math.floor(blob.cx - r1 - 3));
       const x1 = Math.min(W - 1, Math.ceil(blob.cx + r1 + 3));
       const y0 = Math.max(0, Math.floor(blob.cy - r1 - 3));
@@ -707,10 +751,9 @@ async function buildStage(key) {
           const u = (dx * ca + dy * sa) / r1;
           const v = (-dx * sa + dy * ca) / r2;
           const d = Math.sqrt(u * u + v * v); // 1이면 타원 경계
-          if (d >= 1 + FEATHER / Math.min(r1, r2)) continue;
-          // 경계에서 부드럽게 0으로 떨어뜨린다
-          const edge = (1 - d) * Math.min(r1, r2) / FEATHER;
-          const soft = edge >= 1 ? 1 : edge <= 0 ? 0 : edge * edge * (3 - 2 * edge);
+          if (d >= 1) continue;
+          const t = (1 - d) / (1 - SOLID_UNTIL);
+          const soft = t >= 1 ? 1 : t <= 0 ? 0 : t * t * (3 - 2 * t);
           if (soft <= 0) continue;
           const o = (y * W + x) * 4;
           const a = Math.round(data[o + 3] * soft);

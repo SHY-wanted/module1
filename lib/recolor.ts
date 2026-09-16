@@ -98,33 +98,32 @@ export function applyMaskColor(
   }
 }
 
+/** 볼터치 색. 원본 볼터치의 대표색(#fae1fa, HSL 301,74%,93%)을 조금 진하게 잡은 값이다. */
+export const CHEEK_COLOR = "#f9c9f2";
+
 /**
- * 볼터치를 또렷하게 올린다.
+ * 볼터치를 고정색으로 얹는다.
  *
- * 원본 그림의 볼터치는 눈 쪽으로 갈수록 흰 눈두덩에 묻혀 밝아진다(밝기 93 → 99, 채도 78 → 50).
- * 그래서 몸 색을 바꾸면 홍조가 반투명하게 비쳐 보인다. 여기서는 볼터치 마스크가 가리키는 픽셀만
- * 채도를 올리고 밝기 상한을 눌러, 번지는 가장자리까지 같은 진하기로 보이게 만든다.
- * 색조(분홍)는 원본 그대로 두므로 홍조 색 자체는 변하지 않는다.
+ * 예전에는 볼터치를 몸 마스크에서 빼내 원본 픽셀로 남기고 따로 진하게 올렸다. 그런데 빼는 영역
+ * (분홍색으로 주워 담은 삐뚤한 모양)과 진하게 하는 영역(타원)의 모양이 달라서, 겹치는 가장자리가
+ * 번져 보이고 그 번진 부분이 흰 얼룩으로 굳어 보였다(사용자 신고). 지금은 몸이 얼굴을 고르게
+ * 덮은 다음 이 함수가 타원 하나로 고정색을 얹는다 — 기준이 하나뿐이라 어긋날 곳이 없다.
+ *
+ * 마스크 알파는 가운데가 진하고 밖으로 갈수록 옅어지게 만들어져 있어서(생성 스크립트의 radial
+ * falloff), 단색 원반이 아니라 자연스럽게 번지는 홍조로 보인다.
  */
-export function intensifyCheek(
+export function paintCheek(
   base: Uint8ClampedArray,
   mask: Uint8ClampedArray,
-  /** 0이면 원본 그대로, 1이면 최대로 진하게. */
-  strength = 1
+  hex: string = CHEEK_COLOR
 ): void {
-  if (strength <= 0) return;
-  const MAX_L = 0.85; // 이보다 밝은 볼터치 픽셀은 눌러서 흰색에 묻히지 않게 한다
-  const SAT_GAIN = 1.9; // 더 진하게 하려면 이 값만 올리면 된다(2.4쯤이면 꽤 선명해진다)
+  const [cr, cg, cb] = hexToRgb(hex);
   for (let i = 0; i < mask.length; i += 4) {
-    const w = (mask[i + 3] / 255) * strength;
+    const w = mask[i + 3] / 255;
     if (w <= 0) continue;
-    const [h, s, l] = rgbToHsl(base[i], base[i + 1], base[i + 2]);
-    const boostedS = Math.min(1, s * SAT_GAIN);
-    const cappedL = l > MAX_L ? MAX_L + (l - MAX_L) * 0.35 : l;
-    const [r, g, b] = hslToRgb(h, boostedS, cappedL);
-    base[i] = base[i] * (1 - w) + r * w;
-    base[i + 1] = base[i + 1] * (1 - w) + g * w;
-    base[i + 2] = base[i + 2] * (1 - w) + b * w;
+    base[i] = base[i] * (1 - w) + cr * w;
+    base[i + 1] = base[i + 1] * (1 - w) + cg * w;
+    base[i + 2] = base[i + 2] * (1 - w) + cb * w;
   }
 }
 
