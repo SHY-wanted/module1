@@ -59,7 +59,7 @@ export default function MonthlyGoalSetting() {
 
   const avg3 = useMemo(() => average(SAMPLE_LAST_3_MONTHS[selectedCategoryId] ?? [0, 0, 0]), [selectedCategoryId]);
   const recommended = useMemo(() => roundTo1000(avg3 * 0.9), [avg3]);
-  const sliderMax = AVAILABLE_MONEY;
+  const maxAmount = AVAILABLE_MONEY;
 
   const [amount, setAmount] = useState(recommended);
   const [amountText, setAmountText] = useState(String(recommended));
@@ -76,14 +76,9 @@ export default function MonthlyGoalSetting() {
 
   function handleAmountText(text: string) {
     const digitsOnly = text.replace(/[^0-9]/g, "");
-    const next = Math.min(parseInt(digitsOnly, 10) || 0, AVAILABLE_MONEY);
+    const next = Math.min(parseInt(digitsOnly, 10) || 0, maxAmount);
     setAmountText(String(next));
     setAmount(next);
-  }
-
-  function handleSlider(value: number) {
-    setAmount(value);
-    setAmountText(String(value));
   }
 
   function handleApplyRecommended() {
@@ -203,18 +198,9 @@ export default function MonthlyGoalSetting() {
               }}
             />
           </div>
-          <input
-            type="range"
-            min={0}
-            max={sliderMax}
-            step={1000}
-            value={Math.min(amount, sliderMax)}
-            onChange={(e) => handleSlider(parseInt(e.target.value, 10))}
-            style={{ width: "100%", marginTop: 10, accentColor: category.accent }}
-          />
-          <div style={{ display: "flex", justifyContent: "space-between", fontSize: 11, color: "var(--shoot-text-muted)", fontWeight: 600, marginTop: 2 }}>
-            <span>0원</span>
-            <span>{formatWon(sliderMax)}</span>
+          <div style={{ height: 1.5, background: "var(--shoot-border)", marginTop: 8 }} />
+          <div style={{ fontSize: 11, color: "var(--shoot-text-muted)", fontWeight: 600, marginTop: 6 }}>
+            최대 {formatWon(maxAmount)}까지 설정할 수 있어요(이번 달 남은 돈 기준)
           </div>
         </div>
 
