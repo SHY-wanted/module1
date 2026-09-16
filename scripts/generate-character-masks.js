@@ -624,12 +624,18 @@ async function buildStage(key) {
     }
   }
 
-  // ── 6-2. 눈 테두리 다듬기 ───────────────────────────────────────────────
+  // ── 6-1. 눈 테두리 다듬기 ───────────────────────────────────────────────
   // 눈은 픽셀 단위로 주워담은 결과라 테두리가 계단처럼 울퉁불퉁하다. 살짝 흐린 뒤 중간값을
   // 기준으로 다시 또렷하게 만들면 전체 모양은 그대로 둔 채 튀어나온 계단만 다듬어진다
-  // (사용자 요청: "형태가 변하지 않는 선에서 반듯하게"). 다듬으면서 1~2px 커질 수 있으므로
-  // 그만큼은 다른 마스크에서 빼내 서로 겹치지 않게 한다.
-  let eyeAlpha = null;
+  // (사용자 요청: "형태가 변하지 않는 선에서 반듯하게").
+  //
+  // 다듬은 결과는 "이 칸이 눈이냐 아니냐"로만 쓴다. 예전에는 경계를 반투명 알파로 남겼는데,
+  // 그러면 그 칸이 눈 색으로 절반만 칠해지고 나머지 절반은 원본 보라색이 비쳐서 눈 둘레에
+  // 점선 같은 보라색 테두리가 생겼다(사용자 신고). 딱 잘라도 계단처럼 보이지는 않는다 —
+  // 원본 픽셀 자체가 이미 안티에일리어싱된 중간 밝기라, 색을 입혀도 중간 밝기로 남는다.
+  //
+  // 다듬으면서 눈이 차지하는 자리가 조금 바뀐다. 새로 들어온 칸은 여기서 다른 마스크에서 빼고,
+  // 빠져나간 칸은 바로 아래 이음새 메우기가 이웃 부위에 넘겨준다.
   if (masks.eye) {
     const raw = Buffer.alloc(W * H * 4);
     for (let i = 0; i < W * H; i++) {
@@ -638,42 +644,119 @@ async function buildStage(key) {
     }
     const blurred = await sharp(raw, { raw: { width: W, height: H, channels: 4 } })
       .blur(1.4).raw().toBuffer();
-    eyeAlpha = new Uint8Array(W * H);
+    const smoothed = new Uint8Array(W * H);
     for (let i = 0; i < W * H; i++) {
-      const a = blurred[i * 4 + 3] / 255;
-      const t = (a - 0.35) / 0.3; // 0.35~0.65 사이만 부드럽게 넘기고 나머지는 안/밖으로 확정
-      const v = t <= 0 ? 0 : t >= 1 ? 1 : t * t * (3 - 2 * t);
-      if (v <= 0) continue;
-      eyeAlpha[i] = Math.round(data[i * 4 + 3] * v);
+      if (blurred[i * 4 + 3] < 128) continue; // 흐린 뒤 절반 이상 차 있으면 눈
+      smoothed[i] = 1;
       for (const other of parts) {
         if (other !== "eye") masks[other][i] = 0;
       }
     }
+    masks.eye = smoothed;
   }
 
-  // ── 7. PNG로 저장(원본 알파를 물려받아 실루엣 가장자리를 매끄럽게) ──────
+  // ── 6-2. 부위 사이에 1px로 남는 이음새를 메운다 ──────────────────────────
+  // 3-2에서 "서로 다른 두 오브젝트에 걸친 조각"은 외곽선으로 보고 어느 마스크에도 넣지 않았다.
+  // 그런데 그러면 색을 바꿨을 때 그 자리가 원본 보라색 그대로 남아, 몸과 눈 사이 / 몸과 가방 사이에
+  // 얇은 보라색 선이 한 줄 그어진 것처럼 보인다(사용자 신고).
+  //
+  // 실측해보니 이 미배정 띠는 거의 정확히 1px이다 — 마스크에서 1칸 떨어진 미배정 불투명 픽셀이
+  // 542개인데 2칸은 31개뿐이다(나머지 먼 거리는 코인·장식처럼 원래 배정 대상이 아닌 곳). 그래서
+  // 마스크를 넓히는 게 아니라, 딱 이 1칸짜리 띠만 이웃이 가장 많은 부위에 넘긴다. 이웃 판정은
+  // 넓히기 전의 마스크로 한 번에 하므로 연쇄적으로 번지지 않는다(정확히 한 겹).
+  //
+  // 외곽선 자체는 사라지지 않는다 — 색을 입힐 때 원본의 명암 폭을 그대로 얹으므로(lib/recolor.ts),
+  // 어두운 외곽선 픽셀은 고른 색의 어두운 버전이 되어 윤곽이 그대로 살아난다. 달라지는 건 그 선이
+  // "원본 보라색"이 아니라 "고른 색의 어두운 톤"이 된다는 것뿐이다.
+  //
+  // 코인(금색)·볼터치(분홍)·가계부 홈은 원본을 지켜야 하므로 여기서도 제외한다.
+  {
+    const owner = new Int8Array(W * H).fill(-1);
+    for (let k = 0; k < parts.length; k++) {
+      const bits = masks[parts[k]];
+      for (let i = 0; i < W * H; i++) if (bits[i]) owner[i] = k;
+    }
+    const seam = [];
+    for (let i = 0; i < W * H; i++) {
+      if (owner[i] >= 0 || solidGold[i] || solidPink[i] || grooveBits[i]) continue;
+      const x = i % W, y = (i - x) / W;
+      if (!isOpaque(x, y)) continue;
+      const votes = new Array(parts.length).fill(0);
+      let touched = false;
+      for (const ni of neighbors(i)) {
+        if (owner[ni] < 0) continue;
+        votes[owner[ni]]++;
+        touched = true;
+      }
+      if (!touched) continue;
+      let best = 0;
+      for (let k = 1; k < parts.length; k++) if (votes[k] > votes[best]) best = k;
+      seam.push([i, best]);
+    }
+    for (const [i, k] of seam) masks[parts[k]][i] = 1;
+    console.log("  이음새 " + seam.length + "px 을 이웃 부위에 넘김");
+  }
+
+  // ── 6-3. 실루엣 바깥의 반투명 가장자리도 같은 부위로 넘긴다 ──────────────
+  // 캐릭터 외곽은 알파가 0으로 떨어지는 2px 남짓의 반투명 띠다. 조각 나누기 기준(알파 160)에
+  // 못 미쳐 어느 마스크에도 안 들어가 있었고, 그래서 색을 바꾸면 캐릭터 둘레에 원본 보라색이
+  // 옅게 한 줄 남았다. 알파는 건드리지 않고 색만 이웃을 따라가게 하므로 실루엣 가장자리의
+  // 부드러움은 그대로다.
+  //
+  // 발밑 그림자도 넓은 반투명 영역이라 그대로 두면 여기 말려들어 접지면에 검은 띠가 생긴다.
+  // 그림자는 캐릭터 실루엣 바깥에서 알파가 완만하게 퍼지는 반면 외곽 띠는 2px 안에서 끝나므로,
+  // 퍼뜨리는 횟수를 2겹으로 묶어 그림자 안쪽까지 들어가지 않게 한다.
+  {
+    const RIM_LAYERS = 2;
+    for (let layer = 0; layer < RIM_LAYERS; layer++) {
+      const owner = new Int8Array(W * H).fill(-1);
+      for (let k = 0; k < parts.length; k++) {
+        const bits = masks[parts[k]];
+        for (let i = 0; i < W * H; i++) if (bits[i]) owner[i] = k;
+      }
+      const rim = [];
+      for (let i = 0; i < W * H; i++) {
+        if (owner[i] >= 0 || solidGold[i] || solidPink[i] || grooveBits[i]) continue;
+        const x = i % W, y = (i - x) / W;
+        if (!inCrop(x, y)) continue;
+        const a = data[i * 4 + 3];
+        if (a < 8 || a >= 160) continue; // 완전 투명도, 조각으로 이미 다뤄진 불투명도 아닌 띠만
+        let best = -1, bestVotes = 0;
+        const votes = new Array(parts.length).fill(0);
+        for (const ni of neighbors(i)) {
+          if (owner[ni] < 0) continue;
+          if (data[ni * 4 + 3] <= a) continue; // 더 진한 쪽(안쪽)에서 바깥으로만 퍼뜨린다
+          votes[owner[ni]]++;
+        }
+        for (let k = 0; k < parts.length; k++) if (votes[k] > bestVotes) { bestVotes = votes[k]; best = k; }
+        if (best < 0) continue;
+        rim.push([i, best]);
+      }
+      if (!rim.length) break;
+      for (const [i, k] of rim) masks[parts[k]][i] = 1;
+      if (layer === RIM_LAYERS - 1 || !rim.length) {
+        console.log("  실루엣 가장자리 " + rim.length + "px (마지막 겹) 을 이웃 부위에 넘김");
+      }
+    }
+  }
+
+  // ── 7. PNG로 저장 ───────────────────────────────────────────────────────
+  // 마스크 알파는 "이 칸을 얼마나 칠할까"의 가중치다. 예전에는 원본 알파를 물려줬는데, 그러면
+  // 실루엣 가장자리(알파 160~254)가 그만큼만 칠해지고 나머지는 원본 보라색이 비쳐서 캐릭터
+  // 둘레에 얇은 보라색 테두리가 남았다(사용자 신고). 마스크에 들어온 칸은 끝까지 칠한다 —
+  // 화면에 그릴 때 알파는 원본 이미지 것을 그대로 쓰므로(lib/recolor.ts 는 RGB만 건드린다)
+  // 실루엣 가장자리는 여전히 매끄럽게 이어진다.
   fs.mkdirSync(OUT_DIR, { recursive: true });
   for (const part of parts) {
     const bits = masks[part];
-    let out = Buffer.alloc(W * H * 4);
+    const out = Buffer.alloc(W * H * 4);
     let count = 0;
     for (let i = 0; i < bits.length; i++) {
       if (!bits[i]) continue;
       const o = i * 4;
       out[o] = 255; out[o + 1] = 255; out[o + 2] = 255;
-      out[o + 3] = data[o + 3];
+      out[o + 3] = 255;
       count++;
-    }
-    if (part === "eye" && eyeAlpha) {
-      out = Buffer.alloc(W * H * 4);
-      count = 0;
-      for (let i = 0; i < W * H; i++) {
-        if (!eyeAlpha[i]) continue;
-        const o = i * 4;
-        out[o] = 255; out[o + 1] = 255; out[o + 2] = 255;
-        out[o + 3] = eyeAlpha[i];
-        count++;
-      }
     }
     const name = `${cfg.prefix}_${part}_mask.png`;
     await sharp(out, { raw: { width: W, height: H, channels: 4 } })
