@@ -655,89 +655,51 @@ async function buildStage(key) {
     masks.eye = smoothed;
   }
 
-  // ── 6-2. 부위 사이에 1px로 남는 이음새를 메운다 ──────────────────────────
+  // ── 6-2. 어느 마스크에도 안 들어간 자리를 가장 가까운 부위에 넘긴다 ──────
   // 3-2에서 "서로 다른 두 오브젝트에 걸친 조각"은 외곽선으로 보고 어느 마스크에도 넣지 않았다.
-  // 그런데 그러면 색을 바꿨을 때 그 자리가 원본 보라색 그대로 남아, 몸과 눈 사이 / 몸과 가방 사이에
-  // 얇은 보라색 선이 한 줄 그어진 것처럼 보인다(사용자 신고).
+  // 그런데 그 자리는 색을 바꿔도 원본 보라색 그대로 남는다. 그래서 몸과 눈 사이, 몸과 가방 사이에
+  // 원본에는 없던 얇은 보라색 선이 새로 그어진 것처럼 보였다(사용자 신고). 실루엣 바깥의 반투명
+  // 가장자리와 발밑 그림자도 같은 이유로 원본 보라색이 남아, 캐릭터 둘레와 그림자에 두 가지 색이
+  // 겹친 띠가 생겼다.
   //
-  // 실측해보니 이 미배정 띠는 거의 정확히 1px이다 — 마스크에서 1칸 떨어진 미배정 불투명 픽셀이
-  // 542개인데 2칸은 31개뿐이다(나머지 먼 거리는 코인·장식처럼 원래 배정 대상이 아닌 곳). 그래서
-  // 마스크를 넓히는 게 아니라, 딱 이 1칸짜리 띠만 이웃이 가장 많은 부위에 넘긴다. 이웃 판정은
-  // 넓히기 전의 마스크로 한 번에 하므로 연쇄적으로 번지지 않는다(정확히 한 겹).
+  // 그래서 "남는 자리"를 아예 없앤다. 마스크에 들어간 모든 픽셀에서 동시에 너비 우선으로 퍼뜨려,
+  // 아직 아무 데도 안 들어간 칸을 가장 가까운 부위에 넘긴다. 마스크를 일정 폭만큼 부풀리는 게
+  // 아니라 임자 없는 칸만 채우는 것이라, 이미 다른 부위가 가진 칸은 건드리지 않는다(마스크끼리
+  // 여전히 겹치지 않는다 — scripts/verify-character-masks.js 로 확인).
   //
-  // 외곽선 자체는 사라지지 않는다 — 색을 입힐 때 원본의 명암 폭을 그대로 얹으므로(lib/recolor.ts),
-  // 어두운 외곽선 픽셀은 고른 색의 어두운 버전이 되어 윤곽이 그대로 살아난다. 달라지는 건 그 선이
-  // "원본 보라색"이 아니라 "고른 색의 어두운 톤"이 된다는 것뿐이다.
+  // 원본의 윤곽선은 사라지지 않는다. 색을 입힐 때 원본의 명암 폭을 그대로 얹으므로
+  // (lib/recolor.ts), 어두운 외곽선 픽셀은 고른 색의 어두운 톤이 되어 윤곽이 그대로 살아난다.
+  // 달라지는 건 그 선이 "원본 보라색"이 아니라 "고른 색의 어두운 톤"이 된다는 것뿐이다.
+  // 알파도 건드리지 않으므로 가장자리의 안티에일리어싱은 그대로다.
   //
-  // 코인(금색)·볼터치(분홍)·가계부 홈은 원본을 지켜야 하므로 여기서도 제외한다.
+  // 원본을 지켜야 하는 것은 제외한다 — 코인·반짝임(금색), 볼터치(분홍), 가계부 홈. 캐릭터에서
+  // 떨어져 있는 장식(하트·효과선)은 투명한 배경으로 끊겨 있어 퍼짐이 닿지 않는다(실측 확인).
   {
     const owner = new Int8Array(W * H).fill(-1);
+    const queue = [];
     for (let k = 0; k < parts.length; k++) {
       const bits = masks[parts[k]];
-      for (let i = 0; i < W * H; i++) if (bits[i]) owner[i] = k;
-    }
-    const seam = [];
-    for (let i = 0; i < W * H; i++) {
-      if (owner[i] >= 0 || solidGold[i] || solidPink[i] || grooveBits[i]) continue;
-      const x = i % W, y = (i - x) / W;
-      if (!isOpaque(x, y)) continue;
-      const votes = new Array(parts.length).fill(0);
-      let touched = false;
-      for (const ni of neighbors(i)) {
-        if (owner[ni] < 0) continue;
-        votes[owner[ni]]++;
-        touched = true;
-      }
-      if (!touched) continue;
-      let best = 0;
-      for (let k = 1; k < parts.length; k++) if (votes[k] > votes[best]) best = k;
-      seam.push([i, best]);
-    }
-    for (const [i, k] of seam) masks[parts[k]][i] = 1;
-    console.log("  이음새 " + seam.length + "px 을 이웃 부위에 넘김");
-  }
-
-  // ── 6-3. 실루엣 바깥의 반투명 가장자리도 같은 부위로 넘긴다 ──────────────
-  // 캐릭터 외곽은 알파가 0으로 떨어지는 2px 남짓의 반투명 띠다. 조각 나누기 기준(알파 160)에
-  // 못 미쳐 어느 마스크에도 안 들어가 있었고, 그래서 색을 바꾸면 캐릭터 둘레에 원본 보라색이
-  // 옅게 한 줄 남았다. 알파는 건드리지 않고 색만 이웃을 따라가게 하므로 실루엣 가장자리의
-  // 부드러움은 그대로다.
-  //
-  // 발밑 그림자도 넓은 반투명 영역이라 그대로 두면 여기 말려들어 접지면에 검은 띠가 생긴다.
-  // 그림자는 캐릭터 실루엣 바깥에서 알파가 완만하게 퍼지는 반면 외곽 띠는 2px 안에서 끝나므로,
-  // 퍼뜨리는 횟수를 2겹으로 묶어 그림자 안쪽까지 들어가지 않게 한다.
-  {
-    const RIM_LAYERS = 2;
-    for (let layer = 0; layer < RIM_LAYERS; layer++) {
-      const owner = new Int8Array(W * H).fill(-1);
-      for (let k = 0; k < parts.length; k++) {
-        const bits = masks[parts[k]];
-        for (let i = 0; i < W * H; i++) if (bits[i]) owner[i] = k;
-      }
-      const rim = [];
       for (let i = 0; i < W * H; i++) {
-        if (owner[i] >= 0 || solidGold[i] || solidPink[i] || grooveBits[i]) continue;
-        const x = i % W, y = (i - x) / W;
-        if (!inCrop(x, y)) continue;
-        const a = data[i * 4 + 3];
-        if (a < 8 || a >= 160) continue; // 완전 투명도, 조각으로 이미 다뤄진 불투명도 아닌 띠만
-        let best = -1, bestVotes = 0;
-        const votes = new Array(parts.length).fill(0);
-        for (const ni of neighbors(i)) {
-          if (owner[ni] < 0) continue;
-          if (data[ni * 4 + 3] <= a) continue; // 더 진한 쪽(안쪽)에서 바깥으로만 퍼뜨린다
-          votes[owner[ni]]++;
-        }
-        for (let k = 0; k < parts.length; k++) if (votes[k] > bestVotes) { bestVotes = votes[k]; best = k; }
-        if (best < 0) continue;
-        rim.push([i, best]);
-      }
-      if (!rim.length) break;
-      for (const [i, k] of rim) masks[parts[k]][i] = 1;
-      if (layer === RIM_LAYERS - 1 || !rim.length) {
-        console.log("  실루엣 가장자리 " + rim.length + "px (마지막 겹) 을 이웃 부위에 넘김");
+        if (!bits[i]) continue;
+        owner[i] = k;
+        queue.push(i);
       }
     }
+    let head = 0, filled = 0;
+    while (head < queue.length) {
+      const cur = queue[head++];
+      for (const ni of neighbors(cur)) {
+        if (owner[ni] >= 0) continue;
+        if (solidGold[ni] || solidPink[ni] || grooveBits[ni]) continue;
+        const x = ni % W, y = (ni - x) / W;
+        if (!inCrop(x, y) || data[ni * 4 + 3] < 8) continue;
+        owner[ni] = owner[cur];
+        masks[parts[owner[cur]]][ni] = 1;
+        queue.push(ni);
+        filled++;
+      }
+    }
+    console.log("  임자 없던 " + filled + "px 을 가장 가까운 부위에 넘김");
   }
 
   // ── 7. PNG로 저장 ───────────────────────────────────────────────────────
