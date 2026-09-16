@@ -67,7 +67,7 @@ const EDGE_THRESHOLD = 9;
  * 덩어리 크기가 단계마다 54~148px로 제각각이라, 남기면 어떤 단계는 분홍이고 어떤 단계는 아닌
  * 들쭉날쭉한 상태가 된다. 분홍 볼터치를 되살리려면 이 값만 true로 바꾸면 된다.
  */
-const KEEP_CHEEK_PINK = false;
+const KEEP_CHEEK_PINK = true;
 
 /** 이보다 큰 구멍은 물건 안쪽 무늬가 아니라 몸이 비쳐 보이는 것으로 본다. */
 const MAX_HOLE = 1500;
@@ -261,7 +261,7 @@ async function buildStage(key) {
     const [h, s, l] = toHsl(...rgba(x, y).slice(0, 3));
     return (h >= 300 || h < 25) && s > 20 && l > 55;
   };
-  const PINK_MIN_BLOB = 120; // 이보다 작은 분홍 덩어리는 볼터치가 아니라 경계 얼룩으로 본다
+  const PINK_MIN_BLOB = 50; // 실측: 진짜 볼터치 54~148px / 눈가 오인 얼룩 ≤44px 라 50에서 갈린다
   const solidPink = new Uint8Array(W * H);
   const pinkBlobs = [];
   {
