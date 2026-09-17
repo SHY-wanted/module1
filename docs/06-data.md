@@ -25,6 +25,7 @@
 | E12 | CategoryGoal (월별 목표) | 사용자가 카테고리별로 직접 설정하는 이번 달 지출 목표 금액 | shooTbranch 통합, 04-features.md F19류 지출 카테고리 개념 재사용 — **2026-09-15 신규(E11 Budget 대체)** |
 | E13 | GoalReward (목표 달성 보상) | 월이 끝난 뒤(또는 화면을 열 때) 카테고리별 목표 달성 여부를 계산해 고정 코인·XP를 지급한 기록 | shooTbranch 통합("퀘스트 달성" 개념) — **2026-09-15 신규(E10 WeeklySettlement 대체)**, 절약 비율 비례가 아니라 달성 시 고정 보상 |
 | E14 | ExpenseReaction (그룹 피드 이모지 반응) | 그룹 피드의 지출 카드에 그룹원이 남기는 이모지 반응(F23) | hybranch 통합 — **2026-09-15 신규** |
+| E15 | AttendanceCheckin (출석체크) | 하루 1번 출석하면 코인 지급, 7일 연속 출석하면 7일째 코인 2배 | 접속률을 올리기 위한 신규 요청(사용자, 2026-09-20) — **2026-09-20 신규** |
 
 ## 엔티티별 필드
 
@@ -191,6 +192,20 @@
 
 **[?] 반응 가능한 이모지 종류·개수 제한은 문서 근거가 없어 임의로 24종 팔레트를 만들었다** — 정확한 목록은 팀이 정해야 확정이다.
 
+### E15. AttendanceCheckin (출석체크) — 신규(사용자 요청, 2026-09-20)
+| 필드 | 타입 | 필수 | 설명 | 출처 |
+|---|---|---|---|---|
+| id | uuid | 필수 | | [제안] 다른 엔티티와 동일한 PK 관례 |
+| user_id | uuid (FK → Profile) | 필수 | | 사용자 요청 |
+| checkin_date | date | 필수 | 출석한 날짜(하루 1건) | 사용자 요청("매일매일 들어오면 출석체크하면 코인") |
+| streak_day | integer | 필수, 기본 1 | 이번 연속 출석 주기에서 며칠째인지(1~7) — 전날 기록이 없거나 이미 7일을 채웠으면 1로 리셋 | 사용자 요청("일주일 꼬박 출석해서 일주일 주기로") |
+| coins_earned | integer | 필수, 기본 0 | 평소엔 고정값(`CHECKIN_REWARD_COINS`=5), streak_day가 7이면 2배(`CHECKIN_STREAK_BONUS_MULTIPLIER`) — **[?] 팀 확인 전 placeholder** | 사용자 요청("코인 두배씩 얻도록") |
+| created_at | timestamptz | 필수(자동) | | [제안] 다른 엔티티와 동일한 감사 필드 관례 |
+
+유니크 제약: (user_id, checkin_date) — 하루 중복 지급 방지(E13 GoalReward와 같은 "화면에서 계산 + DB 유니크 제약으로 멱등성 확보" 패턴).
+
+**[?] 하루 기본 코인(5)·보너스 배율(2배)·주기 길이(7일)는 스펙에 정확한 수치가 없어 팀 확인 전 placeholder다.** 자정 기준을 KST로 고정했는지, 앱을 끄고 자정을 넘긴 세션에서 날짜가 언제 갱신되는지는 `lib/mock.ts`의 `TODAY_DATE`(모듈 로드 시 1회 계산되는 KST 오늘 날짜) 그대로를 따른다 — 다른 "오늘" 판정(P3 밥 주기 등)과 동일한 한계를 그대로 물려받는다.
+
 ## 관계
 | 관계 | 설명 | 출처 |
 |---|---|---|
@@ -207,6 +222,7 @@
 | Profile 1 — N CategoryGoal | 카테고리·달마다 하나씩(E12) | shooTbranch 통합 |
 | Profile 1 — N GoalReward | 카테고리·달마다 하나씩(E13) | shooTbranch 통합 |
 | Expense 1 — N ExpenseReaction | 지출 하나에 그룹원 여럿이 각자 이모지 반응(E14) | hybranch 통합 |
+| Profile 1 — N AttendanceCheckin | 하루에 한 건씩(E15) | 사용자 요청, 2026-09-20 |
 
 ## 상태값과 데이터 연동
 - 그룹장(Role) 상태(05-policy.md 상태값1): `group_members.role`이 OWNER↔MEMBER로 전환됨. 그룹원이 OWNER 혼자뿐이면 위임 없이 `groups` 행 자체를 삭제 — 이때 `expenses.group_id`는 null로, `group_members`는 cascade로 함께 삭제(SHY 스펙 "설계 포인트").

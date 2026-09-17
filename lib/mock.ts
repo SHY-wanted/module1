@@ -380,3 +380,16 @@ export interface ExpenseReaction {
   emoji: string;
   created_at: string;
 }
+
+// E15. AttendanceCheckin(출석체크) — schema.sql: id, user_id, checkin_date, streak_day, coins_earned,
+// created_at. 접속률을 올리기 위한 신규 기능(2026-09-20 사용자 요청) — 매일 출석하면 코인을 받고,
+// 7일 연속 출석해서 그 주기를 꽉 채우면 7일째 코인이 두 배로 지급된다(lib/pets.ts CHECKIN_* 참고).
+// GoalReward와 마찬가지로 완전히 새 기능이라 INITIAL_* 시드가 없다.
+export interface AttendanceCheckin {
+  id: string;
+  user_id: string;
+  checkin_date: string; // "YYYY-MM-DD"
+  streak_day: number; // 이번 연속 출석 주기에서 며칠째인지(1~7)
+  coins_earned: number;
+  created_at: string;
+}
