@@ -14,7 +14,7 @@
 | E | 엔티티 | 설명 | 출처 |
 |---|---|---|---|
 | E1 | Profile (User) | 로그인 계정의 표시용 정보(이름·이메일) | SHY 스펙 "3. DB 스키마" `profiles`(auth.users 미러링) |
-| E2 | Group | 그룹(가족·부부·커플·룸메이트·모임 등) | SHY 스펙 `groups` · 01-problem.md 4요소 "대상" · 03-requirements.md R1 |
+| E2 | Group | 그룹(가족·부부·커플·친구·모임 등) | SHY 스펙 `groups` · 01-problem.md 4요소 "대상" · 03-requirements.md R1 |
 | E3 | GroupMember | 그룹과 유저를 잇는 소속·역할 관계 | SHY 스펙 `group_members` · 03-requirements.md R1~R3, R18 |
 | E4 | Expense | 지출 1건 | SHY 스펙 `expenses` · 03-requirements.md R5~R14 |
 | E5 | ExpenseOcrRaw | 영수증·결제캡쳐 OCR 원문·파싱 결과(지출 1건에 종속) | SHY 스펙 `expense_ocr_raw` · 03-requirements.md R8~R11 |
@@ -41,11 +41,11 @@
 |---|---|---|---|---|
 | id | uuid | 필수 | | SHY 스펙 `groups` |
 | name | text | 필수 | 자유 텍스트, 그룹장이 직접 정함(R1) | SHY 스펙 `groups.name` · 03-requirements.md R1 |
-| group_type | enum | 필수, 기본 OTHER | FAMILY·SIBLING·ROOMMATE·COUPLE·MARRIED_COUPLE·CLUB·OTHER — 표시(아이콘·색상·카테고리 프리셋)용, 권한·로직에 관여 안 함(05-policy.md SP2) | SHY 스펙 `group_type` enum · 05-policy.md SP2 |
+| group_type | enum | 필수, 기본 OTHER | FAMILY·SIBLING·FRIEND·COUPLE·MARRIED_COUPLE·CLUB·OTHER — 표시(아이콘·색상·카테고리 프리셋)용, 권한·로직에 관여 안 함(05-policy.md SP2) | SHY 스펙 `group_type` enum · 05-policy.md SP2 |
 | invite_code | text (unique) | 필수 | 8자리, 그룹 생성 시 자동 발급 | SHY 스펙 `groups.invite_code` · 03-requirements.md R2 |
 | created_at | timestamptz | 필수(자동) | | SHY 스펙 `groups.created_at` |
 
-**[?] 디자인 3a 화면에는 "형제자매(SIBLING)" 선택 카드가 없다** — 디자인 스크립트의 `TYPE_ACCENTS`엔 `siblings` 값이 정의돼 있지만, 실제 화면(3a. 그룹 생성 — 모임 선택)에는 가족·부부·커플·룸메이트·모임·동아리·기타 6개 카드만 있고 형제자매 카드가 빠져 있다. SHY 스펙 enum(7종)과 03-requirements.md 어디에도 "형제자매를 뺀다"는 결정은 없다 — 팀 확인 필요.
+**[?] 디자인 3a 화면에는 "형제자매(SIBLING)" 선택 카드가 없다** — 디자인 스크립트의 `TYPE_ACCENTS`엔 `siblings` 값이 정의돼 있지만, 실제 화면(3a. 그룹 생성 — 모임 선택)에는 가족·부부·커플·친구·모임·동아리·기타 6개 카드만 있고 형제자매 카드가 빠져 있다. SHY 스펙 enum(7종)과 03-requirements.md 어디에도 "형제자매를 뺀다"는 결정은 없다 — 팀 확인 필요.
 
 ### E3. GroupMember
 | 필드 | 타입 | 필수 | 설명 | 출처 |
@@ -121,12 +121,12 @@
 | FAMILY | 식비, 생활용품, 교육비, 의료비, 관리비, 통신비, 여가·문화, 기타 | SHY 스펙 Task 2-3 · 디자인 `FAMILY_CATS`(동일) |
 | COUPLE | 데이트, 선물, 기념일, 여행, 카페·식사, 기타 | SHY 스펙 Task 2-3 · 디자인 `COUPLE_CATS`(동일) |
 | SIBLING | 식비, 경조사, 선물, 여행, 기타 | SHY 스펙 Task 2-3 — 디자인엔 이 프리셋을 쓰는 화면이 없음(아래 표 참고) |
-| ROOMMATE | 관리비, 식비·장보기, 생활용품, 공과금, 기타 | SHY 스펙 Task 2-3 — 디자인엔 이 프리셋을 쓰는 화면이 없음 |
+| FRIEND | 관리비, 식비·장보기, 생활용품, 공과금, 기타 | SHY 스펙 Task 2-3 — 디자인엔 이 프리셋을 쓰는 화면이 없음 |
 | MARRIED_COUPLE | 관리비, 보험, 식비, 자녀 양육비, 교육비, 의료비, 경조사, 기타 | SHY 스펙 Task 2-3 — 디자인엔 이 프리셋을 쓰는 화면이 없음 |
 | CLUB | 회비, 행사비, 식비, 기타 | SHY 스펙 Task 2-3 — 디자인엔 이 프리셋을 쓰는 화면이 없음 |
 | OTHER | 식비, 교통, 생활용품, 기타 | SHY 스펙 Task 2-3 · 디자인 `DEFAULT_CATS`(동일) |
 
-**[제안] 디자인(`ShooT 하윤.dc.html`)의 지출 입력 화면(6번)은 그룹 유형이 FAMILY·COUPLE일 때만 각각 다른 프리셋을 쓰고, 그 외(SIBLING·ROOMMATE·MARRIED_COUPLE·CLUB·OTHER)는 전부 DEFAULT_CATS로 통일해 보여준다(`Component.GROUP_TO_CATS` 함수가 'couple'·'family'만 분기).** SHY 스펙 Task 2-3은 7개 유형 모두 다른 프리셋을 쓰라고 정했으므로, 이 부분은 디자인이 데모 편의상 3종류로 줄인 것으로 보인다 — 근거: 디자인 스크립트에 SIBLING·ROOMMATE·MARRIED_COUPLE·CLUB용 카테고리 배열 자체가 없음. 실제 구현 범위를 SHY 스펙 7종 그대로 할지, 디자인처럼 3종(가족·커플·기타)으로 줄일지는 팀이 정해야 한다.
+**[제안] 디자인(`ShooT 하윤.dc.html`)의 지출 입력 화면(6번)은 그룹 유형이 FAMILY·COUPLE일 때만 각각 다른 프리셋을 쓰고, 그 외(SIBLING·FRIEND·MARRIED_COUPLE·CLUB·OTHER)는 전부 DEFAULT_CATS로 통일해 보여준다(`Component.GROUP_TO_CATS` 함수가 'couple'·'family'만 분기).** SHY 스펙 Task 2-3은 7개 유형 모두 다른 프리셋을 쓰라고 정했으므로, 이 부분은 디자인이 데모 편의상 3종류로 줄인 것으로 보인다 — 근거: 디자인 스크립트에 SIBLING·FRIEND·MARRIED_COUPLE·CLUB용 카테고리 배열 자체가 없음. 실제 구현 범위를 SHY 스펙 7종 그대로 할지, 디자인처럼 3종(가족·커플·기타)으로 줄일지는 팀이 정해야 한다.
 
 ### E9. Pet (저금통 펫) — v2, 2026-09-15 브랜치 통합으로 재구현
 | 필드 | 타입 | 필수(추정) | 설명 | 출처 |

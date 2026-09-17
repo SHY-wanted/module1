@@ -10,7 +10,7 @@
 -- 1) enum 타입 (06-data.md 「엔티티별 필드」에 적힌 값 그대로)
 -- ============================================================
 
-create type group_type as enum ('FAMILY','SIBLING','ROOMMATE','COUPLE','MARRIED_COUPLE','CLUB','OTHER'); -- 06-data.md E2 group_type
+create type group_type as enum ('FAMILY','SIBLING','FRIEND','COUPLE','MARRIED_COUPLE','CLUB','OTHER'); -- 06-data.md E2 group_type. 2026-09-20: ROOMMATE→FRIEND로 개명(사용자 요청, supabase/008_rename_roommate_to_friend.sql)
 create type member_role as enum ('OWNER','MEMBER'); -- 06-data.md E3 role
 create type source_type as enum ('MANUAL','RECEIPT','PAYMENT_CAPTURE'); -- 06-data.md E4 source_type
 create type saving_type as enum ('PERSONAL','GROUP'); -- 06-data.md E6 type

@@ -42,7 +42,7 @@ export const COUPLE_CATS: CategoryDef[] = [
 ];
 
 // 디자인의 groupToCats(shareGroup)는 select의 문자열 값('couple'/'family')을 그대로 키로 썼다.
-// 우리는 실제 스키마의 group_type(enum)을 기준으로 판단한다 — FAMILY→FAMILY_CATS, COUPLE→COUPLE_CATS, 나머지 전부(SIBLING·ROOMMATE·MARRIED_COUPLE·CLUB·OTHER·개인)→DEFAULT_CATS.
+// 우리는 실제 스키마의 group_type(enum)을 기준으로 판단한다 — FAMILY→FAMILY_CATS, COUPLE→COUPLE_CATS, 나머지 전부(SIBLING·FRIEND·MARRIED_COUPLE·CLUB·OTHER·개인)→DEFAULT_CATS.
 export function groupToCats(groupType: GroupType | null): CategoryDef[] {
   if (groupType === "FAMILY") return FAMILY_CATS;
   if (groupType === "COUPLE") return COUPLE_CATS;
