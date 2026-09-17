@@ -52,7 +52,7 @@ export const GROUP_TYPE_CARD_TO_ENUM: Record<string, GroupType> = {
   family: "FAMILY",
   marriage: "MARRIED_COUPLE",
   couple: "COUPLE",
-  roommate: "ROOMMATE",
+  friend: "FRIEND",
   club: "CLUB",
   etc: "OTHER",
 };

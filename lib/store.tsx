@@ -19,6 +19,7 @@ import {
   TODAY_DATE,
   generateId,
   generateInviteCode,
+  type AttendanceCheckin,
   type CategoryGoal,
   type Expense,
   type ExpenseReaction,
@@ -33,6 +34,9 @@ import {
 } from "./mock";
 import { PERSONAL_CATS, groupToCats, makeCategory, type CategoryDef, type CategoryScope } from "./categories";
 import {
+  CHECKIN_REWARD_COINS,
+  CHECKIN_STREAK_BONUS_MULTIPLIER,
+  CHECKIN_STREAK_LENGTH,
   DEFAULT_PET_COLORS,
   FEED_XP_DEFAULT,
   GOAL_ACHIEVED_REWARD_COINS,
@@ -103,6 +107,8 @@ interface StoreState {
   expenseReactions: ExpenseReaction[];
   // P3 "데일리 먹이주기 팝업" — 지출을 기록한 직후, 오늘 아직 개인 펫에게 밥을 안 줬으면 연다.
   feedPopupPetId: string | null;
+  // 출석체크(2026-09-20 추가) — 접속률을 올리기 위한 신규 기능. 내 출석 기록만 들어있다(RLS).
+  attendanceCheckins: AttendanceCheckin[];
 }
 
 interface JoinResult {
@@ -209,6 +215,10 @@ interface StoreValue extends StoreState {
   // F23 그룹 피드 이모지 반응(hybranch) — 그룹 멤버만 남길 수 있다.
   addReaction: (expenseId: string, emoji: string) => Promise<MutationResult<ExpenseReaction>>;
   removeReaction: (expenseId: string, emoji: string) => Promise<boolean>;
+
+  // 출석체크(2026-09-20 추가) — 오늘 이미 했으면 ok:false. 전날까지 연속 출석 중이었으면 streak_day가
+  // 이어지고, 7일째(CHECKIN_STREAK_LENGTH)를 채우면 그날 코인이 2배 지급된 뒤 다음 날 1일째로 리셋된다.
+  checkInToday: () => Promise<MutationResult<AttendanceCheckin>>;
 }
 
 const StoreContext = createContext<StoreValue | null>(null);
@@ -246,6 +256,8 @@ export function StoreProvider({ children }: { children: ReactNode }) {
   const [goalRewards, setGoalRewards] = useState<GoalReward[]>([]);
   const [expenseReactions, setExpenseReactions] = useState<ExpenseReaction[]>([]);
   const [feedPopupPetId, setFeedPopupPetId] = useState<string | null>(null);
+  // 출석체크 — 완전히 새 기능이라 목업 시드가 없다(다른 pets v2 테이블들과 같은 이유).
+  const [attendanceCheckins, setAttendanceCheckins] = useState<AttendanceCheckin[]>([]);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
   const toastTimerRef = useRef<number | null>(null);
 
@@ -345,7 +357,9 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       supabase.from("goal_rewards").select("*"),
       // F23 이모지 반응 — 내가 볼 수 있는 지출의 반응만(RLS).
       supabase.from("expense_reactions").select("*"),
-    ]).then(([groupsRes, membersRes, expensesRes, savingsRes, petsRes, goalsRes, rewardsRes, reactionsRes]) => {
+      // 출석체크 — 본인 것만(RLS). 연속 출석 계산에 최근 기록이 필요하므로 전부 읽어온다.
+      supabase.from("attendance_checkins").select("*"),
+    ]).then(([groupsRes, membersRes, expensesRes, savingsRes, petsRes, goalsRes, rewardsRes, reactionsRes, checkinsRes]) => {
       if (!active) return;
       if (!groupsRes.error && groupsRes.data) setGroups(groupsRes.data);
       if (!membersRes.error && membersRes.data) setGroupMembers(membersRes.data);
@@ -355,6 +369,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       if (!goalsRes.error && goalsRes.data) setCategoryGoals(goalsRes.data);
       if (!rewardsRes.error && rewardsRes.data) setGoalRewards(rewardsRes.data);
       if (!reactionsRes.error && reactionsRes.data) setExpenseReactions(reactionsRes.data);
+      if (!checkinsRes.error && checkinsRes.data) setAttendanceCheckins(checkinsRes.data);
     });
     return () => {
       active = false;
@@ -438,6 +453,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       goalRewards,
       expenseReactions,
       feedPopupPetId,
+      attendanceCheckins,
       currentUserId,
 
       // P1: 그룹 이름이 비어 있으면 호출하는 쪽(화면)에서 막아야 한다 — 여기서도 방어적으로 한 번 더 막는다.
@@ -909,8 +925,44 @@ export function StoreProvider({ children }: { children: ReactNode }) {
         setExpenseReactions((prev) => prev.filter((r) => !(r.expense_id === expenseId && r.user_id === session.user.id && r.emoji === emoji)));
         return true;
       },
+
+      // 출석체크 — 접속률을 올리기 위한 신규 기능(2026-09-20 사용자 요청). 하루 한 번, 전날도 출석했으면
+      // streak_day가 이어지고 7일째면 코인이 2배(CHECKIN_STREAK_BONUS_MULTIPLIER) 지급된 뒤 리셋된다.
+      async checkInToday(): Promise<MutationResult<AttendanceCheckin>> {
+        if (!session) return { ok: false, error: "로그인이 필요해요" };
+        const already = attendanceCheckins.find((c) => c.user_id === session.user.id && c.checkin_date === TODAY_DATE);
+        if (already) return { ok: false, error: "오늘은 이미 출석체크했어요" };
+
+        const yesterday = new Date(TODAY_DATE + "T00:00:00");
+        yesterday.setDate(yesterday.getDate() - 1);
+        const yesterdayStr = yesterday.toISOString().slice(0, 10);
+        const prevCheckin = attendanceCheckins.find((c) => c.user_id === session.user.id && c.checkin_date === yesterdayStr);
+        // 전날 기록이 있고 아직 주기(7일)를 다 안 채웠으면 이어가고, 없거나 이미 꽉 찼으면 1일째부터 새로 시작한다.
+        const streakDay = prevCheckin && prevCheckin.streak_day < CHECKIN_STREAK_LENGTH ? prevCheckin.streak_day + 1 : 1;
+        const coinsEarned = streakDay >= CHECKIN_STREAK_LENGTH ? CHECKIN_REWARD_COINS * CHECKIN_STREAK_BONUS_MULTIPLIER : CHECKIN_REWARD_COINS;
+
+        const newCheckin: AttendanceCheckin = {
+          id: crypto.randomUUID(),
+          user_id: session.user.id,
+          checkin_date: TODAY_DATE,
+          streak_day: streakDay,
+          coins_earned: coinsEarned,
+          created_at: new Date().toISOString(),
+        };
+        const { error } = await supabase.from("attendance_checkins").insert(newCheckin);
+        if (error) return { ok: false, error: error.message };
+        setAttendanceCheckins((prev) => [...prev, newCheckin]);
+
+        const personalPet = pets.find((p) => p.user_id === currentUserId);
+        if (personalPet) {
+          const newTotalCoins = personalPet.total_coins + coinsEarned;
+          await supabase.from("pets").update({ total_coins: newTotalCoins }).eq("id", personalPet.id);
+          setPets((prev) => prev.map((p) => (p.id === personalPet.id ? { ...p, total_coins: newTotalCoins } : p)));
+        }
+        return { ok: true, data: newCheckin };
+      },
     }),
-    [profiles, session, authReady, currentUserId, currentUserAvatarUrl, groups, groupMembers, expenses, savings, incomes, personalCategories, groupCategoriesById, toastMessage, isLoggedIn, notificationSettings, darkMode, pets, categoryGoals, goalRewards, expenseReactions, feedPopupPetId, supabase, growGroupPetFromSharedExpense]
+    [profiles, session, authReady, currentUserId, currentUserAvatarUrl, groups, groupMembers, expenses, savings, incomes, personalCategories, groupCategoriesById, toastMessage, isLoggedIn, notificationSettings, darkMode, pets, categoryGoals, goalRewards, expenseReactions, feedPopupPetId, attendanceCheckins, supabase, growGroupPetFromSharedExpense]
   );
 
   return <StoreContext.Provider value={value}>{children}</StoreContext.Provider>;

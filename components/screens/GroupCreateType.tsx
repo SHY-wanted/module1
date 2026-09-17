@@ -4,15 +4,15 @@ import { useState } from "react";
 import { useNav } from "../NavContext";
 import { GROUP_TYPE_CARD_TO_ENUM } from "@/lib/nav";
 import { ChevronLeftIcon } from "../icons";
-import { ClubIcon, CoupleTypeIcon, EtcTypeIcon, FamilyTypeIcon, MarriageTypeIcon, RoommateTypeIcon } from "./typeIcons";
+import { ClubIcon, CoupleTypeIcon, EtcTypeIcon, FamilyTypeIcon, FriendTypeIcon, MarriageTypeIcon } from "./typeIcons";
 
-type CardId = "family" | "marriage" | "couple" | "roommate" | "club" | "etc";
+type CardId = "family" | "marriage" | "couple" | "friend" | "club" | "etc";
 
 const TYPE_ACCENTS: Record<CardId, { accent: string; light: string; label: string; Icon: (p: { color: string }) => React.ReactNode }> = {
   family: { accent: "#279E88", light: "#E8F9F7", label: "가족", Icon: (p) => <FamilyTypeIcon {...p} /> },
   marriage: { accent: "#C24C77", light: "#FFF0F6", label: "부부", Icon: (p) => <MarriageTypeIcon {...p} /> },
   couple: { accent: "#6A5ECF", light: "#F0EEFF", label: "커플", Icon: (p) => <CoupleTypeIcon {...p} /> },
-  roommate: { accent: "#2E7AB8", light: "#EBF5FF", label: "룸메이트", Icon: (p) => <RoommateTypeIcon {...p} /> },
+  friend: { accent: "#2E7AB8", light: "#EBF5FF", label: "친구", Icon: (p) => <FriendTypeIcon {...p} /> },
   club: { accent: "#8A6A12", light: "#FFFBE8", label: "모임·동아리", Icon: (p) => <ClubIcon {...p} /> },
   etc: { accent: "#2E8B57", light: "#EDFAF3", label: "기타", Icon: (p) => <EtcTypeIcon {...p} /> },
 };

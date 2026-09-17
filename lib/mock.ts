@@ -5,7 +5,7 @@
 export type GroupType =
   | "FAMILY"
   | "SIBLING"
-  | "ROOMMATE"
+  | "FRIEND"
   | "COUPLE"
   | "MARRIED_COUPLE"
   | "CLUB"
@@ -135,7 +135,7 @@ export const INITIAL_PROFILES: Profile[] = [
 // ------------------------------------------------------------------
 export const GROUP_ID_COUPLE = "g-couple";
 export const GROUP_ID_FAMILY = "g-family";
-export const GROUP_ID_ROOMMATE = "g-roommate";
+export const GROUP_ID_FRIEND = "g-friend"; // 2026-09-20: 유형이 "룸메이트"→"친구"로 바뀌면서 id·이름도 같이 갱신
 
 export const INITIAL_GROUPS: Group[] = [
   {
@@ -153,10 +153,10 @@ export const INITIAL_GROUPS: Group[] = [
     created_at: "2026-03-15T09:00:00+09:00",
   },
   {
-    id: GROUP_ID_ROOMMATE,
-    name: "전세 405호",
-    group_type: "ROOMMATE",
-    invite_code: "RM-9T3L",
+    id: GROUP_ID_FRIEND,
+    name: "대학 동기들",
+    group_type: "FRIEND",
+    invite_code: "FR-9T3L",
     created_at: "2026-08-01T09:00:00+09:00",
   },
 ];
@@ -173,10 +173,10 @@ export const INITIAL_GROUP_MEMBERS: GroupMember[] = [
   { id: generateId("gm"), user_id: "u-doyoon", group_id: GROUP_ID_FAMILY, role: "OWNER", nickname: "아빠", joined_at: "2026-03-15T09:00:00+09:00" },
   { id: generateId("gm"), user_id: "u-sujin", group_id: GROUP_ID_FAMILY, role: "MEMBER", nickname: "엄마", joined_at: "2026-03-15T09:00:00+09:00" },
   { id: generateId("gm"), user_id: "u-haeun", group_id: GROUP_ID_FAMILY, role: "MEMBER", nickname: "동생", joined_at: "2026-03-15T09:00:00+09:00" },
-  // 룸메이트 (3명)
-  { id: generateId("gm"), user_id: "u-seoyeon", group_id: GROUP_ID_ROOMMATE, role: "MEMBER", nickname: null, joined_at: "2026-08-01T09:00:00+09:00" },
-  { id: generateId("gm"), user_id: "u-jihoon", group_id: GROUP_ID_ROOMMATE, role: "OWNER", nickname: null, joined_at: "2026-08-01T09:00:00+09:00" },
-  { id: generateId("gm"), user_id: "u-yuna", group_id: GROUP_ID_ROOMMATE, role: "MEMBER", nickname: null, joined_at: "2026-08-01T09:00:00+09:00" },
+  // 친구 (3명)
+  { id: generateId("gm"), user_id: "u-seoyeon", group_id: GROUP_ID_FRIEND, role: "MEMBER", nickname: null, joined_at: "2026-08-01T09:00:00+09:00" },
+  { id: generateId("gm"), user_id: "u-jihoon", group_id: GROUP_ID_FRIEND, role: "OWNER", nickname: null, joined_at: "2026-08-01T09:00:00+09:00" },
+  { id: generateId("gm"), user_id: "u-yuna", group_id: GROUP_ID_FRIEND, role: "MEMBER", nickname: null, joined_at: "2026-08-01T09:00:00+09:00" },
 ];
 
 // ------------------------------------------------------------------
@@ -201,7 +201,7 @@ export const INITIAL_EXPENSES: Expense[] = [
   {
     id: "e-2",
     user_id: "u-seoyeon",
-    group_id: GROUP_ID_ROOMMATE,
+    group_id: GROUP_ID_FRIEND,
     amount: 12300,
     category: "생활",
     memo: "GS25",
@@ -378,5 +378,18 @@ export interface ExpenseReaction {
   expense_id: string;
   user_id: string;
   emoji: string;
+  created_at: string;
+}
+
+// E15. AttendanceCheckin(출석체크) — schema.sql: id, user_id, checkin_date, streak_day, coins_earned,
+// created_at. 접속률을 올리기 위한 신규 기능(2026-09-20 사용자 요청) — 매일 출석하면 코인을 받고,
+// 7일 연속 출석해서 그 주기를 꽉 채우면 7일째 코인이 두 배로 지급된다(lib/pets.ts CHECKIN_* 참고).
+// GoalReward와 마찬가지로 완전히 새 기능이라 INITIAL_* 시드가 없다.
+export interface AttendanceCheckin {
+  id: string;
+  user_id: string;
+  checkin_date: string; // "YYYY-MM-DD"
+  streak_day: number; // 이번 연속 출석 주기에서 며칠째인지(1~7)
+  coins_earned: number;
   created_at: string;
 }

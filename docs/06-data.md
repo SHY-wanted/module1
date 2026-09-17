@@ -14,7 +14,7 @@
 | E | 엔티티 | 설명 | 출처 |
 |---|---|---|---|
 | E1 | Profile (User) | 로그인 계정의 표시용 정보(이름·이메일) | SHY 스펙 "3. DB 스키마" `profiles`(auth.users 미러링) |
-| E2 | Group | 그룹(가족·부부·커플·룸메이트·모임 등) | SHY 스펙 `groups` · 01-problem.md 4요소 "대상" · 03-requirements.md R1 |
+| E2 | Group | 그룹(가족·부부·커플·친구·모임 등) | SHY 스펙 `groups` · 01-problem.md 4요소 "대상" · 03-requirements.md R1 |
 | E3 | GroupMember | 그룹과 유저를 잇는 소속·역할 관계 | SHY 스펙 `group_members` · 03-requirements.md R1~R3, R18 |
 | E4 | Expense | 지출 1건 | SHY 스펙 `expenses` · 03-requirements.md R5~R14 |
 | E5 | ExpenseOcrRaw | 영수증·결제캡쳐 OCR 원문·파싱 결과(지출 1건에 종속) | SHY 스펙 `expense_ocr_raw` · 03-requirements.md R8~R11 |
@@ -25,6 +25,7 @@
 | E12 | CategoryGoal (월별 목표) | 사용자가 카테고리별로 직접 설정하는 이번 달 지출 목표 금액 | shooTbranch 통합, 04-features.md F19류 지출 카테고리 개념 재사용 — **2026-09-15 신규(E11 Budget 대체)** |
 | E13 | GoalReward (목표 달성 보상) | 월이 끝난 뒤(또는 화면을 열 때) 카테고리별 목표 달성 여부를 계산해 고정 코인·XP를 지급한 기록 | shooTbranch 통합("퀘스트 달성" 개념) — **2026-09-15 신규(E10 WeeklySettlement 대체)**, 절약 비율 비례가 아니라 달성 시 고정 보상 |
 | E14 | ExpenseReaction (그룹 피드 이모지 반응) | 그룹 피드의 지출 카드에 그룹원이 남기는 이모지 반응(F23) | hybranch 통합 — **2026-09-15 신규** |
+| E15 | AttendanceCheckin (출석체크) | 하루 1번 출석하면 코인 지급, 7일 연속 출석하면 7일째 코인 2배 | 접속률을 올리기 위한 신규 요청(사용자, 2026-09-20) — **2026-09-20 신규** |
 
 ## 엔티티별 필드
 
@@ -40,11 +41,11 @@
 |---|---|---|---|---|
 | id | uuid | 필수 | | SHY 스펙 `groups` |
 | name | text | 필수 | 자유 텍스트, 그룹장이 직접 정함(R1) | SHY 스펙 `groups.name` · 03-requirements.md R1 |
-| group_type | enum | 필수, 기본 OTHER | FAMILY·SIBLING·ROOMMATE·COUPLE·MARRIED_COUPLE·CLUB·OTHER — 표시(아이콘·색상·카테고리 프리셋)용, 권한·로직에 관여 안 함(05-policy.md SP2) | SHY 스펙 `group_type` enum · 05-policy.md SP2 |
+| group_type | enum | 필수, 기본 OTHER | FAMILY·SIBLING·FRIEND·COUPLE·MARRIED_COUPLE·CLUB·OTHER — 표시(아이콘·색상·카테고리 프리셋)용, 권한·로직에 관여 안 함(05-policy.md SP2) | SHY 스펙 `group_type` enum · 05-policy.md SP2 |
 | invite_code | text (unique) | 필수 | 8자리, 그룹 생성 시 자동 발급 | SHY 스펙 `groups.invite_code` · 03-requirements.md R2 |
 | created_at | timestamptz | 필수(자동) | | SHY 스펙 `groups.created_at` |
 
-**[?] 디자인 3a 화면에는 "형제자매(SIBLING)" 선택 카드가 없다** — 디자인 스크립트의 `TYPE_ACCENTS`엔 `siblings` 값이 정의돼 있지만, 실제 화면(3a. 그룹 생성 — 모임 선택)에는 가족·부부·커플·룸메이트·모임·동아리·기타 6개 카드만 있고 형제자매 카드가 빠져 있다. SHY 스펙 enum(7종)과 03-requirements.md 어디에도 "형제자매를 뺀다"는 결정은 없다 — 팀 확인 필요.
+**[?] 디자인 3a 화면에는 "형제자매(SIBLING)" 선택 카드가 없다** — 디자인 스크립트의 `TYPE_ACCENTS`엔 `siblings` 값이 정의돼 있지만, 실제 화면(3a. 그룹 생성 — 모임 선택)에는 가족·부부·커플·친구·모임·동아리·기타 6개 카드만 있고 형제자매 카드가 빠져 있다. SHY 스펙 enum(7종)과 03-requirements.md 어디에도 "형제자매를 뺀다"는 결정은 없다 — 팀 확인 필요.
 
 ### E3. GroupMember
 | 필드 | 타입 | 필수 | 설명 | 출처 |
@@ -120,12 +121,12 @@
 | FAMILY | 식비, 생활용품, 교육비, 의료비, 관리비, 통신비, 여가·문화, 기타 | SHY 스펙 Task 2-3 · 디자인 `FAMILY_CATS`(동일) |
 | COUPLE | 데이트, 선물, 기념일, 여행, 카페·식사, 기타 | SHY 스펙 Task 2-3 · 디자인 `COUPLE_CATS`(동일) |
 | SIBLING | 식비, 경조사, 선물, 여행, 기타 | SHY 스펙 Task 2-3 — 디자인엔 이 프리셋을 쓰는 화면이 없음(아래 표 참고) |
-| ROOMMATE | 관리비, 식비·장보기, 생활용품, 공과금, 기타 | SHY 스펙 Task 2-3 — 디자인엔 이 프리셋을 쓰는 화면이 없음 |
+| FRIEND | 관리비, 식비·장보기, 생활용품, 공과금, 기타 | SHY 스펙 Task 2-3 — 디자인엔 이 프리셋을 쓰는 화면이 없음 |
 | MARRIED_COUPLE | 관리비, 보험, 식비, 자녀 양육비, 교육비, 의료비, 경조사, 기타 | SHY 스펙 Task 2-3 — 디자인엔 이 프리셋을 쓰는 화면이 없음 |
 | CLUB | 회비, 행사비, 식비, 기타 | SHY 스펙 Task 2-3 — 디자인엔 이 프리셋을 쓰는 화면이 없음 |
 | OTHER | 식비, 교통, 생활용품, 기타 | SHY 스펙 Task 2-3 · 디자인 `DEFAULT_CATS`(동일) |
 
-**[제안] 디자인(`ShooT 하윤.dc.html`)의 지출 입력 화면(6번)은 그룹 유형이 FAMILY·COUPLE일 때만 각각 다른 프리셋을 쓰고, 그 외(SIBLING·ROOMMATE·MARRIED_COUPLE·CLUB·OTHER)는 전부 DEFAULT_CATS로 통일해 보여준다(`Component.GROUP_TO_CATS` 함수가 'couple'·'family'만 분기).** SHY 스펙 Task 2-3은 7개 유형 모두 다른 프리셋을 쓰라고 정했으므로, 이 부분은 디자인이 데모 편의상 3종류로 줄인 것으로 보인다 — 근거: 디자인 스크립트에 SIBLING·ROOMMATE·MARRIED_COUPLE·CLUB용 카테고리 배열 자체가 없음. 실제 구현 범위를 SHY 스펙 7종 그대로 할지, 디자인처럼 3종(가족·커플·기타)으로 줄일지는 팀이 정해야 한다.
+**[제안] 디자인(`ShooT 하윤.dc.html`)의 지출 입력 화면(6번)은 그룹 유형이 FAMILY·COUPLE일 때만 각각 다른 프리셋을 쓰고, 그 외(SIBLING·FRIEND·MARRIED_COUPLE·CLUB·OTHER)는 전부 DEFAULT_CATS로 통일해 보여준다(`Component.GROUP_TO_CATS` 함수가 'couple'·'family'만 분기).** SHY 스펙 Task 2-3은 7개 유형 모두 다른 프리셋을 쓰라고 정했으므로, 이 부분은 디자인이 데모 편의상 3종류로 줄인 것으로 보인다 — 근거: 디자인 스크립트에 SIBLING·FRIEND·MARRIED_COUPLE·CLUB용 카테고리 배열 자체가 없음. 실제 구현 범위를 SHY 스펙 7종 그대로 할지, 디자인처럼 3종(가족·커플·기타)으로 줄일지는 팀이 정해야 한다.
 
 ### E9. Pet (저금통 펫) — v2, 2026-09-15 브랜치 통합으로 재구현
 | 필드 | 타입 | 필수(추정) | 설명 | 출처 |
@@ -191,6 +192,20 @@
 
 **[?] 반응 가능한 이모지 종류·개수 제한은 문서 근거가 없어 임의로 24종 팔레트를 만들었다** — 정확한 목록은 팀이 정해야 확정이다.
 
+### E15. AttendanceCheckin (출석체크) — 신규(사용자 요청, 2026-09-20)
+| 필드 | 타입 | 필수 | 설명 | 출처 |
+|---|---|---|---|---|
+| id | uuid | 필수 | | [제안] 다른 엔티티와 동일한 PK 관례 |
+| user_id | uuid (FK → Profile) | 필수 | | 사용자 요청 |
+| checkin_date | date | 필수 | 출석한 날짜(하루 1건) | 사용자 요청("매일매일 들어오면 출석체크하면 코인") |
+| streak_day | integer | 필수, 기본 1 | 이번 연속 출석 주기에서 며칠째인지(1~7) — 전날 기록이 없거나 이미 7일을 채웠으면 1로 리셋 | 사용자 요청("일주일 꼬박 출석해서 일주일 주기로") |
+| coins_earned | integer | 필수, 기본 0 | 평소엔 고정값(`CHECKIN_REWARD_COINS`=5), streak_day가 7이면 2배(`CHECKIN_STREAK_BONUS_MULTIPLIER`) — **[?] 팀 확인 전 placeholder** | 사용자 요청("코인 두배씩 얻도록") |
+| created_at | timestamptz | 필수(자동) | | [제안] 다른 엔티티와 동일한 감사 필드 관례 |
+
+유니크 제약: (user_id, checkin_date) — 하루 중복 지급 방지(E13 GoalReward와 같은 "화면에서 계산 + DB 유니크 제약으로 멱등성 확보" 패턴).
+
+**[?] 하루 기본 코인(5)·보너스 배율(2배)·주기 길이(7일)는 스펙에 정확한 수치가 없어 팀 확인 전 placeholder다.** 자정 기준을 KST로 고정했는지, 앱을 끄고 자정을 넘긴 세션에서 날짜가 언제 갱신되는지는 `lib/mock.ts`의 `TODAY_DATE`(모듈 로드 시 1회 계산되는 KST 오늘 날짜) 그대로를 따른다 — 다른 "오늘" 판정(P3 밥 주기 등)과 동일한 한계를 그대로 물려받는다.
+
 ## 관계
 | 관계 | 설명 | 출처 |
 |---|---|---|
@@ -207,6 +222,7 @@
 | Profile 1 — N CategoryGoal | 카테고리·달마다 하나씩(E12) | shooTbranch 통합 |
 | Profile 1 — N GoalReward | 카테고리·달마다 하나씩(E13) | shooTbranch 통합 |
 | Expense 1 — N ExpenseReaction | 지출 하나에 그룹원 여럿이 각자 이모지 반응(E14) | hybranch 통합 |
+| Profile 1 — N AttendanceCheckin | 하루에 한 건씩(E15) | 사용자 요청, 2026-09-20 |
 
 ## 상태값과 데이터 연동
 - 그룹장(Role) 상태(05-policy.md 상태값1): `group_members.role`이 OWNER↔MEMBER로 전환됨. 그룹원이 OWNER 혼자뿐이면 위임 없이 `groups` 행 자체를 삭제 — 이때 `expenses.group_id`는 null로, `group_members`는 cascade로 함께 삭제(SHY 스펙 "설계 포인트").

@@ -34,6 +34,7 @@ export default function Home() {
   const nav = useNav();
   const store = useStore();
   const [homeGroup, setHomeGroup] = useState<string>("me");
+  const [checkingIn, setCheckingIn] = useState(false);
 
   const me = store.profiles.find((p) => p.id === store.currentUserId);
   const givenName = me?.name ?? "";
@@ -50,6 +51,26 @@ export default function Home() {
     () => getRecentOwnExpenses(store.expenses, store.currentUserId, 5),
     [store.expenses, store.currentUserId]
   );
+
+  // 출석체크(2026-09-20 신규) — 접속률을 올리기 위한 기능이라 홈 진입 즉시 보이는 자리에 둔다.
+  const todayCheckin = store.attendanceCheckins.find((c) => c.user_id === store.currentUserId && c.checkin_date === TODAY_DATE);
+
+  async function handleCheckIn() {
+    if (checkingIn || todayCheckin) return;
+    setCheckingIn(true);
+    const result = await store.checkInToday();
+    setCheckingIn(false);
+    if (!result.ok || !result.data) {
+      store.showToast(result.error ?? "출석체크에 실패했어요");
+      return;
+    }
+    const isBonusDay = result.data.streak_day >= 7;
+    store.showToast(
+      isBonusDay
+        ? `7일 연속 출석! 🪙+${result.data.coins_earned} (2배 보너스)`
+        : `출석체크 완료! 🪙+${result.data.coins_earned} · ${result.data.streak_day}일째`
+    );
+  }
 
   const incomeTotal = useMemo(
     () => getIncomeTotalForUser(store.incomes, store.currentUserId, CURRENT_MONTH),
@@ -165,6 +186,39 @@ export default function Home() {
       </div>
 
       <div style={{ flex: 1, overflowY: "auto", padding: "0 20px 20px" }}>
+        {/* 출석체크(2026-09-20 신규, 사용자 요청) — "접속률을 올리기 위함"이라 홈 맨 위, 여는 즉시 보이는
+            자리에 둔다. 매일 코인 지급, 7일 연속 출석하면 그날 코인이 2배(lib/pets.ts CHECKIN_*). */}
+        <div
+          onClick={handleCheckIn}
+          style={{
+            marginTop: 18,
+            background: todayCheckin ? "var(--shoot-surface)" : "linear-gradient(135deg,#FFD166 0%,#F2A93B 100%)",
+            border: todayCheckin ? "1.5px solid var(--shoot-border)" : "none",
+            borderRadius: 22,
+            padding: "16px 20px",
+            display: "flex",
+            alignItems: "center",
+            gap: 12,
+            cursor: todayCheckin || checkingIn ? "default" : "pointer",
+            opacity: checkingIn ? 0.7 : 1,
+          }}
+        >
+          <div style={{ fontSize: 26, flexShrink: 0 }}>🪙</div>
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <div style={{ fontSize: 14, fontWeight: 800, color: todayCheckin ? "var(--shoot-text)" : "#5A3A00" }}>
+              {todayCheckin ? "오늘 출석체크 완료!" : "출석체크하고 코인 받기"}
+            </div>
+            <div style={{ fontSize: 11, fontWeight: 700, color: todayCheckin ? "var(--shoot-text-muted)" : "rgba(90,58,0,0.75)", marginTop: 2 }}>
+              {todayCheckin ? `${todayCheckin.streak_day}일째 연속 출석 중이에요` : "7일 꼬박 채우면 코인 2배!"}
+            </div>
+          </div>
+          {!todayCheckin && (
+            <div style={{ fontSize: 13, fontWeight: 800, color: "#5A3A00", background: "rgba(255,255,255,0.55)", borderRadius: 12, padding: "8px 14px", flexShrink: 0 }}>
+              출석하기
+            </div>
+          )}
+        </div>
+
         {/* 07-screens.md "2b 수입 카드 탭 → 2b-1a" — 2026-09-11 팀 결정으로 수입 기능이 이번 범위에 포함됐다. */}
         <div
           onClick={() => nav.push({ id: "incomeList" })}
