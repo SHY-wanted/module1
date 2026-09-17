@@ -11,7 +11,7 @@ import {
   getRecentOwnExpenses,
   getIncomeTotalForUser,
 } from "@/lib/selectors";
-import { formatRelativeTime, formatWon, stripSurname } from "@/lib/format";
+import { formatRelativeTime, formatWon } from "@/lib/format";
 import { getCategoryVisual } from "@/lib/categories";
 import { TODAY_DATE } from "@/lib/mock";
 import { CategoryIcon } from "../icons";
@@ -36,7 +36,7 @@ export default function Home() {
   const [homeGroup, setHomeGroup] = useState<string>("me");
 
   const me = store.profiles.find((p) => p.id === store.currentUserId);
-  const givenName = stripSurname(me?.name ?? "");
+  const givenName = me?.name ?? "";
   const myGroups = getGroupsForUser(store.groups, store.groupMembers, store.currentUserId);
 
   const expenseTotal = useMemo(() => {

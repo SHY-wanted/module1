@@ -2,7 +2,7 @@
 // components/screens/MyPage.tsx — 10. 마이페이지(design/shoot/MyPage.dc.html)
 import { useNav } from "../NavContext";
 import { useStore } from "@/lib/store";
-import { initialOf, stripSurname } from "@/lib/format";
+import { initialOf } from "@/lib/format";
 import { getPersonalPet } from "@/lib/selectors";
 import { MAX_STAGE_INDEX } from "@/lib/pets";
 import PetMascot from "../PetMascot";
@@ -13,7 +13,7 @@ export default function MyPage() {
   const store = useStore();
   const me = store.profiles.find((p) => p.id === store.currentUserId);
   const fullName = me?.name ?? "";
-  const givenName = stripSurname(fullName);
+  const givenName = fullName;
   // 저금통 펫 키우기(docs/08-pet-feature-spec.md §7, 2026-09-15 신규) — 펫이 아직 없으면 만들러 보낸다.
   const personalPet = getPersonalPet(store.pets, store.currentUserId);
 
