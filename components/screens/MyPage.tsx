@@ -105,6 +105,21 @@ export default function MyPage() {
           <ChevronRightIcon size={16} color="#A9A2B8" />
         </div>
 
+        {/* 개인 랭킹(2026-09-17 신규) — "개인 = 경쟁/랭킹" 지침. 그룹 데이터와는 무관, 개인 펫끼리만 비교한다. */}
+        <div
+          onClick={() => nav.push({ id: "personalRanking" })}
+          style={{ marginTop: 10, background: "var(--shoot-surface)", borderRadius: 20, padding: 18, display: "flex", alignItems: "center", gap: 14, border: "1px solid var(--shoot-border)", cursor: "pointer" }}
+        >
+          <div style={{ width: 44, height: 44, borderRadius: "50%", background: "var(--shoot-surface-alt)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 20, flexShrink: 0 }}>
+            🏆
+          </div>
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <div style={{ fontSize: 13, fontWeight: 700, color: "var(--shoot-text-muted)" }}>개인 랭킹</div>
+            <div style={{ fontSize: 16, fontWeight: 800, color: "var(--shoot-text)", marginTop: 2 }}>다른 사용자와 순위 겨루기</div>
+          </div>
+          <ChevronRightIcon size={16} color="#A9A2B8" />
+        </div>
+
         <div style={{ flex: 1 }} />
 
         <div

@@ -33,6 +33,7 @@ import {
   type Saving,
 } from "./mock";
 import { PERSONAL_CATS, groupToCats, makeCategory, type CategoryDef, type CategoryScope } from "./categories";
+import { sortPersonalRanking, type PersonalRankingEntry } from "./ranking";
 import {
   CHECKIN_REWARD_COINS,
   CHECKIN_STREAK_BONUS_MULTIPLIER,
@@ -219,6 +220,12 @@ interface StoreValue extends StoreState {
   // 출석체크(2026-09-20 추가) — 오늘 이미 했으면 ok:false. 전날까지 연속 출석 중이었으면 streak_day가
   // 이어지고, 7일째(CHECKIN_STREAK_LENGTH)를 채우면 그날 코인이 2배 지급된 뒤 다음 날 1일째로 리셋된다.
   checkInToday: () => Promise<MutationResult<AttendanceCheckin>>;
+
+  // 개인 랭킹(2026-09-17 신규) — "개인 = 경쟁/랭킹". supabase/009_personal_ranking.sql의
+  // get_personal_ranking()을 호출한다 — pets 테이블 RLS(본인/그룹 멤버 펫만 조회 가능)를 그대로 둔 채,
+  // 랭킹에 필요한 최소 컬럼(닉네임+성장 지표)만 노출하는 별도 함수라 그룹 펫 데이터는 애초에 섞이지
+  // 않는다. 전역 상태로 캐시하지 않고 화면(PersonalRanking)이 열릴 때마다 최신값을 받아온다.
+  fetchPersonalRanking: () => Promise<MutationResult<PersonalRankingEntry[]>>;
 }
 
 const StoreContext = createContext<StoreValue | null>(null);
@@ -960,6 +967,14 @@ export function StoreProvider({ children }: { children: ReactNode }) {
           setPets((prev) => prev.map((p) => (p.id === personalPet.id ? { ...p, total_coins: newTotalCoins } : p)));
         }
         return { ok: true, data: newCheckin };
+      },
+
+      // 개인 랭킹 — 로그인 전(목업 데모 계정)엔 RPC를 부를 세션이 없으니 빈 목록을 돌려준다.
+      async fetchPersonalRanking(): Promise<MutationResult<PersonalRankingEntry[]>> {
+        if (!session) return { ok: true, data: [] };
+        const { data, error } = await supabase.rpc("get_personal_ranking");
+        if (error) return { ok: false, error: error.message };
+        return { ok: true, data: sortPersonalRanking((data ?? []) as PersonalRankingEntry[]) };
       },
     }),
     [profiles, session, authReady, currentUserId, currentUserAvatarUrl, groups, groupMembers, expenses, savings, incomes, personalCategories, groupCategoriesById, toastMessage, isLoggedIn, notificationSettings, darkMode, pets, categoryGoals, goalRewards, expenseReactions, feedPopupPetId, attendanceCheckins, supabase, growGroupPetFromSharedExpense]

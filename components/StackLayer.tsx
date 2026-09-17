@@ -28,6 +28,7 @@ import PetCustomize from "./screens/PetCustomize";
 import MyBadges from "./screens/MyBadges";
 import MonthlyGoalSetting from "./screens/MonthlyGoalSetting";
 import MonthlyGoalReport from "./screens/MonthlyGoalReport";
+import PersonalRanking from "./screens/PersonalRanking";
 
 export type StackPhase = "entering" | "settled" | "leaving";
 
@@ -95,6 +96,8 @@ function renderScreen(screen: StackScreen) {
       return <MonthlyGoalSetting />;
     case "monthlyGoalReport":
       return <MonthlyGoalReport />;
+    case "personalRanking":
+      return <PersonalRanking />;
     default:
       return null;
   }
