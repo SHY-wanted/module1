@@ -13,6 +13,7 @@ import SignupInput from "./screens/SignupInput";
 import SignupSuccess from "./screens/SignupSuccess";
 import LoginInput from "./screens/LoginInput";
 import LoginSuccess from "./screens/LoginSuccess";
+import PasswordResetInput from "./screens/PasswordResetInput";
 import Home from "./screens/Home";
 import GroupList from "./screens/GroupList";
 import ExpenseListTab from "./screens/ExpenseListTab";
@@ -218,6 +219,8 @@ function AuthScreens({ authScreen }: { authScreen: AuthScreenId }) {
       return <LoginInput />;
     case "loginSuccess":
       return <LoginSuccess />;
+    case "passwordResetInput":
+      return <PasswordResetInput />;
     default:
       return null;
   }

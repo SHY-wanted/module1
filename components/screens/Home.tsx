@@ -15,7 +15,7 @@ import { formatRelativeTime, formatWon } from "@/lib/format";
 import { getCategoryVisual } from "@/lib/categories";
 import { TODAY_DATE } from "@/lib/mock";
 import { CategoryIcon } from "../icons";
-import { ArrowUpIcon, ChevronDownIcon, ChevronLeftIcon, ChevronRightIcon, HeartIcon, PlusIcon } from "../icons";
+import { ArrowUpIcon, ChevronDownIcon, ChevronLeftIcon, ChevronRightIcon, FlagIcon, HeartIcon, PlusIcon } from "../icons";
 
 // "이번 달 총 수입·총 지출" 카드는 캘린더를 다른 달로 넘겨도 바뀌지 않는다 — 항상 실제 오늘(TODAY_DATE)
 // 기준 이번 달이다. 09-14 이전엔 9월로 하드코딩돼 있었다.
@@ -66,17 +66,38 @@ export default function Home() {
   const [calMonthIndex, setCalMonthIndex] = useState(TODAY_MONTH_INDEX); // 0=1월 ... 11=12월
   const calLinearMonth = toLinearMonth(calYear, calMonthIndex);
   const atMaxMonth = calLinearMonth >= MAX_LINEAR_MONTH;
+  // 2026-09-21 팀 요청(신규): 화살표로 한 달씩 넘기는 것 말고, 아래방향 화살표 바를 눌러 원하는 월·일로
+  // 바로 이동할 수 있게 한다. 실제 달력 UI를 새로 그리는 대신 네이티브 <input type="date">를 투명하게
+  // 겹쳐서 브라우저 날짜 선택기를 그대로 쓴다(ExpenseInput의 날짜 입력과 같은 방식).
+  const [selectedDay, setSelectedDay] = useState<number | null>(null);
+  const maxPickDate = useMemo(() => {
+    const y = Math.floor(MAX_LINEAR_MONTH / 12);
+    const m = MAX_LINEAR_MONTH % 12;
+    const lastDay = new Date(y, m + 1, 0).getDate();
+    return `${y}-${String(m + 1).padStart(2, "0")}-${String(lastDay).padStart(2, "0")}`;
+  }, []);
+  const datePickerValue = `${calYear}-${String(calMonthIndex + 1).padStart(2, "0")}-${String(selectedDay ?? 1).padStart(2, "0")}`;
 
   function goPrevMonth() {
     const prev = calLinearMonth - 1;
     setCalYear(Math.floor(prev / 12));
     setCalMonthIndex(((prev % 12) + 12) % 12);
+    setSelectedDay(null);
   }
   function goNextMonth() {
     if (atMaxMonth) return; // 미래 +1년을 넘어가지 않는다
     const next = calLinearMonth + 1;
     setCalYear(Math.floor(next / 12));
     setCalMonthIndex(next % 12);
+    setSelectedDay(null);
+  }
+  function handleDatePick(value: string) {
+    if (!value) return;
+    const [y, m, d] = value.split("-").map(Number);
+    const picked = Math.min(toLinearMonth(y, m - 1), MAX_LINEAR_MONTH);
+    setCalYear(Math.floor(picked / 12));
+    setCalMonthIndex(((picked % 12) + 12) % 12);
+    setSelectedDay(d);
   }
 
   const calendarDays = useMemo(() => {
@@ -101,19 +122,21 @@ export default function Home() {
     for (let i = 0; i < startWeekday; i++) days.push({ num: null });
     for (let n = 1; n <= daysInMonth; n++) days.push({ num: n });
     return days.map(({ num }) => {
-      if (num === null) return { num: "", bg: "transparent", numColor: "#fff", expenseLabel: "", incomeLabel: "" };
+      if (num === null) return { num: "", bg: "transparent", numColor: "#fff", isSelected: false, expenseLabel: "", incomeLabel: "" };
       const expenseAmount = expenseByDay.get(num);
       const incomeAmount = incomeByDay.get(num);
       const isToday = isRealCurrentMonth && num === TODAY_DAY;
+      const isSelected = selectedDay === num;
       return {
         num,
         bg: isToday ? "var(--shoot-surface-alt)" : "var(--shoot-bg)",
         numColor: isToday ? "var(--shoot-accent)" : "var(--shoot-text-muted)",
+        isSelected,
         expenseLabel: expenseAmount ? (expenseAmount / 1000).toFixed(0) + "천" : "",
         incomeLabel: incomeAmount ? (incomeAmount / 10000).toFixed(0) + "만" : "",
       };
     });
-  }, [ownExpenses, ownIncomes, calYear, calMonthIndex]);
+  }, [ownExpenses, ownIncomes, calYear, calMonthIndex, selectedDay]);
 
   return (
     <div style={{ height: "100%", width: "100%", boxSizing: "border-box", background: "var(--shoot-bg)", display: "flex", flexDirection: "column" }}>
@@ -195,6 +218,21 @@ export default function Home() {
           <span style={{ fontSize: 14, fontWeight: 800, color: "var(--shoot-accent)" }}>그룹 만들기</span>
         </div>
 
+        {/* 2026-09-20 팀 요청(신규): 월별 목표 설정 진입점 — 10(마이페이지) "월별 목표 설정" 행과 같은 화면으로 push. */}
+        <div
+          onClick={() => nav.push({ id: "monthlyGoalSetting" })}
+          style={{ marginTop: 12, background: "var(--shoot-surface-alt)", border: "1.5px dashed var(--shoot-accent)", borderRadius: 22, padding: "18px 20px", display: "flex", alignItems: "center", gap: 14, cursor: "pointer" }}
+        >
+          <div style={{ width: 36, height: 36, borderRadius: 12, background: "var(--shoot-surface)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+            <FlagIcon size={17} color="var(--shoot-accent)" />
+          </div>
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <div style={{ fontSize: 14, fontWeight: 800, color: "var(--shoot-text)" }}>이번 달 목표 설정하기</div>
+            <div style={{ fontSize: 12, color: "var(--shoot-text-muted)", marginTop: 2 }}>카테고리별 목표를 정하고 지출을 관리해보세요</div>
+          </div>
+          <span style={{ fontSize: 10, fontWeight: 800, color: "#fff", background: "var(--shoot-accent)", borderRadius: 999, padding: "2px 8px", flexShrink: 0 }}>NEW</span>
+        </div>
+
         {/* 2026-09-17 팀 결정: "전체보기" 삭제(이동 대상 미정 TODO였음) — 최근 지출 5개만 보여준다. */}
         <div style={{ marginTop: 22 }}>
           <div style={{ fontSize: 15, fontWeight: 800, color: "var(--shoot-text)" }}>최근 지출</div>
@@ -221,8 +259,33 @@ export default function Home() {
 
         <div style={{ marginTop: 24 }}>
           <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 10 }}>
-            <div style={{ fontSize: 15, fontWeight: 800, color: "var(--shoot-text)" }}>
-              {calYear}년 {calMonthIndex + 1}월 캘린더
+            {/* 2026-09-21 팀 요청(신규): 아래방향 화살표 바 — 눌러서 원하는 월·일로 바로 이동. 네이티브
+                <input type="date">를 투명하게 겹쳐 브라우저 날짜 선택기를 그대로 쓴다. */}
+            <div style={{ position: "relative", display: "inline-flex" }}>
+              <div
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  gap: 4,
+                  padding: "6px 10px",
+                  borderRadius: 10,
+                  background: "var(--shoot-surface-alt)",
+                  cursor: "pointer",
+                }}
+              >
+                <span style={{ fontSize: 15, fontWeight: 800, color: "var(--shoot-text)" }}>
+                  {calYear}년 {calMonthIndex + 1}월{selectedDay ? ` ${selectedDay}일` : ""} 캘린더
+                </span>
+                <ChevronDownIcon size={13} color="var(--shoot-text-muted)" strokeWidth={2.5} />
+              </div>
+              <input
+                type="date"
+                value={datePickerValue}
+                max={maxPickDate}
+                onChange={(e) => handleDatePick(e.target.value)}
+                aria-label="월·일 선택"
+                style={{ position: "absolute", inset: 0, width: "100%", height: "100%", opacity: 0, cursor: "pointer", border: "none" }}
+              />
             </div>
             {/* 2026-09-14 팀 결정: 화살표로 월(과 그에 따른 연도)을 변경한다 — 과거는 제한 없음, 미래는 오늘 기준 +1년까지. */}
             <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
@@ -257,8 +320,20 @@ export default function Home() {
             </div>
             <div style={{ display: "grid", gridTemplateColumns: "repeat(7,1fr)", gap: 4 }}>
               {calendarDays.map((d, idx) => (
-                <div key={idx} style={{ minHeight: 52, borderRadius: 10, background: d.bg, padding: "4px 2px", display: "flex", flexDirection: "column", alignItems: "center" }}>
-                  <div style={{ fontSize: 11, fontWeight: 700, color: d.numColor }}>{d.num}</div>
+                <div
+                  key={idx}
+                  style={{
+                    minHeight: 52,
+                    borderRadius: 10,
+                    background: d.bg,
+                    border: d.isSelected ? "1.5px solid var(--shoot-accent)" : "1.5px solid transparent",
+                    padding: "4px 2px",
+                    display: "flex",
+                    flexDirection: "column",
+                    alignItems: "center",
+                  }}
+                >
+                  <div style={{ fontSize: 11, fontWeight: 700, color: d.isSelected ? "var(--shoot-accent)" : d.numColor }}>{d.num}</div>
                   {d.expenseLabel && <div style={{ fontSize: 9, fontWeight: 800, color: "#B23B3B", marginTop: 2 }}>-{d.expenseLabel}</div>}
                   {d.incomeLabel && <div style={{ fontSize: 9, fontWeight: 800, color: "#1D7A69", marginTop: 1 }}>+{d.incomeLabel}</div>}
                 </div>

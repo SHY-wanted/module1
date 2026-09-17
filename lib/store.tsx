@@ -52,7 +52,8 @@ export interface AuthResult {
   error?: string;
 }
 
-function translateAuthError(message: string): string {
+// app/reset-password(SPA 밖 라우트)도 같은 번역을 쓰기 위해 export한다.
+export function translateAuthError(message: string): string {
   if (message.includes("Invalid login credentials")) return "이메일 또는 비밀번호가 맞지 않아요";
   if (message.includes("Email not confirmed")) return "이메일 인증 후 로그인할 수 있어요. 받으신 메일함을 확인해주세요";
   if (message.includes("User already registered")) return "이미 가입된 이메일이에요";
@@ -160,6 +161,10 @@ interface StoreValue extends StoreState {
   signUp: (name: string, email: string, password: string) => Promise<AuthResult>;
   // 2(로그인) — 실제 supabase.auth.signInWithPassword 호출.
   signIn: (email: string, password: string) => Promise<AuthResult>;
+  // "비밀번호를 잊으셨나요?" — 실제 supabase.auth.resetPasswordForEmail 호출. 좋아하는 색·취미 같은
+  // 지식 기반 질문은 추측·주변인 유출에 취약해 쓰지 않기로 했다(2026-09-22 대화 중 결정) — 이메일 재설정
+  // 링크가 실제 인증 수단이다. 링크는 app/reset-password(SPA 밖 라우트)로 보낸다.
+  sendPasswordResetEmail: (email: string) => Promise<AuthResult>;
   // 10(마이페이지) 로그아웃 — 실제 supabase.auth.signOut 호출.
   signOut: () => Promise<void>;
   // 10b "내 정보 변경" 닉네임 — profiles.name을 실제로 갱신한다(schema.sql profiles_update_own_only 필요).
@@ -599,6 +604,17 @@ export function StoreProvider({ children }: { children: ReactNode }) {
         const { data, error } = await supabase.auth.signInWithPassword({ email: email.trim(), password });
         if (error) return { ok: false, error: translateAuthError(error.message) };
         setSession(data.session);
+        return { ok: true };
+      },
+
+      // "비밀번호를 잊으셨나요?" — 실제 supabase.auth.resetPasswordForEmail. 성공 여부와 무관하게(가입
+      // 안 된 이메일이어도) 같은 안내를 보여주는 게 보통이지만, Supabase가 실제로 반환한 에러는 그대로
+      // 옮겨서 화면에 보여준다(다른 signXxx 액션들과 일관되게).
+      async sendPasswordResetEmail(email: string): Promise<AuthResult> {
+        const { error } = await supabase.auth.resetPasswordForEmail(email.trim(), {
+          redirectTo: `${window.location.origin}/reset-password`,
+        });
+        if (error) return { ok: false, error: translateAuthError(error.message) };
         return { ok: true };
       },
 
