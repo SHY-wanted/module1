@@ -143,6 +143,9 @@ export interface NotificationSettings {
   // 2026-09-17 팀 결정: "예산 초과 시 알림"은 삭제(예산 자체가 없는 기능이라). "알림음"은
   // "그룹원 기록 확인 알림"으로 대체 — 내가 속한 그룹에 다른 그룹원이 지출을 기록하면 알려준다.
   groupMemberRecord: boolean;
+  // 2026-09-18 추가(신규 기능): 매일 저녁 8시, 오늘 지출을 하나도 안 기록했으면 리마인더를 띄운다.
+  // 새로 추가하는 "귀찮게 하는" 알림이라 기본은 꺼둔다(위 둘은 원래 켜져 있던 것과 다르다).
+  dailyReminder: boolean;
 }
 
 interface StoreValue extends StoreState {
@@ -254,6 +257,10 @@ const StoreContext = createContext<StoreValue | null>(null);
 // 알림을 띄운다. 탭이 백그라운드여도 뜨지만, 탭·브라우저가 완전히 닫히면 못 받는다(그러려면 서버가
 // 보내는 진짜 Web Push가 필요한데, 이번엔 그 범위는 빼기로 했다 — 사용자 확인). 컴포넌트 상태에 의존하지
 // 않는 모듈 스코프 함수라 useEffect/useMemo 의존성 배열에 넣을 필요가 없다.
+const DAILY_REMINDER_HOUR_KST = 20;
+const DAILY_REMINDER_CHECK_INTERVAL_MS = 5 * 60 * 1000;
+const DAILY_REMINDER_STORAGE_KEY = "shoot-daily-reminder-last-date";
+
 function notifyBrowser(message: string) {
   if (typeof window !== "undefined" && "Notification" in window && Notification.permission === "granted") {
     new Notification("ShooT", { body: message });
@@ -264,6 +271,7 @@ const DEFAULT_NOTIFICATION_SETTINGS: NotificationSettings = {
   // design/shoot/Settings.dc.html 초기값 그대로 켜짐으로 시작한다(이전 "알림음"도 켜짐이었다).
   expenseConfirm: true,
   groupMemberRecord: true,
+  dailyReminder: false,
 };
 
 export function StoreProvider({ children }: { children: ReactNode }) {
@@ -442,6 +450,29 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       supabase.removeChannel(channel);
     };
   }, [session, supabase, groups, profiles, notificationSettings]);
+
+  // 2026-09-18 추가(신규 기능): "저녁 리마인더" — 오후 8시(KST) 이후인데 오늘 지출을 하나도 안
+  // 기록했으면 한 번 알려준다. 서버 스케줄러 없이 앱이 열려 있는 동안만 5분마다 확인한다(탭을 닫으면
+  // 못 받는 건 알림 토글 전체와 같은 한계). 하루에 한 번만 뜨도록 localStorage에 오늘 날짜를 남긴다.
+  useEffect(() => {
+    if (!notificationSettings.dailyReminder || !session) return;
+    function checkAndRemind() {
+      const kstHour = Number(
+        new Intl.DateTimeFormat("en-US", { timeZone: "Asia/Seoul", hour: "2-digit", hour12: false }).format(new Date())
+      );
+      if (kstHour < DAILY_REMINDER_HOUR_KST) return;
+      if (window.localStorage.getItem(DAILY_REMINDER_STORAGE_KEY) === TODAY_DATE) return;
+      const recordedToday = expenses.some((e) => e.user_id === currentUserId && e.date === TODAY_DATE);
+      if (recordedToday) return;
+      window.localStorage.setItem(DAILY_REMINDER_STORAGE_KEY, TODAY_DATE);
+      const message = "오늘 지출을 아직 기록하지 않았어요. 잊기 전에 남겨볼까요?";
+      showToastMessage(message);
+      notifyBrowser(message);
+    }
+    checkAndRemind();
+    const timer = window.setInterval(checkAndRemind, DAILY_REMINDER_CHECK_INTERVAL_MS);
+    return () => window.clearInterval(timer);
+  }, [notificationSettings.dailyReminder, session, expenses, currentUserId]);
 
   // 2026-09-19 버그 수정: profiles는 "내 프로필"만 읽어왔어서, 같은 그룹의 다른 사람 이름은
   // store.profiles에 없어 화면들이 전부 "알 수 없음"으로 표시했다(10a-1 위임 대상 선택, 5b 그룹

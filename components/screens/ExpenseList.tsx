@@ -21,6 +21,8 @@ export default function ExpenseList({ initialCategoryFilter, pushed }: { initial
   const [categoryFilter, setCategoryFilter] = useState<string>(initialCategoryFilter ?? "all");
   const [startDate, setStartDate] = useState<string>("");
   const [endDate, setEndDate] = useState<string>("");
+  // 신규 기능: 메모 검색 — 카테고리·기간 필터는 있는데 텍스트로 찾을 방법이 없었다.
+  const [memoQuery, setMemoQuery] = useState<string>("");
   // 2026-09-19 팀 요청: 삭제 버튼 — 바로 지우지 않고 확인 팝업을 한 번 띄운다(10a "그룹 나가기"와 같은 패턴).
   const [confirmingId, setConfirmingId] = useState<string | null>(null);
 
@@ -37,13 +39,15 @@ export default function ExpenseList({ initialCategoryFilter, pushed }: { initial
   }, [ownExpenses]);
 
   const filtered = useMemo(() => {
+    const query = memoQuery.trim().toLowerCase();
     return ownExpenses.filter((e) => {
       if (categoryFilter !== "all" && e.category !== categoryFilter) return false;
       if (startDate && e.date < startDate) return false;
       if (endDate && e.date > endDate) return false;
+      if (query && !(e.memo ?? "").toLowerCase().includes(query)) return false;
       return true;
     });
-  }, [ownExpenses, categoryFilter, startDate, endDate]);
+  }, [ownExpenses, categoryFilter, startDate, endDate, memoQuery]);
 
   const months = groupExpensesByMonth(filtered);
 
@@ -67,8 +71,15 @@ export default function ExpenseList({ initialCategoryFilter, pushed }: { initial
           </div>
         </div>
 
-        {/* 카테고리·기간 필터(신규, 2026-09-11 팀 결정) — lib/mock.ts의 expenses를 클라이언트 사이드에서 거른다. */}
+        {/* 카테고리·기간·메모 검색 필터 — lib/mock.ts의 expenses를 클라이언트 사이드에서 거른다. */}
         <div style={{ display: "flex", flexDirection: "column", gap: 8, marginTop: 14 }}>
+          <input
+            type="text"
+            placeholder="메모로 검색 (예: 스타벅스)"
+            value={memoQuery}
+            onChange={(e) => setMemoQuery(e.target.value)}
+            style={{ width: "100%", boxSizing: "border-box", height: 42, borderRadius: 12, border: "1.5px solid var(--shoot-border)", background: "var(--shoot-surface)", padding: "0 12px", fontSize: 13, fontWeight: 600, color: "var(--shoot-text)" }}
+          />
           <select
             value={categoryFilter}
             onChange={(e) => setCategoryFilter(e.target.value)}
@@ -95,12 +106,13 @@ export default function ExpenseList({ initialCategoryFilter, pushed }: { initial
               onChange={(e) => setEndDate(e.target.value)}
               style={{ flex: 1, boxSizing: "border-box", height: 42, borderRadius: 12, border: "1.5px solid var(--shoot-border)", background: "var(--shoot-surface)", padding: "0 10px", fontSize: 12, fontWeight: 600, color: "var(--shoot-text)" }}
             />
-            {(categoryFilter !== "all" || startDate || endDate) && (
+            {(categoryFilter !== "all" || startDate || endDate || memoQuery) && (
               <div
                 onClick={() => {
                   setCategoryFilter("all");
                   setStartDate("");
                   setEndDate("");
+                  setMemoQuery("");
                 }}
                 style={{ flexShrink: 0, fontSize: 12, fontWeight: 700, color: "#B23B3B", cursor: "pointer", padding: "0 4px" }}
               >

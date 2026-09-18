@@ -60,6 +60,22 @@ export default function ExpenseInput({ expenseId }: { expenseId?: string }) {
     setSelectedCategoryId(nextCats[0]?.id ?? "etc");
   }
 
+  // 신규 기능: 저장 전에 미리 "이 카테고리 이번 달 목표 넘을 것 같아요" 경고. 목표는 개인 스코프에만
+  // 있어서(category_goals엔 group_id가 없다) 개인 지출·신규 입력일 때만 계산한다(수정은 기존 금액이
+  // 이미 합계에 들어가 있어 이중으로 세게 돼 범위에서 뺐다).
+  const categoryLabel = selectedCategoryId === "custom" ? customCategory.trim() : allCats.find((c) => c.id === selectedCategoryId)?.label ?? "";
+  const currentMonth = TODAY_DATE.slice(0, 7);
+  const categoryGoal =
+    !isEdit && !shareGroup && categoryLabel
+      ? store.categoryGoals.find((g) => g.category === categoryLabel && g.month === currentMonth)
+      : undefined;
+  const spentSoFar = categoryGoal
+    ? store.expenses
+        .filter((e) => e.user_id === store.currentUserId && e.category === categoryLabel && e.date.startsWith(currentMonth))
+        .reduce((sum, e) => sum + e.amount, 0)
+    : 0;
+  const overGoalAfterSave = categoryGoal && amount > 0 && spentSoFar + amount > categoryGoal.goal_amount;
+
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
 
@@ -167,6 +183,12 @@ export default function ExpenseInput({ expenseId }: { expenseId?: string }) {
             );
           })}
         </div>
+
+        {overGoalAfterSave && categoryGoal && (
+          <div style={{ fontSize: 12, fontWeight: 700, color: "#B23B3B", marginTop: 8 }}>
+            ⚠ 저장하면 이번 달 {categoryLabel} 목표({formatWon(categoryGoal.goal_amount)})를 넘어요
+          </div>
+        )}
 
         {selectedCategoryId === "custom" && (
           <input
