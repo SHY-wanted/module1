@@ -266,6 +266,20 @@ export function RefreshIcon({ size, color, strokeWidth, style }: IconProps) {
   );
 }
 
+// Lucide "switch-camera" — 8a 영수증 촬영의 전/후면 카메라 전환 버튼용(2026-09-18, 이전엔
+// RefreshIcon을 임시로 대신 썼다가 카메라 전환 의미에 맞는 아이콘으로 교체).
+export function SwitchCameraIcon({ size, color, strokeWidth, style }: IconProps) {
+  return (
+    <svg {...base(size, color, strokeWidth)} style={style}>
+      <path d="M11 19H4a2 2 0 0 1-2-2V7a2 2 0 0 1 2-2h5" />
+      <path d="M13 5h7a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2h-5" />
+      <circle cx="12" cy="12" r="3" />
+      <path d="m18 22-3-3 3-3" />
+      <path d="m6 2 3 3-3 3" />
+    </svg>
+  );
+}
+
 // 아래 5개는 design/shoot/Settings.dc.html 아이콘을 그대로 옮김.
 export function BellIcon({ size, color, strokeWidth, style }: IconProps) {
   return (

@@ -108,6 +108,10 @@ interface StoreState {
   expenseReactions: ExpenseReaction[];
   // P3 "데일리 먹이주기 팝업" — 지출을 기록한 직후, 오늘 아직 개인 펫에게 밥을 안 줬으면 연다.
   feedPopupPetId: string | null;
+  // 8a→8b "영수증 촬영/갤러리 선택" 임시 이미지(2026-09-17 실제 OCR 연동 신규) — window.history.pushState
+  // 로 넘어가는 StackScreen 파라미터엔 절대 넣지 않는다(사진 base64는 커서 브라우저 history state
+  // 용량 제한에 걸릴 수 있다) — 대신 이 store 쪽 React 상태로만 화면 전환 중에도 들고 있는다.
+  pendingReceiptImage: File | null;
   // 출석체크(2026-09-20 추가) — 접속률을 올리기 위한 신규 기능. 내 출석 기록만 들어있다(RLS).
   attendanceCheckins: AttendanceCheckin[];
 }
@@ -226,6 +230,9 @@ interface StoreValue extends StoreState {
   // 랭킹에 필요한 최소 컬럼(닉네임+성장 지표)만 노출하는 별도 함수라 그룹 펫 데이터는 애초에 섞이지
   // 않는다. 전역 상태로 캐시하지 않고 화면(PersonalRanking)이 열릴 때마다 최신값을 받아온다.
   fetchPersonalRanking: () => Promise<MutationResult<PersonalRankingEntry[]>>;
+
+  // 8a "영수증 촬영/갤러리 선택" → 8b로 넘길 임시 이미지(2026-09-17 실제 OCR 연동 신규).
+  setPendingReceiptImage: (file: File | null) => void;
 }
 
 const StoreContext = createContext<StoreValue | null>(null);
@@ -263,6 +270,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
   const [goalRewards, setGoalRewards] = useState<GoalReward[]>([]);
   const [expenseReactions, setExpenseReactions] = useState<ExpenseReaction[]>([]);
   const [feedPopupPetId, setFeedPopupPetId] = useState<string | null>(null);
+  const [pendingReceiptImage, setPendingReceiptImage] = useState<File | null>(null);
   // 출석체크 — 완전히 새 기능이라 목업 시드가 없다(다른 pets v2 테이블들과 같은 이유).
   const [attendanceCheckins, setAttendanceCheckins] = useState<AttendanceCheckin[]>([]);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
@@ -460,6 +468,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       goalRewards,
       expenseReactions,
       feedPopupPetId,
+      pendingReceiptImage,
       attendanceCheckins,
       currentUserId,
 
@@ -976,8 +985,12 @@ export function StoreProvider({ children }: { children: ReactNode }) {
         if (error) return { ok: false, error: error.message };
         return { ok: true, data: sortPersonalRanking((data ?? []) as PersonalRankingEntry[]) };
       },
+
+      setPendingReceiptImage(file: File | null) {
+        setPendingReceiptImage(file);
+      },
     }),
-    [profiles, session, authReady, currentUserId, currentUserAvatarUrl, groups, groupMembers, expenses, savings, incomes, personalCategories, groupCategoriesById, toastMessage, isLoggedIn, notificationSettings, darkMode, pets, categoryGoals, goalRewards, expenseReactions, feedPopupPetId, attendanceCheckins, supabase, growGroupPetFromSharedExpense]
+    [profiles, session, authReady, currentUserId, currentUserAvatarUrl, groups, groupMembers, expenses, savings, incomes, personalCategories, groupCategoriesById, toastMessage, isLoggedIn, notificationSettings, darkMode, pets, categoryGoals, goalRewards, expenseReactions, feedPopupPetId, pendingReceiptImage, attendanceCheckins, supabase, growGroupPetFromSharedExpense]
   );
 
   return <StoreContext.Provider value={value}>{children}</StoreContext.Provider>;
