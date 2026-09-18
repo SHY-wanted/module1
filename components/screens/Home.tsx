@@ -29,6 +29,8 @@ function toLinearMonth(year: number, monthIndex: number) {
 }
 const TODAY_LINEAR_MONTH = toLinearMonth(TODAY_YEAR, TODAY_MONTH_INDEX);
 const MAX_LINEAR_MONTH = TODAY_LINEAR_MONTH + 12; // 오늘과 같은 달의 내년까지
+// 2026-09-18 사용자 요청: 과거도 무제한이 아니라 올해 기준 5년 전까지만 넘길 수 있게 제한한다.
+const MIN_LINEAR_MONTH = TODAY_LINEAR_MONTH - 5 * 12;
 
 export default function Home() {
   const nav = useNav();
@@ -87,6 +89,7 @@ export default function Home() {
   const [calMonthIndex, setCalMonthIndex] = useState(TODAY_MONTH_INDEX); // 0=1월 ... 11=12월
   const calLinearMonth = toLinearMonth(calYear, calMonthIndex);
   const atMaxMonth = calLinearMonth >= MAX_LINEAR_MONTH;
+  const atMinMonth = calLinearMonth <= MIN_LINEAR_MONTH;
   // 2026-09-21 팀 요청(신규): 화살표로 한 달씩 넘기는 것 말고, 아래방향 화살표 바를 눌러 원하는 월·일로
   // 바로 이동할 수 있게 한다. 실제 달력 UI를 새로 그리는 대신 네이티브 <input type="date">를 투명하게
   // 겹쳐서 브라우저 날짜 선택기를 그대로 쓴다(ExpenseInput의 날짜 입력과 같은 방식).
@@ -97,9 +100,16 @@ export default function Home() {
     const lastDay = new Date(y, m + 1, 0).getDate();
     return `${y}-${String(m + 1).padStart(2, "0")}-${String(lastDay).padStart(2, "0")}`;
   }, []);
+  // 2026-09-18 사용자 요청: 과거도 올해 기준 5년 전까지만.
+  const minPickDate = useMemo(() => {
+    const y = Math.floor(MIN_LINEAR_MONTH / 12);
+    const m = MIN_LINEAR_MONTH % 12;
+    return `${y}-${String(m + 1).padStart(2, "0")}-01`;
+  }, []);
   const datePickerValue = `${calYear}-${String(calMonthIndex + 1).padStart(2, "0")}-${String(selectedDay ?? 1).padStart(2, "0")}`;
 
   function goPrevMonth() {
+    if (atMinMonth) return; // 5년 전보다 더 과거로는 넘어가지 않는다
     const prev = calLinearMonth - 1;
     setCalYear(Math.floor(prev / 12));
     setCalMonthIndex(((prev % 12) + 12) % 12);
@@ -115,7 +125,7 @@ export default function Home() {
   function handleDatePick(value: string) {
     if (!value) return;
     const [y, m, d] = value.split("-").map(Number);
-    const picked = Math.min(toLinearMonth(y, m - 1), MAX_LINEAR_MONTH);
+    const picked = Math.min(Math.max(toLinearMonth(y, m - 1), MIN_LINEAR_MONTH), MAX_LINEAR_MONTH);
     setCalYear(Math.floor(picked / 12));
     setCalMonthIndex(((picked % 12) + 12) % 12);
     setSelectedDay(d);
@@ -335,19 +345,30 @@ export default function Home() {
               <input
                 type="date"
                 value={datePickerValue}
+                min={minPickDate}
                 max={maxPickDate}
                 onChange={(e) => handleDatePick(e.target.value)}
                 aria-label="월·일 선택"
                 style={{ position: "absolute", inset: 0, width: "100%", height: "100%", opacity: 0, cursor: "pointer", border: "none" }}
               />
             </div>
-            {/* 2026-09-14 팀 결정: 화살표로 월(과 그에 따른 연도)을 변경한다 — 과거는 제한 없음, 미래는 오늘 기준 +1년까지. */}
+            {/* 2026-09-14 팀 결정, 2026-09-18 수정: 화살표로 월(과 그에 따른 연도)을 변경한다 — 과거는
+                올해 기준 5년 전까지, 미래는 오늘 기준 +1년까지. */}
             <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
               <div
                 onClick={goPrevMonth}
-                style={{ width: 26, height: 26, borderRadius: "50%", background: "var(--shoot-surface-alt)", display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer" }}
+                style={{
+                  width: 26,
+                  height: 26,
+                  borderRadius: "50%",
+                  background: atMinMonth ? "var(--shoot-divider)" : "var(--shoot-surface-alt)",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  cursor: atMinMonth ? "default" : "pointer",
+                }}
               >
-                <ChevronLeftIcon size={13} color="var(--shoot-accent)" />
+                <ChevronLeftIcon size={13} color={atMinMonth ? "#C9C4D6" : "var(--shoot-accent)"} />
               </div>
               <div
                 onClick={goNextMonth}
