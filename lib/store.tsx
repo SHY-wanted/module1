@@ -218,6 +218,8 @@ interface StoreValue extends StoreState {
   setPetColors: (petId: string, colors: Partial<Record<PetColorPart, string>>) => Promise<MutationResult<Pet>>;
   // 월별·카테고리별 목표(shooTbranch 통합, mg의 주간 예산 대체) — 없으면 새로 만들고 있으면 갱신(upsert).
   setCategoryGoal: (category: string, month: string, amount: number) => Promise<MutationResult<CategoryGoal>>;
+  // 2026-09-23 팀 요청(신규): 설정한 목표를 지울 수 있게 — deleteExpense와 같은 패턴(RLS로 본인 것만 지워짐).
+  deleteCategoryGoal: (id: string) => Promise<boolean>;
   // 이번 달 설정된 목표들을 각각 달성했는지 계산해서 저장한다(배치 대신 화면을 열 때, 카테고리별로
   // 이미 보상을 줬으면 다시 안 준다). "퀘스트 달성" 개념이라 고정 보상(coins·xp)을 준다.
   getOrCreateGoalRewardsForMonth: () => Promise<MutationResult<GoalReward[]>>;
@@ -876,6 +878,14 @@ export function StoreProvider({ children }: { children: ReactNode }) {
         if (error) return { ok: false, error: error.message };
         setCategoryGoals((prev) => [...prev, newGoal]);
         return { ok: true, data: newGoal };
+      },
+
+      // 2026-09-23 팀 요청(신규): 목표 삭제 — deleteExpense와 같은 패턴.
+      async deleteCategoryGoal(id: string): Promise<boolean> {
+        const { error, count } = await supabase.from("category_goals").delete({ count: "exact" }).eq("id", id);
+        if (error || !count) return false;
+        setCategoryGoals((prev) => prev.filter((g) => g.id !== id));
+        return true;
       },
 
       // "퀘스트 달성하면 보상"(shooTbranch 통합, 2026-09-15 사용자 확인) — 배치 없이 화면을 열 때

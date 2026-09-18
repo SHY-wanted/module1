@@ -8,6 +8,8 @@ import {
   getOwnExpenses,
   getPersonalExpenseTotal,
   getGroupExpenseTotal,
+  getPersonalExpenseCategoryBreakdown,
+  getGroupExpenseCategoryBreakdown,
   getRecentOwnExpenses,
   getIncomeTotalForUser,
 } from "@/lib/selectors";
@@ -45,6 +47,17 @@ export default function Home() {
   const expenseTotal = useMemo(() => {
     if (homeGroup === "me") return getPersonalExpenseTotal(store.expenses, store.currentUserId, CURRENT_MONTH);
     return getGroupExpenseTotal(store.expenses, homeGroup, CURRENT_MONTH);
+  }, [store.expenses, store.currentUserId, homeGroup]);
+
+  // 2026-09-23 버그 수정: "이번 달 총 지출" 카드 아래 카테고리별 % 막대가 식비 42%·생활 28%·문화 17%로
+  // 고정돼 있어서 실제 지출 카테고리와 안 맞았다 — expenseTotal과 같은 필터 기준으로 실제 계산한다.
+  // 카드에는 3줄만 들어가므로 비중이 큰 상위 3개 카테고리만 보여준다.
+  const categoryBreakdown = useMemo(() => {
+    const rows =
+      homeGroup === "me"
+        ? getPersonalExpenseCategoryBreakdown(store.expenses, store.currentUserId, CURRENT_MONTH)
+        : getGroupExpenseCategoryBreakdown(store.expenses, homeGroup, CURRENT_MONTH);
+    return rows.slice(0, 3);
   }, [store.expenses, store.currentUserId, homeGroup]);
 
   // 2026-09-17 팀 결정: 3개 → 5개로 늘림. store.expenses 기준으로 매번 다시 계산되므로(위 useMemo 의존성)
@@ -256,21 +269,21 @@ export default function Home() {
           </div>
           <div style={{ fontSize: 30, fontWeight: 800, color: "#fff", marginTop: 6, letterSpacing: "-0.5px" }}>{formatWon(expenseTotal)}</div>
           <div style={{ display: "flex", flexDirection: "column", gap: 8, marginTop: 16 }}>
-            {[
-              { label: "식비", pct: 42 },
-              { label: "생활", pct: 28 },
-              { label: "문화", pct: 17 },
-            ].map((row) => (
-              <div key={row.label}>
-                <div style={{ display: "flex", justifyContent: "space-between", fontSize: 11, fontWeight: 700, color: "rgba(255,255,255,0.9)", marginBottom: 4 }}>
-                  <span>{row.label}</span>
-                  <span>{row.pct}%</span>
+            {categoryBreakdown.length === 0 ? (
+              <div style={{ fontSize: 11, fontWeight: 700, color: "rgba(255,255,255,0.75)" }}>이번 달 지출이 아직 없어요</div>
+            ) : (
+              categoryBreakdown.map((row) => (
+                <div key={row.category}>
+                  <div style={{ display: "flex", justifyContent: "space-between", fontSize: 11, fontWeight: 700, color: "rgba(255,255,255,0.9)", marginBottom: 4 }}>
+                    <span>{row.category}</span>
+                    <span>{row.pct}%</span>
+                  </div>
+                  <div style={{ height: 5, borderRadius: 3, background: "rgba(255,255,255,0.25)" }}>
+                    <div style={{ width: `${row.pct}%`, height: "100%", borderRadius: 3, background: "var(--shoot-surface)" }} />
+                  </div>
                 </div>
-                <div style={{ height: 5, borderRadius: 3, background: "rgba(255,255,255,0.25)" }}>
-                  <div style={{ width: `${row.pct}%`, height: "100%", borderRadius: 3, background: "var(--shoot-surface)" }} />
-                </div>
-              </div>
-            ))}
+              ))
+            )}
           </div>
         </div>
 

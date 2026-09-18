@@ -416,6 +416,8 @@ create policy pets_update_own_or_group_member on pets for update
 create policy category_goals_select_own on category_goals for select using (user_id = auth.uid());
 create policy category_goals_insert_own on category_goals for insert with check (user_id = auth.uid());
 create policy category_goals_update_own on category_goals for update using (user_id = auth.uid()) with check (user_id = auth.uid());
+-- 2026-09-23 팀 요청(신규): 목표 삭제 버튼 추가 — 007_category_goals_delete_policy.sql.
+create policy category_goals_delete_own on category_goals for delete using (user_id = auth.uid());
 
 create policy goal_rewards_select_own on goal_rewards for select using (user_id = auth.uid());
 create policy goal_rewards_insert_own on goal_rewards for insert with check (user_id = auth.uid());
@@ -486,7 +488,7 @@ create policy attendance_checkins_insert_own on attendance_checkins for insert w
 -- | expense_ocr_raw    |   O    |  없음  |  없음  |  없음  | 클라이언트는 읽기만 함 — 쓰기는 Edge Function이 service_role로 수행(RLS 우회), 의도된 설계 |
 -- | savings            |   O    |   O    |   O    |   O    | select 2개(P11 본인 + P12 그룹멤버), insert=[?](P4 패턴 차용), update=P11·P12, delete=본인만(2026-09-18 추가, 그룹 나가기용) |
 -- | pets               |   O    |   O    |   O    |  없음  | 2026-09-15 추가(v2). select/insert/update=본인 개인 펫 또는 그 그룹 멤버(그룹 펫). delete는 스펙에 삭제 규칙이 없어 미구현 |
--- | category_goals     |   O    |   O    |   O    |  없음  | 2026-09-15 추가(shooTbranch 통합). 본인만. delete는 규칙 없어 미구현(재설정은 update로) |
+-- | category_goals     |   O    |   O    |   O    |   O    | 2026-09-15 추가(shooTbranch 통합). 본인만. delete=본인 목표만(2026-09-23 추가, 목표 삭제 버튼용 — 007_category_goals_delete_policy.sql) |
 -- | goal_rewards       |   O    |   O    |   O    |  없음  | 2026-09-15 추가. 본인만. 배치가 아니라 화면을 열 때 upsert하는 방식(위 7절 참고) |
 -- | expense_reactions  |   O    |   O    |  없음  |   O    | 2026-09-15 추가(hybranch F23). select=지출을 볼 수 있는 사람과 동일, insert=그 지출이 속한 그룹 멤버만, delete=본인 반응만(취소용). update는 필요 없어 미구현(지우고 다시 남기면 됨) |
 -- | attendance_checkins|   O    |   O    |  없음  |  없음  | 2026-09-20 추가. 본인만. 하루치 기록은 지나간 사실이라 update/delete 둘 다 미구현(정정 규칙 없음) — unique(user_id, checkin_date)가 하루 중복 지급을 막는다 |

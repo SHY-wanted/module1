@@ -91,6 +91,36 @@ export function getPersonalExpenseTotal(expenses: Expense[], userId: string, yea
     .reduce((sum, e) => sum + e.amount, 0);
 }
 
+export interface CategoryBreakdownRow {
+  category: string;
+  amount: number;
+  pct: number;
+}
+
+// 2b 홈 "이번 달 총 지출" 카드의 카테고리별 비율 막대 — 실제 지출을 카테고리로 묶어 비율(%)을 계산한다.
+// 금액이 큰 카테고리부터 정렬(2026-09-23 버그 수정: 이전엔 식비 42%·생활 28%·문화 17%로 고정돼 있었다).
+function toCategoryBreakdown(expenses: Expense[]): CategoryBreakdownRow[] {
+  const total = expenses.reduce((sum, e) => sum + e.amount, 0);
+  if (total === 0) return [];
+  const byCategory = new Map<string, number>();
+  for (const e of expenses) {
+    byCategory.set(e.category, (byCategory.get(e.category) ?? 0) + e.amount);
+  }
+  return Array.from(byCategory.entries())
+    .map(([category, amount]) => ({ category, amount, pct: Math.round((amount / total) * 100) }))
+    .sort((a, b) => b.amount - a.amount);
+}
+
+// getPersonalExpenseTotal과 같은 필터 기준(본인 · 개인 스코프 · 해당 월).
+export function getPersonalExpenseCategoryBreakdown(expenses: Expense[], userId: string, yearMonth: string): CategoryBreakdownRow[] {
+  return toCategoryBreakdown(expenses.filter((e) => e.user_id === userId && !e.group_id && e.date.startsWith(yearMonth)));
+}
+
+// getGroupExpenseTotal과 같은 필터 기준(그 그룹 · 공유된 지출 · 해당 월).
+export function getGroupExpenseCategoryBreakdown(expenses: Expense[], groupId: string, yearMonth: string): CategoryBreakdownRow[] {
+  return toCategoryBreakdown(expenses.filter((e) => e.group_id === groupId && e.is_shared && e.date.startsWith(yearMonth)));
+}
+
 // 5b 그룹 상세 "지출·저금 피드" — expenses·savings 두 배열을 합쳐 시간순(최신순)으로.
 export type FeedItem =
   | { kind: "expense"; data: Expense }
