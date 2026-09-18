@@ -1,5 +1,6 @@
 "use client";
 // components/screens/MyPage.tsx — 10. 마이페이지(design/shoot/MyPage.dc.html)
+import { useState } from "react";
 import { useNav } from "../NavContext";
 import { useStore } from "@/lib/store";
 import { initialOf } from "@/lib/format";
@@ -16,9 +17,25 @@ export default function MyPage() {
   const givenName = fullName;
   // 저금통 펫 키우기(docs/08-pet-feature-spec.md §7, 2026-09-15 신규) — 펫이 아직 없으면 만들러 보낸다.
   const personalPet = getPersonalPet(store.pets, store.currentUserId);
+  const [confirmingDelete, setConfirmingDelete] = useState(false);
+  const [deleting, setDeleting] = useState(false);
+  const [deleteError, setDeleteError] = useState<string | null>(null);
+
+  async function handleDeleteAccount() {
+    if (deleting) return;
+    setDeleting(true);
+    const result = await store.deleteAccount();
+    setDeleting(false);
+    if (!result.ok) {
+      setDeleteError(result.error ?? "탈퇴 처리에 실패했어요");
+      return;
+    }
+    setConfirmingDelete(false);
+    nav.logout();
+  }
 
   return (
-    <div style={{ height: "100%", width: "100%", boxSizing: "border-box", background: "var(--shoot-bg)", display: "flex", flexDirection: "column" }}>
+    <div style={{ height: "100%", width: "100%", boxSizing: "border-box", background: "var(--shoot-bg)", display: "flex", flexDirection: "column", position: "relative" }}>
       <div style={{ flex: 1, overflowY: "auto", padding: "20px 20px 20px", display: "flex", flexDirection: "column" }}>
         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
           <div style={{ fontSize: 22, fontWeight: 800, color: "var(--shoot-text)" }}>마이페이지</div>
@@ -139,7 +156,42 @@ export default function MyPage() {
         >
           로그아웃
         </div>
+        <div
+          onClick={() => {
+            setDeleteError(null);
+            setConfirmingDelete(true);
+          }}
+          style={{ marginTop: 12, textAlign: "center", fontSize: 12, color: "var(--shoot-text-muted)", fontWeight: 700, cursor: "pointer" }}
+        >
+          회원 탈퇴
+        </div>
       </div>
+
+      {confirmingDelete && (
+        <div style={{ position: "absolute", inset: 0, background: "rgba(45,42,62,0.45)", display: "flex", alignItems: "center", justifyContent: "center", padding: 32, zIndex: 20 }}>
+          <div style={{ background: "var(--shoot-surface)", borderRadius: 20, padding: 22, width: "100%", textAlign: "center" }}>
+            <div style={{ fontSize: 16, fontWeight: 800, color: "var(--shoot-text)" }}>정말 탈퇴할까요?</div>
+            <div style={{ fontSize: 12, color: "var(--shoot-text-muted)", marginTop: 8, fontWeight: 600 }}>
+              그룹·지출·저금·펫 등 계정의 모든 데이터가 지워지고 되돌릴 수 없어요
+            </div>
+            {deleteError && <div style={{ fontSize: 12, fontWeight: 700, color: "#B23B3B", marginTop: 10 }}>{deleteError}</div>}
+            <div style={{ display: "flex", gap: 8, marginTop: 18 }}>
+              <div
+                onClick={() => setConfirmingDelete(false)}
+                style={{ flex: 1, height: 44, borderRadius: 14, border: "1.5px solid var(--shoot-border)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 13, fontWeight: 800, color: "var(--shoot-text)", cursor: "pointer" }}
+              >
+                취소
+              </div>
+              <div
+                onClick={handleDeleteAccount}
+                style={{ flex: 1, height: 44, borderRadius: 14, background: "#B23B3B", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 13, fontWeight: 800, color: "#fff", cursor: "pointer", opacity: deleting ? 0.6 : 1 }}
+              >
+                탈퇴
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
