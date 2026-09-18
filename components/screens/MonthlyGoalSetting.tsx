@@ -63,6 +63,7 @@ export default function MonthlyGoalSetting() {
   const [amountText, setAmountText] = useState(String(existingGoal?.goal_amount ?? recommended));
   const [saved, setSaved] = useState<{ categoryId: string; amount: number } | null>(null);
   const [saving, setSaving] = useState(false);
+  const [amountFocused, setAmountFocused] = useState(false);
 
   function handleSelectCategory(next: CategoryDef) {
     setSelectedCategoryId(next.id);
@@ -160,14 +161,28 @@ export default function MonthlyGoalSetting() {
 
         <div style={{ marginTop: 20 }}>
           <div style={{ fontSize: 13, fontWeight: 700, color: "var(--shoot-text)", marginBottom: 8 }}>목표 금액</div>
-          <div style={{ display: "flex", alignItems: "baseline", gap: 4 }}>
+          {/* 2026-09-18 사용자 요청: 클릭하기 전엔 테두리가 안 보여서 입력칸인지 알아보기 어려웠다 —
+              항상 보이는 사각 테두리를 두르고, 포커스 중엔 강조색으로 바꿔서 입력 중임을 표시한다. */}
+          <div
+            style={{
+              display: "flex",
+              alignItems: "baseline",
+              gap: 4,
+              border: `2px solid ${amountFocused ? "var(--shoot-accent)" : "var(--shoot-border)"}`,
+              borderRadius: 14,
+              padding: "10px 16px",
+              background: "var(--shoot-surface)",
+            }}
+          >
             <span style={{ fontSize: 18, fontWeight: 800, color: "var(--shoot-text-muted)" }}>₩</span>
             <input
               value={amountText}
               onChange={(e) => handleAmountText(e.target.value)}
+              onFocus={() => setAmountFocused(true)}
+              onBlur={() => setAmountFocused(false)}
               inputMode="numeric"
               placeholder="0"
-              style={{ fontSize: 30, fontWeight: 800, color: "var(--shoot-text)", letterSpacing: "-1px", border: "none", background: "transparent", width: "100%" }}
+              style={{ fontSize: 30, fontWeight: 800, color: "var(--shoot-text)", letterSpacing: "-1px", border: "none", outline: "none", background: "transparent", width: "100%" }}
             />
           </div>
           <input
