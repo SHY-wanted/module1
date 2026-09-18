@@ -19,8 +19,8 @@ export default function IncomeEdit() {
   const [memo, setMemo] = useState("");
   const [isRecurring, setIsRecurring] = useState(false);
 
-  function handleSave() {
-    store.addIncome({
+  async function handleSave() {
+    const result = await store.addIncome({
       user_id: store.currentUserId,
       amount,
       category,
@@ -29,6 +29,7 @@ export default function IncomeEdit() {
       month: CURRENT_MONTH,
       date: TODAY_DATE,
     });
+    if (!result.ok) return;
     // 07-screens.md "2b-1 '추가하기' → 2b-1a로 복귀(다른 입력 폼과 같은 패턴)" — 2026-09-11 팀 결정.
     nav.back();
   }

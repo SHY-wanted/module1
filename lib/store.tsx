@@ -3,7 +3,7 @@
 // 2026-09-18: 로그인/회원가입/로그아웃·내 정보 변경(profiles.name 포함)에 이어, 그룹·그룹원·지출·저금도
 // 실제 Supabase 쿼리로 옮겼다 — supabase/schema.sql이 그 계약이다. 로그인하면 이 4개 테이블을 한 번에
 // 읽어와 아래 React 상태를 "캐시"로 채우고, 이후 각 액션이 실제로 Supabase에 쓴 다음 그 결과로 캐시를 갱신한다.
-// 카테고리(개인·그룹, DB 테이블 없음)·수입(schema.sql에 없는 E7)만 아직 목업 상태로 남아있다.
+// 카테고리(개인·그룹, DB 테이블 없음)만 아직 목업 상태로 남아있다.
 
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import type { Session } from "@supabase/supabase-js";
@@ -17,7 +17,6 @@ import {
   INITIAL_PROFILES,
   INITIAL_SAVINGS,
   TODAY_DATE,
-  generateId,
   generateInviteCode,
   type AttendanceCheckin,
   type CategoryGoal,
@@ -159,10 +158,10 @@ interface StoreValue extends StoreState {
   // 7 "지출 목록" 삭제(2026-09-19 팀 요청) — P6과 같은 이유로 본인 지출만 지울 수 있다
   // (RLS expenses_delete_own_only가 실제로 막는다).
   deleteExpense: (id: string) => Promise<boolean>;
-  addIncome: (input: Omit<MockIncome, "id" | "created_at">) => MockIncome;
-  // 2b-1a "수입 내역" 삭제(2026-09-19 팀 요청) — 수입(E7)은 schema.sql에 테이블이 없어 아직
-  // 목업 상태다(store.incomes 로컬 배열만 지운다).
-  deleteIncome: (id: string) => void;
+  // 2026-09-18 수정: incomes 테이블(011 마이그레이션)에 실제로 저장한다 — addExpense와 같은 패턴.
+  addIncome: (input: Omit<MockIncome, "id" | "created_at">) => Promise<MutationResult<MockIncome>>;
+  // 2b-1a "수입 내역" 삭제(2026-09-19 팀 요청) — addExpense·deleteExpense와 같은 패턴으로 실제 삭제.
+  deleteIncome: (id: string) => Promise<boolean>;
   // 2c/6 카테고리 — scope(개인 또는 특정 그룹)의 카테고리 목록을 읽는다(없으면 그룹 프리셋으로 폴백).
   getCategoriesForScope: (scope: CategoryScope) => CategoryDef[];
   // 2c "카테고리 편집" — "..." 버튼으로 고른 카테고리의 이름만 바꾼다(그 scope 안에서만).
@@ -184,6 +183,9 @@ interface StoreValue extends StoreState {
   sendPasswordResetEmail: (email: string) => Promise<AuthResult>;
   // 10(마이페이지) 로그아웃 — 실제 supabase.auth.signOut 호출.
   signOut: () => Promise<void>;
+  // 10 "회원 탈퇴" — app/api/account(서버, Service Role Key)를 거쳐 auth.users를 실제로 지운다.
+  // 011 마이그레이션으로 profiles와 그 아래 데이터(그룹 멤버십·지출·저금·수입 등)가 cascade로 함께 지워진다.
+  deleteAccount: () => Promise<AuthResult>;
   // 10b "내 정보 변경" 닉네임 — profiles.name을 실제로 갱신한다(schema.sql profiles_update_own_only 필요).
   updateCurrentUserName: (name: string) => Promise<void>;
   // 10b "내 정보 변경" 이메일 — 실제 supabase.auth.updateUser({email}). 프로젝트 설정에 따라 새·이전
@@ -192,9 +194,8 @@ interface StoreValue extends StoreState {
   // 10b "내 정보 변경" 비밀번호 — 실제 supabase.auth.updateUser({password}). 빈 값이면 호출하지 않는다.
   updateCurrentUserPassword: (password: string) => Promise<AuthResult>;
   // 10b "내 정보 변경" — 프로필 사진을 바꾼다. null이면 사진을 지우고 이니셜로 되돌린다.
-  // [?] supabase/schema.sql의 profiles엔 avatar_url 컬럼이 없다 — 팀 확인 전까지는 세션 흉내용
-  // 로컬 상태로만 남아있고(새로고침하면 사라짐), 실제로 Storage에 올리지 않는다.
-  updateCurrentUserAvatar: (url: string | null) => void;
+  // profiles.avatar_url(011 마이그레이션)에 실제로 저장된다.
+  updateCurrentUserAvatar: (url: string | null) => Promise<void>;
   toggleNotification: (key: keyof NotificationSettings) => void;
   // 2.2초 동안 화면 위에 알림 문구를 띄운다(지출 기록 확인 알림 · 그룹원 기록 확인 알림이 이걸 쓴다).
   showToast: (message: string) => void;
@@ -345,14 +346,15 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     let active = true;
     supabase
       .from("profiles")
-      .select("id,name")
+      .select("id,name,avatar_url")
       .eq("id", session.user.id)
       .single()
       .then(({ data, error }) => {
         if (!active || error || !data) return;
         setProfiles((prev) =>
-          prev.some((p) => p.id === data.id) ? prev.map((p) => (p.id === data.id ? { ...p, name: data.name } : p)) : [...prev, data]
+          prev.some((p) => p.id === data.id) ? prev.map((p) => (p.id === data.id ? { ...p, name: data.name } : p)) : [...prev, { id: data.id, name: data.name }]
         );
+        setCurrentUserAvatarUrl(data.avatar_url);
       });
     return () => {
       active = false;
@@ -370,6 +372,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       supabase.from("group_members").select("*"),
       supabase.from("expenses").select("*").order("created_at", { ascending: false }),
       supabase.from("savings").select("*").order("created_at", { ascending: false }),
+      supabase.from("incomes").select("*").order("created_at", { ascending: false }),
       // 저금통 펫(내 개인 펫 + 내가 속한 그룹의 그룹 펫) — pets_select_own_or_group_member 정책이
       // 이미 "내가 볼 수 있는 펫"만 걸러준다.
       supabase.from("pets").select("*"),
@@ -380,12 +383,13 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       supabase.from("expense_reactions").select("*"),
       // 출석체크 — 본인 것만(RLS). 연속 출석 계산에 최근 기록이 필요하므로 전부 읽어온다.
       supabase.from("attendance_checkins").select("*"),
-    ]).then(([groupsRes, membersRes, expensesRes, savingsRes, petsRes, goalsRes, rewardsRes, reactionsRes, checkinsRes]) => {
+    ]).then(([groupsRes, membersRes, expensesRes, savingsRes, incomesRes, petsRes, goalsRes, rewardsRes, reactionsRes, checkinsRes]) => {
       if (!active) return;
       if (!groupsRes.error && groupsRes.data) setGroups(groupsRes.data);
       if (!membersRes.error && membersRes.data) setGroupMembers(membersRes.data);
       if (!expensesRes.error && expensesRes.data) setExpenses(expensesRes.data);
       if (!savingsRes.error && savingsRes.data) setSavings(savingsRes.data);
+      if (!incomesRes.error && incomesRes.data) setIncomes(incomesRes.data);
       if (!petsRes.error && petsRes.data) setPets(petsRes.data);
       if (!goalsRes.error && goalsRes.data) setCategoryGoals(goalsRes.data);
       if (!rewardsRes.error && rewardsRes.data) setGoalRewards(rewardsRes.data);
@@ -568,18 +572,20 @@ export function StoreProvider({ children }: { children: ReactNode }) {
         return true;
       },
 
-      addIncome(input: Omit<MockIncome, "id" | "created_at">): MockIncome {
-        const newIncome: MockIncome = {
-          ...input,
-          id: generateId("in"),
-          created_at: new Date().toISOString(),
-        };
-        setIncomes((prev) => [newIncome, ...prev]);
-        return newIncome;
+      async addIncome(input: Omit<MockIncome, "id" | "created_at">): Promise<MutationResult<MockIncome>> {
+        const { data, error } = await supabase.from("incomes").insert(input).select().single();
+        if (error || !data) return { ok: false, error: error?.message ?? "수입을 저장하지 못했어요" };
+        setIncomes((prev) => [data, ...prev]);
+        return { ok: true, data };
       },
 
-      deleteIncome(id: string) {
+      // incomes_delete_own on(user_id = auth.uid())이 실제로 막는다 — 남의 수입이면 0행 삭제되고
+      // error 없이 count가 0으로 온다(deleteExpense와 같은 패턴).
+      async deleteIncome(id: string): Promise<boolean> {
+        const { error, count } = await supabase.from("incomes").delete({ count: "exact" }).eq("id", id);
+        if (error || !count) return false;
         setIncomes((prev) => prev.filter((i) => i.id !== id));
+        return true;
       },
 
       // 2026-09-17 팀 결정(개인·그룹 카테고리 차별화) — scope의 카테고리 목록을 읽는다. 그룹이 아직 한
@@ -677,6 +683,26 @@ export function StoreProvider({ children }: { children: ReactNode }) {
         setSession(null);
       },
 
+      async deleteAccount(): Promise<AuthResult> {
+        if (!session) return { ok: false, error: "로그인이 필요해요" };
+        let res: Response;
+        try {
+          res = await fetch("/api/account", {
+            method: "DELETE",
+            headers: { Authorization: `Bearer ${session.access_token}` },
+          });
+        } catch {
+          return { ok: false, error: "요청을 보내지 못했어요. 잠시 후 다시 시도해주세요" };
+        }
+        if (!res.ok) {
+          const body = await res.json().catch(() => ({}));
+          return { ok: false, error: body.error ?? "탈퇴 처리에 실패했어요" };
+        }
+        await supabase.auth.signOut();
+        setSession(null);
+        return { ok: true };
+      },
+
       // 10b "내 정보 변경" 닉네임 — profiles.name을 실제로 갱신한다. 로그인 전(목업 데모 계정)이면
       // 화면에 즉시 보이도록 로컬 상태만 바꾸고 서버 호출은 건너뛴다.
       async updateCurrentUserName(name: string): Promise<void> {
@@ -706,8 +732,12 @@ export function StoreProvider({ children }: { children: ReactNode }) {
         return { ok: true };
       },
 
-      updateCurrentUserAvatar(url: string | null) {
+      // 2026-09-18 수정: profiles.avatar_url에 실제로 저장한다(011 마이그레이션) — data URL을 그대로
+      // 저장한다(Storage 버킷 없이 가장 짧게 가는 길, 다른 화면들도 이미지를 로컬 상태로만 다뤄왔다).
+      async updateCurrentUserAvatar(url: string | null) {
         setCurrentUserAvatarUrl(url);
+        if (!session) return;
+        await supabase.from("profiles").update({ avatar_url: url }).eq("id", session.user.id);
       },
 
       toggleNotification(key: keyof NotificationSettings) {
