@@ -160,14 +160,14 @@ export default function MonthlyGoalSetting() {
 
         <div style={{ marginTop: 20 }}>
           <div style={{ fontSize: 13, fontWeight: 700, color: "var(--shoot-text)", marginBottom: 8 }}>목표 금액</div>
-          <div style={{ display: "flex", alignItems: "baseline", gap: 4 }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 6, height: 56, borderRadius: 14, border: "2.5px solid var(--shoot-accent)", background: "var(--shoot-surface-alt)", padding: "0 16px", boxShadow: "0 4px 14px rgba(106,94,207,0.2)" }}>
             <span style={{ fontSize: 18, fontWeight: 800, color: "var(--shoot-text-muted)" }}>₩</span>
             <input
               value={amountText}
               onChange={(e) => handleAmountText(e.target.value)}
               inputMode="numeric"
               placeholder="0"
-              style={{ fontSize: 30, fontWeight: 800, color: "var(--shoot-text)", letterSpacing: "-1px", border: "none", background: "transparent", width: "100%" }}
+              style={{ fontSize: 26, fontWeight: 800, color: "var(--shoot-text)", letterSpacing: "-1px", border: "none", outline: "none", background: "transparent", width: "100%" }}
             />
           </div>
           <input

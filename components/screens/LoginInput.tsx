@@ -20,6 +20,10 @@ export default function LoginInput() {
   // Supabase 세션 만료 설정과 연결하지 않았다 — 항상 Supabase 기본 세션 유지 방식을 따른다.
   async function handleSubmit() {
     if (submitting) return;
+    if (!email.trim() || !password) {
+      setError("이메일과 비밀번호를 입력해주세요");
+      return;
+    }
     setSubmitting(true);
     const result = await store.signIn(email, password);
     setSubmitting(false);
