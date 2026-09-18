@@ -196,9 +196,13 @@ interface StoreValue extends StoreState {
   // 10b "내 정보 변경" — 프로필 사진을 바꾼다. null이면 사진을 지우고 이니셜로 되돌린다.
   // profiles.avatar_url(011 마이그레이션)에 실제로 저장된다.
   updateCurrentUserAvatar: (url: string | null) => Promise<void>;
+  // 토글을 켜는 순간 브라우저 알림 권한을 요청한다(꺼져 있으면 notify()가 인앱 토스트만 띄운다).
   toggleNotification: (key: keyof NotificationSettings) => void;
-  // 2.2초 동안 화면 위에 알림 문구를 띄운다(지출 기록 확인 알림 · 그룹원 기록 확인 알림이 이걸 쓴다).
+  // 2.2초 동안 화면 위에 알림 문구를 띄운다 — 알림 설정과 무관한 일반 토스트용(내 정보 저장 등).
   showToast: (message: string) => void;
+  // "지출 기록 시 확인 알림" 토글이 꺼져 있으면 아무것도 안 띄운다. 켜져 있으면 인앱 토스트 +
+  // (권한 허용 시) 실제 브라우저 알림까지 띄운다.
+  notifyExpenseSaved: (message: string) => void;
   toggleDarkMode: () => void;
   // 10a "그룹장 위임"(F18) — 현재 OWNER인 나 대신 선택한 멤버를 새 OWNER로 바꾼다. 새 그룹장을
   // 먼저 OWNER로 올리고 나서 내 role을 MEMBER로 내리는 순서로 실제 UPDATE 2번을 보낸다(순서를
@@ -245,6 +249,16 @@ interface StoreValue extends StoreState {
 }
 
 const StoreContext = createContext<StoreValue | null>(null);
+
+// 2c "알림" 두 토글(지출 기록 확인·그룹원 기록 확인) 전용 — 권한을 이미 받아뒀으면 진짜 브라우저(OS)
+// 알림을 띄운다. 탭이 백그라운드여도 뜨지만, 탭·브라우저가 완전히 닫히면 못 받는다(그러려면 서버가
+// 보내는 진짜 Web Push가 필요한데, 이번엔 그 범위는 빼기로 했다 — 사용자 확인). 컴포넌트 상태에 의존하지
+// 않는 모듈 스코프 함수라 useEffect/useMemo 의존성 배열에 넣을 필요가 없다.
+function notifyBrowser(message: string) {
+  if (typeof window !== "undefined" && "Notification" in window && Notification.permission === "granted") {
+    new Notification("ShooT", { body: message });
+  }
+}
 
 const DEFAULT_NOTIFICATION_SETTINGS: NotificationSettings = {
   // design/shoot/Settings.dc.html 초기값 그대로 켜짐으로 시작한다(이전 "알림음"도 켜짐이었다).
@@ -419,7 +433,9 @@ export function StoreProvider({ children }: { children: ReactNode }) {
         const group = groups.find((g) => g.id === row.group_id);
         if (!group) return; // RLS를 통과해 왔다면 이론상 내 그룹이지만, 방어적으로 한 번 더 확인.
         const author = profiles.find((p) => p.id === row.user_id);
-        showToastMessage(`${group.name} · ${author?.name ?? "그룹원"}님이 ${row.category} 비용을 저장하였어요`);
+        const message = `${group.name} · ${author?.name ?? "그룹원"}님이 ${row.category} 비용을 저장하였어요`;
+        showToastMessage(message);
+        notifyBrowser(message);
       })
       .subscribe();
     return () => {
@@ -741,11 +757,23 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       },
 
       toggleNotification(key: keyof NotificationSettings) {
-        setNotificationSettings((prev) => ({ ...prev, [key]: !prev[key] }));
+        setNotificationSettings((prev) => {
+          const next = !prev[key];
+          if (next && typeof window !== "undefined" && "Notification" in window && Notification.permission === "default") {
+            Notification.requestPermission();
+          }
+          return { ...prev, [key]: next };
+        });
       },
 
       showToast(message: string) {
         showToastMessage(message);
+      },
+
+      notifyExpenseSaved(message: string) {
+        if (!notificationSettings.expenseConfirm) return;
+        showToastMessage(message);
+        notifyBrowser(message);
       },
 
       toggleDarkMode() {

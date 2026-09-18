@@ -246,6 +246,13 @@ export default function Settings() {
             <Toggle on={store.notificationSettings.groupMemberRecord} onClick={() => store.toggleNotification("groupMemberRecord")} />
           </div>
         </div>
+        {/* 2026-09-18 추가: 브라우저 알림 권한을 거부한 경우 — 토글은 켜져 있어도 실제 알림은 안 뜬다는
+            걸 알려준다(권한은 브라우저 설정에서 직접 풀어야 하고, 코드로 다시 물어볼 수 없다). */}
+        {typeof window !== "undefined" && "Notification" in window && Notification.permission === "denied" && (
+          <div style={{ marginTop: 8, fontSize: 11, color: "var(--shoot-text-muted)", fontWeight: 600 }}>
+            브라우저 알림 권한이 차단돼 있어요. 토스트는 뜨지만 실제 알림은 브라우저 설정에서 허용해야 받을 수 있어요.
+          </div>
+        )}
 
         {/* 목표(예산 대체, shooTbranch 통합, 2026-09-15) — 저금통 펫의 이번 달 목표 리포트가
             쓰는 카테고리별 목표를 여기서 정한다. */}
