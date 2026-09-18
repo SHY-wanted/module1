@@ -107,10 +107,8 @@ export default function ExpenseInput({ expenseId }: { expenseId?: string }) {
         return;
       }
       // 2c "지출 기록 시 확인 알림"(2026-09-17 팀 결정 — 실제로 토스트를 띄우도록 구현) — 새로 기록할 때만,
-      // 수정할 때는 안 띄운다.
-      if (store.notificationSettings.expenseConfirm) {
-        store.showToast(`${formatWon(amount)}, ${category}가 저장됐어요`);
-      }
+      // 수정할 때는 안 띄운다. notifyExpenseSaved가 토글 여부를 직접 확인한다.
+      store.notifyExpenseSaved(`${formatWon(amount)}, ${category}가 저장됐어요`);
       // P3 "데일리 먹이주기 팝업"(docs/08-pet-feature-spec.md §3) — "지출을 하나라도 기록한 직후"만
       // 해당(수정 제외), 개인 펫이 있고 오늘 아직 안 먹였으면 store가 알아서 연다.
       store.openFeedPopupIfEligible();
