@@ -98,7 +98,11 @@ export const CURRENT_USER_ID = "u-seoyeon";
 // 지출을 입력해도 저장된 date는 항상 "2026-09-09"가 돼서 7(지출 목록)의 오늘 날짜 필터에 안 걸리는
 // 문제가 있었다. 이제 진짜 오늘 날짜(한국시간 기준)로 계산한다 — 목업 시드 데이터(INITIAL_EXPENSES 등)의
 // 고정 날짜와는 무관하다(그것들은 자기 날짜를 그대로 갖고 있고, 실제 로그인하면 Supabase 데이터로 대체된다).
-function computeTodayDateKST(): string {
+// computeTodayDateKST를 export하는 이유(2026-09-18 추가): TODAY_DATE는 모듈이 로드될 때 딱 한 번만
+// 계산돼서 고정된다 — 대부분의 화면은 짧게 열고 닫으니 문제없지만, 저녁 리마인더(store.tsx)처럼 시계를
+// 계속 들여다보며 "지금이 오후 8시 넘었는지"를 매번 새로 확인하는 로직은 날짜도 그때그때 다시 재야
+// 한다(자정을 넘겨 앱을 계속 켜둔 경우 TODAY_DATE만 어제로 멈춰 있으면 안 되니까).
+export function computeTodayDateKST(): string {
   const kst = new Date(Date.now() + 9 * 60 * 60 * 1000);
   return kst.toISOString().slice(0, 10);
 }

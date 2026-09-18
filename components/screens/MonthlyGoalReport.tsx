@@ -18,7 +18,11 @@ import { ChevronLeftIcon, CheckIcon, TrashIcon } from "../icons";
 // 목표보다 5% 넘게 클 때만 보여준다(오차 범위 안이면 굳이 겁줄 필요 없어서).
 const PACE_WARNING_THRESHOLD = 1.05;
 
+// 버그 수정(2026-09-18): today가 month와 다른 달이면(예: 자정을 넘겨 오래 켜둔 세션) today의
+// "며칠째"를 month의 날수에 끼워 맞춰버려서 말이 안 되는 예상치가 나올 수 있었다 — 그럴 땐 그냥
+// 지금까지 쓴 금액을 그대로 돌려준다(투영하지 않음 → 호출부에서 목표 초과로 안 잡히니 경고도 안 뜬다).
 function projectedMonthTotal(spentSoFar: number, month: string, today: string): number {
+  if (!today.startsWith(month)) return spentSoFar;
   const dayOfMonth = Number(today.slice(8, 10));
   const [year, monthNum] = month.split("-").map(Number);
   const daysInMonth = new Date(year, monthNum, 0).getDate();
