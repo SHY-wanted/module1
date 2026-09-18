@@ -63,15 +63,17 @@ export default function ExpenseInput({ expenseId }: { expenseId?: string }) {
   // 신규 기능: 저장 전에 미리 "이 카테고리 이번 달 목표 넘을 것 같아요" 경고. 목표는 개인 스코프에만
   // 있어서(category_goals엔 group_id가 없다) 개인 지출·신규 입력일 때만 계산한다(수정은 기존 금액이
   // 이미 합계에 들어가 있어 이중으로 세게 돼 범위에서 뺐다).
+  // 버그 수정(2026-09-18): TODAY_DATE(오늘) 기준으로 고정돼 있어서, 날짜를 다른 달로 바꿔 입력하면
+  // 엉뚱한 달의 목표·지출과 비교하고 있었다 — 지금 고른 date의 달을 기준으로 계산해야 한다.
   const categoryLabel = selectedCategoryId === "custom" ? customCategory.trim() : allCats.find((c) => c.id === selectedCategoryId)?.label ?? "";
-  const currentMonth = TODAY_DATE.slice(0, 7);
+  const entryMonth = date.slice(0, 7);
   const categoryGoal =
     !isEdit && !shareGroup && categoryLabel
-      ? store.categoryGoals.find((g) => g.category === categoryLabel && g.month === currentMonth)
+      ? store.categoryGoals.find((g) => g.category === categoryLabel && g.month === entryMonth)
       : undefined;
   const spentSoFar = categoryGoal
     ? store.expenses
-        .filter((e) => e.user_id === store.currentUserId && e.category === categoryLabel && e.date.startsWith(currentMonth))
+        .filter((e) => e.user_id === store.currentUserId && e.category === categoryLabel && e.date.startsWith(entryMonth))
         .reduce((sum, e) => sum + e.amount, 0)
     : 0;
   const overGoalAfterSave = categoryGoal && amount > 0 && spentSoFar + amount > categoryGoal.goal_amount;

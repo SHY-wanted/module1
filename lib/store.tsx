@@ -17,6 +17,7 @@ import {
   INITIAL_PROFILES,
   INITIAL_SAVINGS,
   TODAY_DATE,
+  computeTodayDateKST,
   generateInviteCode,
   type AttendanceCheckin,
   type CategoryGoal,
@@ -461,10 +462,14 @@ export function StoreProvider({ children }: { children: ReactNode }) {
         new Intl.DateTimeFormat("en-US", { timeZone: "Asia/Seoul", hour: "2-digit", hour12: false }).format(new Date())
       );
       if (kstHour < DAILY_REMINDER_HOUR_KST) return;
-      if (window.localStorage.getItem(DAILY_REMINDER_STORAGE_KEY) === TODAY_DATE) return;
-      const recordedToday = expenses.some((e) => e.user_id === currentUserId && e.date === TODAY_DATE);
+      // 버그 수정(2026-09-18): import TODAY_DATE는 모듈이 처음 로드될 때 딱 한 번 계산돼서 고정된다 —
+      // 앱을 자정 넘어서까지 계속 켜둔 세션에서는 시각(kstHour)만 다음 날로 넘어가고 날짜는 그대로
+      // "어제"에 멈춰 있어서 리마인더가 하루 늦게(또는 영영 안) 뜰 수 있었다. 매번 실제 "지금"을 다시 잰다.
+      const today = computeTodayDateKST();
+      if (window.localStorage.getItem(DAILY_REMINDER_STORAGE_KEY) === today) return;
+      const recordedToday = expenses.some((e) => e.user_id === currentUserId && e.date === today);
       if (recordedToday) return;
-      window.localStorage.setItem(DAILY_REMINDER_STORAGE_KEY, TODAY_DATE);
+      window.localStorage.setItem(DAILY_REMINDER_STORAGE_KEY, today);
       const message = "오늘 지출을 아직 기록하지 않았어요. 잊기 전에 남겨볼까요?";
       showToastMessage(message);
       notifyBrowser(message);
