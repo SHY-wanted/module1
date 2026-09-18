@@ -182,7 +182,7 @@ export default function MonthlyGoalSetting() {
               onChange={(e) => handleAmountText(e.target.value)}
               inputMode="numeric"
               placeholder="0"
-              style={{ fontSize: 30, fontWeight: 800, color: "var(--shoot-text)", letterSpacing: "-1px", border: "none", background: "transparent", width: "100%" }}
+              style={{ fontSize: 30, fontWeight: 800, color: "var(--shoot-text)", letterSpacing: "-1px", border: "none", outline: "none", background: "transparent", width: "100%" }}
             />
           </div>
           <input
