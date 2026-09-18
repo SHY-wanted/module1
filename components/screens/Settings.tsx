@@ -245,6 +245,15 @@ export default function Settings() {
             </div>
             <Toggle on={store.notificationSettings.groupMemberRecord} onClick={() => store.toggleNotification("groupMemberRecord")} />
           </div>
+          {/* 2026-09-18 추가(신규 기능): 저녁 리마인더 — 기본은 꺼둔다(귀찮게 하는 알림이라). */}
+          <div style={{ padding: 14, display: "flex", alignItems: "center", gap: 10, borderTop: "1px solid var(--shoot-divider)" }}>
+            <BellIcon size={17} color="var(--shoot-text-muted)" />
+            <div style={{ flex: 1 }}>
+              <div style={{ fontSize: 14, fontWeight: 700, color: "var(--shoot-text)" }}>저녁 리마인더</div>
+              <div style={{ fontSize: 11, color: "var(--shoot-text-muted)", marginTop: 2 }}>매일 저녁 8시, 오늘 지출을 안 기록했으면 알려드려요</div>
+            </div>
+            <Toggle on={store.notificationSettings.dailyReminder} onClick={() => store.toggleNotification("dailyReminder")} />
+          </div>
         </div>
         {/* 2026-09-18 추가: 브라우저 알림 권한을 거부한 경우 — 토글은 켜져 있어도 실제 알림은 안 뜬다는
             걸 알려준다(권한은 브라우저 설정에서 직접 풀어야 하고, 코드로 다시 물어볼 수 없다). */}
