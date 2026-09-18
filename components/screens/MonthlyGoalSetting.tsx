@@ -10,7 +10,7 @@ import { PERSONAL_CATS, type CategoryDef } from "@/lib/categories";
 import { formatWon } from "@/lib/format";
 import { TODAY_DATE } from "@/lib/mock";
 import { currentMonthString } from "@/lib/pets";
-import { ChevronLeftIcon, CategoryIcon } from "../icons";
+import { ChevronLeftIcon, CategoryIcon, TrashIcon } from "../icons";
 import type { CategoryIconKey } from "../icons";
 
 function roundTo1000(n: number): number {
@@ -56,6 +56,13 @@ export default function MonthlyGoalSetting() {
   const [amountText, setAmountText] = useState(String(existingGoal?.goal_amount ?? recommended));
   const [saved, setSaved] = useState<{ categoryId: string; amount: number } | null>(null);
   const [saving, setSaving] = useState(false);
+  const [deletingId, setDeletingId] = useState<string | null>(null);
+
+  // 2026-09-23 팀 요청(신규): 이번 달에 설정한 목표들을 아래에 목록으로 보여주고, 각각 지울 수 있게 한다.
+  const thisMonthGoals = useMemo(
+    () => store.categoryGoals.filter((g) => g.month === month).sort((a, b) => b.goal_amount - a.goal_amount),
+    [store.categoryGoals, month]
+  );
 
   function handleSelectCategory(next: CategoryDef) {
     setSelectedCategoryId(next.id);
@@ -89,6 +96,14 @@ export default function MonthlyGoalSetting() {
     const result = await store.setCategoryGoal(category.label, month, amount);
     setSaving(false);
     if (result.ok) setSaved({ categoryId: selectedCategoryId, amount });
+  }
+
+  async function handleDeleteGoal(id: string) {
+    if (deletingId) return;
+    setDeletingId(id);
+    const ok = await store.deleteCategoryGoal(id);
+    setDeletingId(null);
+    if (ok) setSaved(null);
   }
 
   const message = encouragementMessage(category, amount, recommended, avg3);
@@ -194,6 +209,41 @@ export default function MonthlyGoalSetting() {
         >
           목표 저장하기
         </div>
+
+        {thisMonthGoals.length > 0 && (
+          <div style={{ marginTop: 24 }}>
+            <div style={{ fontSize: 13, fontWeight: 700, color: "var(--shoot-text)", marginBottom: 8 }}>이번 달 설정한 목표</div>
+            <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+              {thisMonthGoals.map((g) => {
+                const cat = categories.find((c) => c.label === g.category);
+                return (
+                  <div
+                    key={g.id}
+                    style={{ background: "var(--shoot-surface)", border: "1px solid var(--shoot-border)", borderRadius: 16, padding: "12px 14px", display: "flex", alignItems: "center", gap: 12 }}
+                  >
+                    {cat && (
+                      <div style={{ width: 30, height: 30, borderRadius: 10, background: cat.light, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+                        <CategoryIcon icon={cat.icon as CategoryIconKey} size={14} color={cat.ink} />
+                      </div>
+                    )}
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <div style={{ fontSize: 13, fontWeight: 800, color: "var(--shoot-text)" }}>{g.category}</div>
+                      <div style={{ fontSize: 12, color: "var(--shoot-text-muted)", fontWeight: 600, marginTop: 2 }}>{formatWon(g.goal_amount)}</div>
+                    </div>
+                    <div
+                      onClick={() => handleDeleteGoal(g.id)}
+                      role="button"
+                      aria-label={`${g.category} 목표 삭제`}
+                      style={{ width: 32, height: 32, borderRadius: 10, display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer", flexShrink: 0, opacity: deletingId === g.id ? 0.5 : 1 }}
+                    >
+                      <TrashIcon size={16} color="#B23B3B" />
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );

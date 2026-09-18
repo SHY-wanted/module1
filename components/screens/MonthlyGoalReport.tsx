@@ -7,9 +7,11 @@ import { useEffect, useState } from "react";
 import { useNav } from "../NavContext";
 import { useStore } from "@/lib/store";
 import type { GoalReward } from "@/lib/mock";
+import { TODAY_DATE } from "@/lib/mock";
+import { currentMonthString } from "@/lib/pets";
 import { getCategoryVisual } from "@/lib/categories";
 import { formatWon } from "@/lib/format";
-import { ChevronLeftIcon, CheckIcon } from "../icons";
+import { ChevronLeftIcon, CheckIcon, TrashIcon } from "../icons";
 
 export default function MonthlyGoalReport() {
   const nav = useNav();
@@ -17,6 +19,8 @@ export default function MonthlyGoalReport() {
   const [rewards, setRewards] = useState<GoalReward[] | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
+  const [deletingCategory, setDeletingCategory] = useState<string | null>(null);
+  const month = currentMonthString(TODAY_DATE);
 
   useEffect(() => {
     let active = true;
@@ -35,6 +39,24 @@ export default function MonthlyGoalReport() {
     // 화면 진입 시 한 번만 계산하면 된다(이미 있으면 store가 그대로 돌려준다).
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  // 2026-09-23 팀 요청(신규): 목표 카드를 지울 수 있게 — 실제로는 그 카테고리의 category_goals를 지운다
+  // (goal_rewards엔 손대지 않는다. getOrCreateGoalRewardsForMonth가 categoryGoals에 없는 카테고리는
+  // 애초에 결과에 안 넣으므로, 목표를 지운 뒤 다시 계산하면 그 카드가 자연히 빠진다).
+  async function handleDeleteGoal(category: string) {
+    if (deletingCategory) return;
+    const goal = store.categoryGoals.find((g) => g.category === category && g.month === month);
+    if (!goal) return;
+    setDeletingCategory(category);
+    const ok = await store.deleteCategoryGoal(goal.id);
+    if (!ok) {
+      setDeletingCategory(null);
+      return;
+    }
+    const result = await store.getOrCreateGoalRewardsForMonth();
+    setDeletingCategory(null);
+    if (result.ok && result.data) setRewards(result.data);
+  }
 
   const totalCoins = rewards?.reduce((sum, r) => sum + r.coins_earned, 0) ?? 0;
   const totalXp = rewards?.reduce((sum, r) => sum + r.xp_gained, 0) ?? 0;
@@ -83,16 +105,27 @@ export default function MonthlyGoalReport() {
               {rewards.map((r) => {
                 const visual = getCategoryVisual(r.category);
                 return (
-                  <div key={r.category} style={{ background: "var(--shoot-surface)", border: `1.5px solid ${r.achieved ? visual.accent : "var(--shoot-border)"}`, borderRadius: 16, padding: 14 }}>
+                  <div key={r.category} style={{ background: "var(--shoot-surface)", border: `1.5px solid ${r.achieved ? visual.accent : "var(--shoot-border)"}`, borderRadius: 16, padding: 14, opacity: deletingCategory === r.category ? 0.5 : 1 }}>
                     <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
                       <div style={{ fontSize: 13, fontWeight: 800, color: "var(--shoot-text)" }}>{r.category}</div>
-                      {r.achieved ? (
-                        <div style={{ display: "flex", alignItems: "center", gap: 4, fontSize: 11, fontWeight: 800, color: "#1D7A69" }}>
-                          <CheckIcon size={13} color="#1D7A69" strokeWidth={2.4} /> 달성
+                      <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                        {r.achieved ? (
+                          <div style={{ display: "flex", alignItems: "center", gap: 4, fontSize: 11, fontWeight: 800, color: "#1D7A69" }}>
+                            <CheckIcon size={13} color="#1D7A69" strokeWidth={2.4} /> 달성
+                          </div>
+                        ) : (
+                          <div style={{ fontSize: 11, fontWeight: 800, color: "var(--shoot-text-muted)" }}>미달성</div>
+                        )}
+                        {/* 2026-09-23 팀 요청(신규): 목표 삭제 — 마이페이지 > 저금통 코인 > 이번 달 목표에서 지울 수 있게. */}
+                        <div
+                          onClick={() => handleDeleteGoal(r.category)}
+                          role="button"
+                          aria-label={`${r.category} 목표 삭제`}
+                          style={{ width: 26, height: 26, borderRadius: 8, display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer", flexShrink: 0 }}
+                        >
+                          <TrashIcon size={14} color="#B23B3B" />
                         </div>
-                      ) : (
-                        <div style={{ fontSize: 11, fontWeight: 800, color: "var(--shoot-text-muted)" }}>미달성</div>
-                      )}
+                      </div>
                     </div>
                     <div style={{ fontSize: 12, color: "var(--shoot-text-muted)", fontWeight: 600, marginTop: 6 }}>
                       {formatWon(r.spent_amount)} / {formatWon(r.goal_amount)}
