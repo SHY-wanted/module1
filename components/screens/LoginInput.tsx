@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { useNav } from "../NavContext";
 import { useStore } from "@/lib/store";
+import KakaoLoginButton from "../KakaoLoginButton";
 import { LogInIcon } from "../icons";
 
 export default function LoginInput() {
@@ -84,6 +85,14 @@ export default function LoginInput() {
           style={{ marginTop: 20, height: 50, borderRadius: 16, background: "linear-gradient(135deg,#E3DFFB 0%,#BDB2F2 100%)", color: "#3F3480", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 15, fontWeight: 800, boxShadow: "0 8px 18px rgba(106,94,207,0.3)", cursor: "pointer", opacity: submitting ? 0.6 : 1 }}>
           로그인
         </div>
+
+        <div style={{ display: "flex", alignItems: "center", gap: 10, margin: "20px 0" }}>
+          <div style={{ flex: 1, height: 1, background: "var(--shoot-border)" }} />
+          <div style={{ fontSize: 12, color: "var(--shoot-text-muted)", fontWeight: 600 }}>또는</div>
+          <div style={{ flex: 1, height: 1, background: "var(--shoot-border)" }} />
+        </div>
+        <KakaoLoginButton />
+
         <div style={{ flex: 1 }} />
         <div style={{ textAlign: "center", fontSize: 13, color: "var(--shoot-text-muted)", fontWeight: 600 }}>
           계정이 없으신가요?{" "}

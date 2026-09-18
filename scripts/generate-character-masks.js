@@ -28,6 +28,7 @@
  * 어떤 마스크에도 넣지 않는 것:
  *   - 금색 코인/반짝임 (항상 원본 금색 유지)
  *   - 분홍 볼터치
+ *   - 눈 흰자 (항상 원본 흰색 유지 — 몸 배경색도 매우 밝은 연보라라 명도만으론 안 갈리므로 채도로 구분)
  *   - 캐릭터 몸에 붙어있지 않은 장식(하트·느낌표·효과선)
  *   - 서로 다른 두 오브젝트 사이의 외곽선(아래 참고)
  *   - 캐릭터 밖 배경/투명 영역
@@ -60,8 +61,41 @@ const OUT_DIR = path.join(PUBLIC_DIR, "masks");
 
 /** 인접 픽셀 색 변화량이 이 값 이상이면 "오브젝트 경계"로 본다(안쪽 0~5, 경계 38~74). */
 const EDGE_THRESHOLD = 9;
+/**
+ * 볼터치를 원본 분홍색 그대로 남길지 여부.
+ * false면 볼터치도 몸 마스크에 포함돼 몸 색을 따라간다(분홍 대신 몸 색조의 옅은 홍조가 된다).
+ * 2026-09-16 사용자 요청("눈 주변은 깨끗하고 균일한 흰색으로")에 맞춰 false로 둔다 — 볼터치
+ * 덩어리 크기가 단계마다 54~148px로 제각각이라, 남기면 어떤 단계는 분홍이고 어떤 단계는 아닌
+ * 들쭉날쭉한 상태가 된다. 분홍 볼터치를 되살리려면 이 값만 true로 바꾸면 된다.
+ */
+// 볼터치를 마스크에서 빼서 원본 픽셀로 남길지 여부.
+// false로 둔다 — 빼는 영역(색으로 주워담은 삐뚤한 모양)과 진하게 하는 영역(타원)의 모양이 달라서
+// 겹치는 가장자리가 번져 보였다(사용자 신고). 지금은 몸이 얼굴 전체를 고르게 덮고, 그 위에
+// 볼터치 타원 하나로 고정색을 얹는다(lib/recolor.ts 의 paintCheek). 그래서 기준이 하나뿐이다.
+const KEEP_CHEEK_PINK = false;
+
 /** 이보다 큰 구멍은 물건 안쪽 무늬가 아니라 몸이 비쳐 보이는 것으로 본다. */
 const MAX_HOLE = 1500;
+
+/**
+ * 눈 흰자·하이라이트를 가려내는 무채색 기준(RGB 최대-최소).
+ * 실측 — 흰자 0~7, 눈동자 58~66, 몸통 라벤더 50~55. 20이면 이 셋은 넉넉히 갈린다.
+ *
+ * 그런데 눈동자 안의 하이라이트(반짝이는 점)는 사정이 다르다. 하이라이트 자체는 무채색 0~3인데,
+ * 그 둘레에 눈동자로 흐려지는 안티에일리어싱 띠가 있고 이 띠는 무채색 8~23까지 걸쳐 있다(실측).
+ * 20으로 자르면 이 띠 대부분이 "하이라이트"로 잡혀 원본 그대로 남는데, 띠의 실제 색은 순백이
+ * 아니라 연보라(밝기 71~89%)라서, 눈을 진한 색(검정 등)으로 바꾸면 하이라이트 옆에 길게 늘어진
+ * 회색-보라색 꼬리처럼 두드러져 보였다(사용자 신고: "사진 올려준 부분 이어줘라" — 하이라이트
+ * 마스크 구멍이 눈 흰자 쪽으로 갈라진 것처럼 보이는 문제).
+ *
+ * 그래서 10으로 낮췄다 — 흰자(0~7)는 여전히 넉넉히 잡히고, 하이라이트의 진짜 밝은 중심(0~3)만
+ * 남고 흐려지는 꼬리(8~23)는 더 이상 "무조건 원본 유지"에 안 걸린다. 그 꼬리는 원래 있던
+ * eyeSoftWeight(부드러운 경계 블렌딩)로 넘어가거나 눈 마스크에 포함되어, 눈 색을 바꾸면 그 색을
+ * 따라간다 — 늘어진 꼬리 대신 깔끔하게 이어진 하나의 눈으로 보인다.
+ */
+const EYE_WHITE_CHROMA = 10;
+/** 여기까지는 흰자에서 몸통으로 넘어가는 경계로 보고 부드럽게 섞는다. */
+const EYE_WHITE_SOFT_CHROMA = 45;
 
 /** 원본 PNG 안에서 캐릭터만 들어있는 영역 — lib/characterStages.ts 의 stageImageCrop 과 같은 값. */
 const STAGES = {
@@ -93,7 +127,7 @@ const STAGES = {
   3: {
     file: "stage_3_adult.png",
     prefix: "stage_3_adult",
-    crop: { x: 8, y: 50, w: 379, h: 492 }, // 코인 복원으로 캔버스가 12px 넓어짐
+    crop: { x: 5, y: 50, w: 379, h: 492 }, // 코인을 정원으로 다시 만들며 캔버스가 4px 더 넓어짐
     leafMaxY: 140,
     hasEye: true,
     hasMouth: true,
@@ -135,6 +169,11 @@ async function buildStage(key) {
   const isOpaque = (x, y) => inCrop(x, y) && data[(y * W + x) * 4 + 3] >= 160;
   const colorGap = (a, b) =>
     Math.max(Math.abs(a[0] - b[0]), Math.abs(a[1] - b[1]), Math.abs(a[2] - b[2]));
+  /** 무채색 정도 — 흰색에 가까울수록 0. 거의 흰색에서는 HSL 채도가 불안정해서 이 값을 쓴다. */
+  const chromaAt = (x, y) => {
+    const [r, g, b] = rgba(x, y);
+    return Math.max(r, g, b) - Math.min(r, g, b);
+  };
 
   const neighbors = (id) => {
     const x = id % W, y = (id - x) / W;
@@ -203,12 +242,124 @@ async function buildStage(key) {
   }
 
   // ── 3. 조각을 부위에 배정한다 ──────────────────────────────────────────
-  const isGoldPatch = (p) => p.hsl[0] >= 25 && p.hsl[0] <= 70 && p.hsl[1] > 35;
-  const isPinkPatch = (p) => (p.hsl[0] >= 300 || p.hsl[0] < 25) && p.hsl[1] > 20 && p.hsl[2] > 55;
+  // 금색도 분홍과 같은 이유로 덩어리 단위로 본다 — 눈 가장자리에서 보라 몸통과 남색 눈동자가
+  // 섞인 픽셀이 색조상 금색 범위로 넘어와, 코인이 없는 유년기·청소년기에도 주황색 점이 흩뿌려졌다.
+  // 진짜 코인·반짝임은 182px 이상의 큼직한 덩어리라 아래 기준으로 안전하게 지켜진다.
+  const goldAt = (x, y) => {
+    const [h, s] = toHsl(...rgba(x, y).slice(0, 3));
+    return h >= 25 && h <= 70 && s > 35;
+  };
+  const GOLD_MIN_BLOB = 100;
+  const solidGold = new Uint8Array(W * H);
+  {
+    const seen = new Uint8Array(W * H);
+    for (let y = 0; y < H; y++) {
+      for (let x = 0; x < W; x++) {
+        const id = y * W + x;
+        if (seen[id] || data[id * 4 + 3] < 60 || !goldAt(x, y)) continue;
+        const blob = [];
+        const stack = [id];
+        seen[id] = 1;
+        while (stack.length) {
+          const cur = stack.pop();
+          blob.push(cur);
+          for (const ni of neighbors(cur)) {
+            if (seen[ni] || data[ni * 4 + 3] < 60) continue;
+            const nx = ni % W, ny = (ni - nx) / W;
+            if (!goldAt(nx, ny)) continue;
+            seen[ni] = 1;
+            stack.push(ni);
+          }
+        }
+        if (blob.length < GOLD_MIN_BLOB) continue;
+        for (const bid of blob) solidGold[bid] = 1;
+      }
+    }
+  }
+
+  const isGoldPatch = (p) => {
+    let hit = 0;
+    for (const id of p.pixels) if (solidGold[id]) hit++;
+    return hit * 2 > p.pixels.length;
+  };
+  // 분홍 픽셀 판정. 문제는 눈 가장자리의 안티에일리어싱 픽셀(보라 몸통 + 남색 눈동자가 섞인 색)이
+  // 색조상 분홍 범위로 넘어와 볼터치로 오인된다는 것이다. 그대로 두면 눈 둘레에 분홍 점이 흩뿌려지고
+  // 그 픽셀들이 어느 마스크에도 안 들어가서, 몸 색을 바꿨을 때 눈 주위만 지저분하게 남는다
+  // (사용자 신고: "큰 검은 원 바깥쪽의 점·선·얼룩"). 그래서 낱개 픽셀이 아니라 "덩어리"로 본다 —
+  // 진짜 볼터치는 큼직한 덩어리이고, 오인된 것들은 잘게 흩어져 있다.
+  const pinkAt = (x, y) => {
+    const [h, s, l] = toHsl(...rgba(x, y).slice(0, 3));
+    return (h >= 300 || h < 25) && s > 20 && l > 55;
+  };
+  const PINK_MIN_BLOB = 50; // 실측: 진짜 볼터치 54~148px / 눈가 오인 얼룩 ≤44px 라 50에서 갈린다
+  const solidPink = new Uint8Array(W * H);
+  const pinkBlobs = [];
+  {
+    const seen = new Uint8Array(W * H);
+    for (let y = 0; y < H; y++) {
+      for (let x = 0; x < W; x++) {
+        const id = y * W + x;
+        if (seen[id] || !isOpaque(x, y) || !pinkAt(x, y)) continue;
+        const blob = [];
+        const stack = [id];
+        seen[id] = 1;
+        while (stack.length) {
+          const cur = stack.pop();
+          blob.push(cur);
+          for (const ni of neighbors(cur)) {
+            if (seen[ni]) continue;
+            const nx = ni % W, ny = (ni - nx) / W;
+            if (!isOpaque(nx, ny) || !pinkAt(nx, ny)) continue;
+            seen[ni] = 1;
+            stack.push(ni);
+          }
+        }
+        if (blob.length < PINK_MIN_BLOB) continue;
+
+        // 볼터치는 가장자리가 부드럽게 번지면서 색조가 300 → 280 → 260(몸통)으로 서서히 옮겨간다.
+        // 위의 엄격한 기준(색조 300 이상)으로는 한가운데만 잡혀서, 번지는 가장자리가 몸에 흡수돼
+        // 홍조가 흐릿하게 묻혀 보였다(사용자 요청: "볼터치를 맨 앞에 나오게"). 그래서 잡아낸
+        // 중심에서 색조 275까지 느슨한 기준으로 넓혀 번짐 전체를 살린다. 몸통은 258~265라
+        // 275에서 멈추고, 눈 흰자는 채도가 0이라 넘어가지 않는다.
+        const grown = blob.slice();
+        const inGrown = new Set(blob);
+        const gstack = blob.slice();
+        while (gstack.length) {
+          const cur = gstack.pop();
+          for (const ni of neighbors(cur)) {
+            if (inGrown.has(ni) || seen[ni]) continue;
+            const nx = ni % W, ny = (ni - nx) / W;
+            if (!isOpaque(nx, ny)) continue;
+            const [nh, ns, nl] = toHsl(...rgba(nx, ny).slice(0, 3));
+            if (!((nh >= 275 || nh < 25) && ns > 20 && nl > 55)) continue;
+            inGrown.add(ni);
+            grown.push(ni);
+            gstack.push(ni);
+          }
+        }
+        let sx = 0, sy = 0;
+        for (const bid of grown) { const bx = bid % W; sx += bx; sy += (bid - bx) / W; }
+        pinkBlobs.push({ pixels: grown, cx: sx / grown.length, cy: sy / grown.length });
+        if (KEEP_CHEEK_PINK) for (const bid of grown) solidPink[bid] = 1;
+      }
+    }
+  }
+
+  const isPinkPatch = (p) => {
+    let hit = 0;
+    for (const id of p.pixels) if (solidPink[id]) hit++;
+    return hit * 2 > p.pixels.length; // 절반 넘게 볼터치면 볼터치 조각으로 본다
+  };
   const isAttached = (p) => attached[p.pixels[0]] === 1;
 
   const usable = patches.filter((p) => isAttached(p) && !isGoldPatch(p) && !isPinkPatch(p));
   const assigned = new Map(); // patch index -> part
+  /** 눈 흰자·눈동자 하이라이트 — 어느 마스크에도 넣지 않고 원본 흰색 그대로 둔다. */
+  const eyeWhiteBits = new Uint8Array(W * H);
+  /** 눈동자와 흰자 사이의 진한 테두리 — 눈 마스크에 넣어 눈동자 색을 따라가게 한다. */
+  const eyeRimBits = new Uint8Array(W * H);
+  /** 흰자 바깥 경계의 "얼마나 원본 흰색으로 남길지"(0~1). 마스크 알파를 이만큼 깎아 부드럽게 잇는다. */
+  const eyeSoftWeight = new Float32Array(W * H);
 
   // 눈: 어두운 조각 중 가장 큰 2개(입은 그보다 작아서 안 걸린다).
   // 알 단계는 눈이 "감은 선"이라 커스터마이징 대상이 아니지만, 그렇다고 몸에 딸려 들어가면
@@ -219,6 +370,93 @@ async function buildStage(key) {
       .sort((a, b) => b.n - a.n)
       .slice(0, 2);
     for (const p of dark) assigned.set(p.index, cfg.hasEye ? "eye" : "_fixed");
+
+    // 눈 흰자와 눈동자 속 하이라이트를 여기서 픽셀 단위로 뽑아 "원본 그대로 두는 자리"로 표시한다.
+    //
+    // 조각 나누기(1번)로는 흰자가 안 갈린다 — 흰자에서 몸통 라벤더로 색이 서서히 번져서 경계선
+    // 검출에 안 걸리고, 얼굴 전체가 한 조각(몸)에 들어가 있다. 그래서 몸 색을 바꾸면 흰자까지
+    // 같이 물들어 눈이 통째로 뭉개져 보였다(사용자 요청: "눈은 색상을 커스텀하거나 다른 색상을
+    // 바꿔도 형태와 디테일을 손상시키지 않는다").
+    //
+    // 가르는 기준은 채도(HSL S)가 아니라 무채색 정도(RGB 최대-최소)다. 흰자는 밝기가 100에 가까워
+    // HSL 채도가 0~100 사이로 널뛰지만(거의 흰색에서는 채도가 불안정하다), 무채색 정도로 재면
+    // 실측이 딱 갈린다 — 흰자 0~7, 몸통 라벤더 50~55, 눈동자 58~66.
+    //
+    // 하이라이트(눈동자 안의 흰 점)도 같은 기준에 걸린다. 눈동자와 하이라이트 사이에는 안티에일리어싱
+    // 띠가 한 겹 있어서 "눈동자 조각과 맞닿았는가"로는 못 찾는다 — 그래서 눈동자 둘레의 원 안에서
+    // 찾는 방식으로 바꿨다.
+    // 찾는 방법: 눈동자에서 바깥으로 걸어 나가되, 흰 자리(무채색)만 밟고 다닌다. 눈동자와 흰자
+    // 사이의 진한 테두리는 두 칸까지만 건너뛸 수 있게 해서, 테두리는 넘어가되 몸통 라벤더(진한
+    // 보라가 여러 칸 이어진다)는 못 넘어가게 막는다. 머리의 광택 하이라이트도 거의 무채색이라
+    // 단순히 "밝고 무채색"만 보면 딸려 들어오는데, 그 사이에 라벤더가 넓게 깔려 있어서 이 방식이면
+    // 닿지 않는다. 건너뛴 테두리 칸은 눈동자 쪽에 넣는다(눈 색을 따라가야 자연스럽다).
+    if (cfg.hasEye) {
+      // 걸어 나가는 순서에 따라 만나는 진한 칸의 뜻이 다르다.
+      //   흰자를 만나기 "전"에 건너뛴 칸 = 눈동자 둘레의 테두리 → 눈 마스크에 넣는다
+      //   흰자를 만난 "뒤"의 칸        = 흰자에서 몸통으로 넘어가는 경계 → 아래 부드러운 띠로 처리
+      const MAX_RIM_CROSS = 2; // 눈동자↔흰자 사이 진한 테두리의 실측 두께
+      for (const pupil of dark) {
+        const cx = (pupil.x0 + pupil.x1) / 2, cy = (pupil.y0 + pupil.y1) / 2;
+        const reach = Math.max(pupil.x1 - pupil.x0, pupil.y1 - pupil.y0) * 0.9;
+        const best = new Map(); // id -> 연속으로 건너뛴 진한 칸 수
+        const queue = [];
+        for (const id of pupil.pixels) {
+          best.set(id, { crossed: 0, seenWhite: false });
+          queue.push(id);
+        }
+        for (let head = 0; head < queue.length; head++) {
+          const cur = queue[head];
+          const state = best.get(cur);
+          for (const ni of neighbors(cur)) {
+            const nx = ni % W, ny = (ni - nx) / W;
+            if (!isOpaque(nx, ny)) continue;
+            if ((nx - cx) ** 2 + (ny - cy) ** 2 > reach * reach) continue;
+            const white = chromaAt(nx, ny) <= EYE_WHITE_CHROMA;
+            const next = {
+              crossed: white ? 0 : state.crossed + 1,
+              seenWhite: state.seenWhite || white,
+            };
+            if (next.crossed > MAX_RIM_CROSS) continue;
+            const prev = best.get(ni);
+            if (prev && prev.crossed <= next.crossed && prev.seenWhite === next.seenWhite) continue;
+            best.set(ni, next);
+            queue.push(ni);
+            if (white) {
+              eyeWhiteBits[ni] = 1;
+            } else if (!next.seenWhite && patchOf[ni] !== pupil.index) {
+              eyeRimBits[ni] = 1;
+            } else if (next.seenWhite) {
+              // 흰자 바깥쪽 경계 — 원본은 흰색에서 라벤더로 부드럽게 넘어간다. 여기를 딱 잘라
+              // 몸 색으로 칠하면 흰자 둘레에 들쭉날쭉한 계단이 생긴다(사용자 요청: "두 눈의
+              // 외곽선은 매끄럽고 깔끔하게"). 무채색 정도에 따라 몸 색을 얼마나 얹을지 정한다.
+              const t = (EYE_WHITE_SOFT_CHROMA - chromaAt(nx, ny)) /
+                (EYE_WHITE_SOFT_CHROMA - EYE_WHITE_CHROMA);
+              const w = t <= 0 ? 0 : t >= 1 ? 1 : t * t * (3 - 2 * t);
+              if (w > eyeSoftWeight[ni]) eyeSoftWeight[ni] = w;
+            }
+          }
+        }
+      }
+      // 흰자로 잡힌 칸이 우선이다.
+      for (let i = 0; i < W * H; i++) {
+        if (!eyeWhiteBits[i]) continue;
+        eyeRimBits[i] = 0;
+        eyeSoftWeight[i] = 0;
+      }
+    }
+
+    // 입은 볼터치와 달리 몸에 포함시킨다(사용자 요청: "두 큰 원 사이 중앙의 작은 조각은 삭제하고
+    // 주변과 같은 흰색으로 채운다"). 입과 볼터치는 둘 다 분홍 덩어리라 위치로 가른다 —
+    // 입은 두 눈 사이(가운데)에 있고, 볼터치는 눈 바깥쪽에 있다.
+    if (dark.length === 2 && pinkBlobs.length) {
+      const eyeCx = dark.map((p) => (p.x0 + p.x1) / 2).sort((a, b) => a - b);
+      const eyeCy = dark.reduce((sum, p) => sum + (p.y0 + p.y1) / 2, 0) / 2;
+      for (const blob of pinkBlobs) {
+        const between = blob.cx > eyeCx[0] && blob.cx < eyeCx[1];
+        if (!between || blob.cy < eyeCy) continue; // 두 눈 사이 + 눈보다 아래 = 입
+        for (const id of blob.pixels) solidPink[id] = 0;
+      }
+    }
   }
 
   // 잎사귀: 머리 위쪽에만 있는 조각 중 가장 큰 것(하트 같은 장식은 이미 걸러졌고, 크기로도 밀린다)
@@ -294,6 +532,57 @@ async function buildStage(key) {
       }
       if (!changed) break;
     }
+
+    // 두 부위에 걸친 조각 중 "큰 것"은 외곽선이 아니라 진짜 오브젝트의 일부다. 가방 어깨끈이 그렇다 —
+    // 끈은 가방에서 나와 몸 위를 지나가므로 가방과 몸 양쪽에 닿고, 그래서 여기까지 배정되지 않은 채
+    // 내려가 마지막 6-2의 너비 우선 채우기에서 먼저 닿는 쪽(몸)에 넘어갔다. 그 결과 끈 한 바퀴 중
+    // 아래쪽만 몸 색을 따라가 끈이 끊어져 보였다(사용자 신고: "끈 전체가 같은 색으로 칠해지지 않는다").
+    // 닿는 부위가 여럿이면 색이 가장 비슷한 쪽에 준다 — 끈의 짙은 보라는 몸(밝은 라벤더)보다 가방
+    // (짙은 보라)에 훨씬 가깝다. 실오라기 같은 외곽선 조각은 그대로 둬야 하므로 크기로 자른다.
+    const AMBIGUOUS_MIN = 120;
+    const partColor = new Map(); // part -> 픽셀 수로 가중평균한 평균 HSL
+    for (const [idx, part] of assigned) {
+      if (part === "_fixed") continue;
+      const p = patches[idx];
+      const acc = partColor.get(part) || { h: 0, s: 0, l: 0, n: 0 };
+      acc.h += p.hsl[0] * p.n;
+      acc.s += p.hsl[1] * p.n;
+      acc.l += p.hsl[2] * p.n;
+      acc.n += p.n;
+      partColor.set(part, acc);
+    }
+    const partMean = new Map();
+    for (const [part, acc] of partColor) {
+      partMean.set(part, [acc.h / acc.n, acc.s / acc.n, acc.l / acc.n]);
+    }
+    const colorDistance = (a, b) => {
+      let dh = Math.abs(a[0] - b[0]);
+      if (dh > 180) dh = 360 - dh;
+      return (dh / 180) * 100 + Math.abs(a[1] - b[1]) + Math.abs(a[2] - b[2]);
+    };
+
+    for (const p of patches) {
+      if (assigned.has(p.index) || excluded.has(p.index)) continue;
+      if (p.n < AMBIGUOUS_MIN) continue;
+      const touching = new Set();
+      for (const id of p.pixels) {
+        for (const ni of neighbors(id)) {
+          const np = patchOf[ni];
+          if (np === -1 || np === p.index) continue;
+          const part = assigned.get(np);
+          if (part && part !== "_fixed") touching.add(part);
+        }
+      }
+      if (touching.size < 2) continue;
+      let best = null, bestDist = Infinity;
+      for (const part of touching) {
+        const mean = partMean.get(part);
+        if (!mean) continue;
+        const dist = colorDistance(p.hsl, mean);
+        if (dist < bestDist) { bestDist = dist; best = part; }
+      }
+      if (best) assigned.set(p.index, best);
+    }
   }
 
   // ── 4. 픽셀 마스크로 펼친다 ────────────────────────────────────────────
@@ -304,7 +593,19 @@ async function buildStage(key) {
   for (const part of parts) masks[part] = new Uint8Array(W * H);
   for (const [patchIndex, part] of assigned) {
     if (!masks[part]) continue; // "_fixed"(어느 마스크에도 안 넣는 조각)는 건너뛴다
-    for (const id of patches[patchIndex].pixels) masks[part][id] = 1;
+    for (const id of patches[patchIndex].pixels) {
+      if (eyeWhiteBits[id]) continue; // 눈 흰자·하이라이트는 원본 그대로
+      masks[part][id] = 1;
+    }
+  }
+  // 눈동자 둘레의 진한 테두리는 눈 쪽에 붙인다 — 몸에 남으면 눈 색을 바꿨을 때 눈동자 둘레에
+  // 몸 색의 어두운 점선이 둘러진 것처럼 보인다(사용자 요청: "눈 주변에 얼룩이 생기지 않게").
+  if (masks.eye) {
+    for (let i = 0; i < W * H; i++) {
+      if (!eyeRimBits[i]) continue;
+      for (const part of parts) masks[part][i] = 0;
+      masks.eye[i] = 1;
+    }
   }
 
   // ── 4-2. 떨어져 나온 파편 제거 ─────────────────────────────────────────
@@ -356,6 +657,7 @@ async function buildStage(key) {
       if (part !== "_fixed") continue;
       for (const id of patches[patchIndex].pixels) protectedPixels[id] = 1;
     }
+    for (let i = 0; i < W * H; i++) if (eyeWhiteBits[i]) protectedPixels[i] = 1;
     for (let round = 0; round < 3; round++) {
       const additions = [];
       for (let i = 0; i < W * H; i++) {
@@ -382,10 +684,12 @@ async function buildStage(key) {
   }
 
   // ── 5. 물건 안쪽에 갇힌 작은 무늬(책등의 밝은 띠, ₩, 나비)를 그 물건에 포함 ──
-  // 몸에는 적용하지 않는다 — 몸 안쪽에는 눈·입·볼터치처럼 "일부러 뺀" 것들이 있어서
-  // 구멍 메우기를 하면 도로 들어와 버린다(실제로 알 단계 감은 눈이 그렇게 다시 들어왔었다).
+  // 몸에도 적용한다 — 입처럼 몸에 완전히 둘러싸인 구멍을 메우기 위해서다(사용자 요청: "두 큰 원
+  // 사이 중앙의 작은 조각을 삭제하고 주변과 같은 흰색으로 채운다"). 눈은 아래 blocked 검사에서
+  // "다른 부위 마스크에 속한 구멍"으로 걸러지므로 도로 들어오지 않는다. 캐릭터에서 떨어져 있는
+  // 장식(하트·효과선)과 코인은 애초에 둘러싸인 구멍이 아니라 바깥과 이어져 있어 해당 없다.
   for (const part of parts) {
-    if (part === "body" || part === "eye") continue;
+    if (part === "eye") continue;
     const bits = masks[part];
     const outside = new Uint8Array(W * H);
     const queue = [];
@@ -429,7 +733,7 @@ async function buildStage(key) {
         if (blocked) break;
         const x = id % W, y = (id - x) / W;
         const [h, s, l] = toHsl(...rgba(x, y).slice(0, 3));
-        if ((h >= 25 && h <= 70 && s > 35) || ((h >= 300 || h < 25) && s > 20 && l > 55)) {
+        if (solidGold[id] || solidPink[id] || eyeWhiteBits[id]) {
           blocked = true;
           break;
         }
@@ -438,6 +742,48 @@ async function buildStage(key) {
       for (const id of hole) bits[id] = 1;
     }
   }
+
+  // ── 5-2. 가계부 안쪽의 밝은 홈은 어느 마스크에도 넣지 않는다 ────────────
+  // 가계부 윗변의 홈(원본 L 90 이상의 밝은 띠)이 몸 마스크에 들어가 있어서 몸 색을 따라 노랗게
+  // 변했다(사용자 신고). 가계부 바깥 테두리 안쪽에 있으면서 밝은 픽셀은 가계부의 하이라이트이므로,
+  // 몸에서 빼내 원본 밝은 색 그대로 두면 어떤 색을 골라도 흰 홈으로 고정된다.
+  const grooveBits = new Uint8Array(W * H);
+  if (masks.wallet && masks.body) {
+    // 가계부 바깥 테두리 안쪽(구멍 포함) 영역을 구한다 — 바깥에서 못 닿는 칸이 곧 안쪽이다.
+    const outsideWallet = new Uint8Array(W * H);
+    const q = [];
+    const push = (id) => { if (!masks.wallet[id] && !outsideWallet[id]) { outsideWallet[id] = 1; q.push(id); } };
+    for (let x = 0; x < W; x++) { push(x); push((H - 1) * W + x); }
+    for (let y = 0; y < H; y++) { push(y * W); push(y * W + W - 1); }
+    while (q.length) {
+      const cur = q.pop();
+      for (const ni of neighbors(cur)) {
+        if (outsideWallet[ni] || masks.wallet[ni]) continue;
+        outsideWallet[ni] = 1;
+        q.push(ni);
+      }
+    }
+    let freed = 0;
+    for (let i = 0; i < W * H; i++) {
+      if (!masks.body[i] || outsideWallet[i] || masks.wallet[i]) continue;
+      const x = i % W, y = (i - x) / W;
+      if (toHsl(...rgba(x, y).slice(0, 3))[2] < 85) continue; // 밝은 홈만
+      masks.body[i] = 0;
+      grooveBits[i] = 1;
+      freed++;
+    }
+    if (freed) console.log(`  (가계부 안쪽 밝은 홈 ${freed}px을 몸에서 제외)`);
+  }
+
+  // "_fixed"로 표시해 둔 조각(눈 흰자, 알 단계의 감은 눈)의 픽셀. 아래 6-2의 "임자 없는 칸
+  // 채우기"가 이 자리까지 이웃 부위 색으로 덮어버리지 않도록 여기서 지켜야 한다 — 안 그러면
+  // 흰자가 눈동자 색으로, 또는 몸 색으로 다시 물든다.
+  const fixedBits = new Uint8Array(W * H);
+  for (const [patchIndex, part] of assigned) {
+    if (part !== "_fixed") continue;
+    for (const id of patches[patchIndex].pixels) fixedBits[id] = 1;
+  }
+  for (let i = 0; i < W * H; i++) if (eyeWhiteBits[i]) fixedBits[i] = 1;
 
   // ── 6. 픽셀 단위 최종 제외 (반드시 구멍 메우기 "뒤"에 와야 한다) ──────────
   // 조각 평균색으로만 걸러내면 조각 가장자리에 섞여 들어온 금색/분홍 픽셀이 남는다
@@ -453,13 +799,106 @@ async function buildStage(key) {
       if (!bits[i]) continue;
       const x = i % W, y = (i - x) / W;
       const [h, s, l] = toHsl(...rgba(x, y).slice(0, 3));
-      const gold = h >= 25 && h <= 70 && s > 35;
-      const pink = (h >= 300 || h < 25) && s > 20 && l > 55;
-      if (gold || pink) bits[i] = 0;
+
+      if (solidGold[i] || solidPink[i]) bits[i] = 0;
     }
   }
 
-  // ── 7. PNG로 저장(원본 알파를 물려받아 실루엣 가장자리를 매끄럽게) ──────
+  // ── 6-1. 눈 테두리 다듬기 ───────────────────────────────────────────────
+  // 눈은 픽셀 단위로 주워담은 결과라 테두리가 계단처럼 울퉁불퉁하다. 살짝 흐린 뒤 중간값을
+  // 기준으로 다시 또렷하게 만들면 전체 모양은 그대로 둔 채 튀어나온 계단만 다듬어진다
+  // (사용자 요청: "형태가 변하지 않는 선에서 반듯하게").
+  //
+  // 다듬은 결과는 "이 칸이 눈이냐 아니냐"로만 쓴다. 예전에는 경계를 반투명 알파로 남겼는데,
+  // 그러면 그 칸이 눈 색으로 절반만 칠해지고 나머지 절반은 원본 보라색이 비쳐서 눈 둘레에
+  // 점선 같은 보라색 테두리가 생겼다(사용자 신고). 딱 잘라도 계단처럼 보이지는 않는다 —
+  // 원본 픽셀 자체가 이미 안티에일리어싱된 중간 밝기라, 색을 입혀도 중간 밝기로 남는다.
+  //
+  // 다듬으면서 부위가 차지하는 자리가 조금 바뀐다. 새로 들어온 칸은 여기서 다른 마스크에서 빼고,
+  // 빠져나간 칸은 바로 아래 이음새 메우기가 이웃 부위에 넘겨준다.
+  //
+  // 눈동자 안의 흰 하이라이트는 _fixed로 빼놨는데(3번 항목), 흐리면 그 작은 구멍이 메워져서 도로
+  // 눈 마스크에 들어가 버린다 — 그러면 눈 색을 바꿀 때 반짝이는 점까지 같이 물들어 뭉개진다
+  // (사용자 요청: "눈동자와 하이라이트, 반짝이는 부분이 번지거나 뭉개지지 않도록"). 그래서 다듬기가
+  // _fixed 자리는 절대 가져가지 못하게 막는다.
+  //
+  // 가방·가계부에도 같은 다듬기를 적용한다. 가방 테두리가 픽셀 단위로 들쭉날쭉해서, 색을 바꾸면
+  // 가방과 몸 경계에 점선 같은 얼룩이 보였다(사용자 요청: "가방 끈의 외곽선을 매끄럽게").
+  for (const part of ["eye", "bag", "wallet"]) {
+    if (!masks[part]) continue;
+    const raw = Buffer.alloc(W * H * 4);
+    for (let i = 0; i < W * H; i++) {
+      if (!masks[part][i]) continue;
+      raw[i * 4 + 3] = data[i * 4 + 3];
+    }
+    const blurred = await sharp(raw, { raw: { width: W, height: H, channels: 4 } })
+      .blur(1.4).raw().toBuffer();
+    const smoothed = new Uint8Array(W * H);
+    for (let i = 0; i < W * H; i++) {
+      if (blurred[i * 4 + 3] < 128) continue; // 흐린 뒤 절반 이상 차 있으면 이 부위
+      if (fixedBits[i]) continue; // 눈 하이라이트·흰자처럼 원본 그대로 둬야 하는 자리
+      smoothed[i] = 1;
+      for (const other of parts) {
+        if (other !== part) masks[other][i] = 0;
+      }
+    }
+    masks[part] = smoothed;
+  }
+
+  // ── 6-2. 어느 마스크에도 안 들어간 자리를 가장 가까운 부위에 넘긴다 ──────
+  // 3-2에서 "서로 다른 두 오브젝트에 걸친 조각"은 외곽선으로 보고 어느 마스크에도 넣지 않았다.
+  // 그런데 그 자리는 색을 바꿔도 원본 보라색 그대로 남는다. 그래서 몸과 눈 사이, 몸과 가방 사이에
+  // 원본에는 없던 얇은 보라색 선이 새로 그어진 것처럼 보였다(사용자 신고). 실루엣 바깥의 반투명
+  // 가장자리와 발밑 그림자도 같은 이유로 원본 보라색이 남아, 캐릭터 둘레와 그림자에 두 가지 색이
+  // 겹친 띠가 생겼다.
+  //
+  // 그래서 "남는 자리"를 아예 없앤다. 마스크에 들어간 모든 픽셀에서 동시에 너비 우선으로 퍼뜨려,
+  // 아직 아무 데도 안 들어간 칸을 가장 가까운 부위에 넘긴다. 마스크를 일정 폭만큼 부풀리는 게
+  // 아니라 임자 없는 칸만 채우는 것이라, 이미 다른 부위가 가진 칸은 건드리지 않는다(마스크끼리
+  // 여전히 겹치지 않는다 — scripts/verify-character-masks.js 로 확인).
+  //
+  // 원본의 윤곽선은 사라지지 않는다. 색을 입힐 때 원본의 명암 폭을 그대로 얹으므로
+  // (lib/recolor.ts), 어두운 외곽선 픽셀은 고른 색의 어두운 톤이 되어 윤곽이 그대로 살아난다.
+  // 달라지는 건 그 선이 "원본 보라색"이 아니라 "고른 색의 어두운 톤"이 된다는 것뿐이다.
+  // 알파도 건드리지 않으므로 가장자리의 안티에일리어싱은 그대로다.
+  //
+  // 원본을 지켜야 하는 것은 제외한다 — 코인·반짝임(금색), 볼터치(분홍), 가계부 홈, 눈 흰자
+  // (_fixed). 캐릭터에서 떨어져 있는 장식(하트·효과선)은 투명한 배경으로 끊겨 있어 퍼짐이
+  // 닿지 않는다(실측 확인).
+  {
+    const owner = new Int8Array(W * H).fill(-1);
+    const queue = [];
+    for (let k = 0; k < parts.length; k++) {
+      const bits = masks[parts[k]];
+      for (let i = 0; i < W * H; i++) {
+        if (!bits[i]) continue;
+        owner[i] = k;
+        queue.push(i);
+      }
+    }
+    let head = 0, filled = 0;
+    while (head < queue.length) {
+      const cur = queue[head++];
+      for (const ni of neighbors(cur)) {
+        if (owner[ni] >= 0) continue;
+        if (solidGold[ni] || solidPink[ni] || grooveBits[ni] || fixedBits[ni]) continue;
+        const x = ni % W, y = (ni - x) / W;
+        if (!inCrop(x, y) || data[ni * 4 + 3] < 8) continue;
+        owner[ni] = owner[cur];
+        masks[parts[owner[cur]]][ni] = 1;
+        queue.push(ni);
+        filled++;
+      }
+    }
+    console.log("  임자 없던 " + filled + "px 을 가장 가까운 부위에 넘김");
+  }
+
+  // ── 7. PNG로 저장 ───────────────────────────────────────────────────────
+  // 마스크 알파는 "이 칸을 얼마나 칠할까"의 가중치다. 예전에는 원본 알파를 물려줬는데, 그러면
+  // 실루엣 가장자리(알파 160~254)가 그만큼만 칠해지고 나머지는 원본 보라색이 비쳐서 캐릭터
+  // 둘레에 얇은 보라색 테두리가 남았다(사용자 신고). 마스크에 들어온 칸은 끝까지 칠한다 —
+  // 화면에 그릴 때 알파는 원본 이미지 것을 그대로 쓰므로(lib/recolor.ts 는 RGB만 건드린다)
+  // 실루엣 가장자리는 여전히 매끄럽게 이어진다.
   fs.mkdirSync(OUT_DIR, { recursive: true });
   for (const part of parts) {
     const bits = masks[part];
@@ -469,7 +908,11 @@ async function buildStage(key) {
       if (!bits[i]) continue;
       const o = i * 4;
       out[o] = 255; out[o + 1] = 255; out[o + 2] = 255;
-      out[o + 3] = data[o + 3];
+      // 흰자 바깥 경계만 알파를 깎아 원본 흰색이 그만큼 비치게 한다 — 흰자에서 몸으로 넘어가는
+      // 한두 칸이 부드럽게 이어져, 색을 바꿔도 눈 둘레에 계단이 생기지 않는다.
+      const alpha = 255 * (1 - eyeSoftWeight[i]);
+      if (alpha < 1) continue;
+      out[o + 3] = Math.round(alpha);
       count++;
     }
     const name = `${cfg.prefix}_${part}_mask.png`;
@@ -477,6 +920,100 @@ async function buildStage(key) {
       .png()
       .toFile(path.join(OUT_DIR, name));
     console.log(`  ${name}  (${count} px)`);
+  }
+
+  // 가계부 홈 마스크 — 화면에서 이 부분만 순백색(255,255,255)으로 칠한다.
+  // 원본은 아주 밝은 연보라(약 224,210,254)라 가계부 색을 바꾸면 연보라 띠로 보였는데,
+  // 사용자 요청대로 어떤 색을 골라도 항상 흰 홈으로 고정하기 위해 따로 뽑는다.
+  {
+    let count = 0;
+    const out = Buffer.alloc(W * H * 4);
+    for (let i = 0; i < W * H; i++) {
+      if (!grooveBits[i]) continue;
+      const o = i * 4;
+      out[o] = 255; out[o + 1] = 255; out[o + 2] = 255;
+      // 원본 알파(252~253)를 물려받으면 흰색을 덮어도 254에서 멈춘다. 홈은 캐릭터 안쪽이라
+      // 실루엣 가장자리가 아니므로 알파를 꽉 채워서 정확히 (255,255,255)가 되게 한다.
+      out[o + 3] = 255;
+      count++;
+    }
+    if (count > 0) {
+      const name = `${cfg.prefix}_groove_mask.png`;
+      await sharp(out, { raw: { width: W, height: H, channels: 4 } })
+        .png()
+        .toFile(path.join(OUT_DIR, name));
+      console.log(`  ${name}  (${count} px)`);
+    }
+  }
+
+  // 볼터치 마스크 — 색을 바꾸는 용도가 아니라 화면에서 홍조를 진하게 올리는 데 쓴다.
+  // 원본은 눈 쪽으로 갈수록 흰색에 묻혀 밝아지는데(밝기 93 → 99, 채도 78 → 50) 그래서 홍조가
+  // 흐릿하게 비쳐 보인다. 이 마스크가 가리키는 픽셀만 렌더링 단계에서 채도를 올리고 밝기를 눌러
+  // 또렷한 홍조로 만든다(lib/recolor.ts 의 intensifyCheek).
+  //
+  // 색으로 주워담은 영역은 가장자리가 삐뚤빼뚤하고 몸 쪽으로 번진 픽셀이 붙는다(사용자 신고).
+  // 그래서 각 볼터치 덩어리의 무게중심과 퍼진 정도(2차 모멘트)로 타원을 구해 그 안쪽만 남긴다.
+  // 타원 경계는 1.5px에 걸쳐 부드럽게 흐려서, 딱딱한 도형이 아니라 원본 같은 안티앨리어싱을 유지한다.
+  {
+    const out = Buffer.alloc(W * H * 4);
+    let count = 0;
+    for (const blob of pinkBlobs) {
+      if (!blob.pixels.length) continue;
+      // 무게중심과 공분산 → 타원의 방향과 반지름
+      let sxx = 0, syy = 0, sxy = 0;
+      for (const id of blob.pixels) {
+        const bx = id % W, by = (id - bx) / W;
+        const dx = bx - blob.cx, dy = by - blob.cy;
+        sxx += dx * dx; syy += dy * dy; sxy += dx * dy;
+      }
+      const n = blob.pixels.length;
+      sxx /= n; syy /= n; sxy /= n;
+      // 공분산 행렬의 고유값·고유벡터
+      const tr = sxx + syy, det = sxx * syy - sxy * sxy;
+      const disc = Math.sqrt(Math.max(0, (tr / 2) * (tr / 2) - det));
+      const e1 = tr / 2 + disc, e2 = tr / 2 - disc;
+      const angle = 0.5 * Math.atan2(2 * sxy, sxx - syy);
+      const ca = Math.cos(angle), sa = Math.sin(angle);
+      // 균일한 타원이면 2차 모멘트는 (반지름^2)/4 이므로 반지름 = 2*sqrt(고유값)
+      const r1 = 2 * Math.sqrt(Math.max(e1, 0.5));
+      const r2 = 2 * Math.sqrt(Math.max(e2, 0.5));
+      // 볼터치는 원래 가운데가 진하고 밖으로 갈수록 옅어진다. 경계만 살짝 흐리면 단색 원반처럼
+      // 보이므로, 중심에서 테두리까지 서서히 옅어지는 농도를 직접 만든다.
+      const SOLID_UNTIL = 0.35; // 이 안쪽은 진하게, 여기서부터 테두리까지 서서히 옅어진다
+      const x0 = Math.max(0, Math.floor(blob.cx - r1 - 3));
+      const x1 = Math.min(W - 1, Math.ceil(blob.cx + r1 + 3));
+      const y0 = Math.max(0, Math.floor(blob.cy - r1 - 3));
+      const y1 = Math.min(H - 1, Math.ceil(blob.cy + r1 + 3));
+      for (let y = y0; y <= y1; y++) {
+        for (let x = x0; x <= x1; x++) {
+          if (!isOpaque(x, y)) continue;
+          const dx = x - blob.cx, dy = y - blob.cy;
+          const u = (dx * ca + dy * sa) / r1;
+          const v = (-dx * sa + dy * ca) / r2;
+          const d = Math.sqrt(u * u + v * v); // 1이면 타원 경계
+          if (d >= 1) continue;
+          const t = (1 - d) / (1 - SOLID_UNTIL);
+          const soft = t >= 1 ? 1 : t <= 0 ? 0 : t * t * (3 - 2 * t);
+          if (soft <= 0) continue;
+          // 볼터치 타원이 눈 흰자에 걸치면 하얀 눈 위에 분홍이 얹혀 얼룩처럼 보인다
+          // (사용자 요청: "눈 주변에 불필요한 색 번짐이나 얼룩이 생기지 않게").
+          if (eyeWhiteBits[y * W + x] || eyeSoftWeight[y * W + x] > 0) continue;
+          const o = (y * W + x) * 4;
+          const a = Math.round(data[o + 3] * soft);
+          if (a <= out[o + 3]) continue;
+          out[o] = 255; out[o + 1] = 255; out[o + 2] = 255;
+          out[o + 3] = a;
+        }
+      }
+    }
+    for (let i = 0; i < W * H; i++) if (out[i * 4 + 3] > 0) count++;
+    if (count > 0) {
+      const name = `${cfg.prefix}_cheek_mask.png`;
+      await sharp(out, { raw: { width: W, height: H, channels: 4 } })
+        .png()
+        .toFile(path.join(OUT_DIR, name));
+      console.log(`  ${name}  (${count} px)`);
+    }
   }
 }
 

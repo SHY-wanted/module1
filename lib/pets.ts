@@ -15,6 +15,10 @@ export const MAX_STAGE_INDEX = 4;
 // 스펙이 제시한 기본값(15)을 그대로 쓴다. 개인 펫 "밥 주기" 1회당 XP.
 export const FEED_XP_DEFAULT = 15;
 
+// 2026-09-18 사용자 요청: "하루 한 번" 제한이 너무 느리다 — 대신 코인이 있는 만큼 계속 먹일 수
+// 있게 바꿨다(코인이 다하면 못 먹인다). 값은 사용자 확인(출석체크 보상 5코인으로 5번 먹일 수 있는 수준).
+export const FEED_COIN_COST = 1;
+
 // XP → 단계 승급: 100 넘으면 stage_index+1, 초과분 이월. 최대 단계는 XP만 누적.
 export function applyXpGain(stageIndex: number, xpProgress: number, xpGained: number): { stageIndex: number; xpProgress: number } {
   if (stageIndex >= MAX_STAGE_INDEX) {
@@ -89,6 +93,19 @@ export function daysBetween(fromDateStr: string, toDateStr: string): number {
   return Math.round((to.getTime() - from.getTime()) / 86400000);
 }
 
+/**
+ * "YYYY-MM-DD" 날짜를 며칠 이동시킨다(예: -1이면 전날). 반드시 "T00:00:00Z"(UTC)로 파싱하고
+ * setUTCDate/getUTCDate만 쓴다 — "T00:00:00"(타임존 없음)으로 파싱하면 브라우저의 로컬 타임존으로
+ * 해석되는데, 그 뒤 toISOString()은 항상 UTC로 돌려주기 때문에 한국(UTC+9)처럼 UTC보다 빠른 타임존
+ * 에서는 자정 근처에서 날짜가 하루 더 밀리는 버그가 생긴다(2026-09-18 발견 — 출석체크 연속일수가
+ * 매번 1일차로 초기화되던 원인. 전날 날짜를 이 버그로 잘못 계산해서 어제 기록을 못 찾았었다).
+ */
+export function shiftDateKST(dateStr: string, days: number): string {
+  const d = new Date(dateStr + "T00:00:00Z");
+  d.setUTCDate(d.getUTCDate() + days);
+  return d.toISOString().slice(0, 10);
+}
+
 // ============================================================
 // 그룹 펫 자동 성장 — hybranch F22 "참여도" 규칙을 그대로 옮김: 최근 기간에 여럿이 골고루 기록했으면
 // 정상 성장, 한 명만 계속 기록했으면 절반만. "최근 기간"·"여럿" 기준도 스펙에 숫자가 없어 아래 상수로
@@ -112,6 +129,16 @@ export function currentMonthString(today: string): string {
 // F23 그룹 피드 이모지 반응 — hybranch 스펙 자체가 "다양한 이모지 중 폭넓게, 구체 목록·최대 개수는
 // [제안]"이라고 비워뒀다. 팀 확인 전까지 자주 쓰는 이모지 위주로 폭넓게 골라 임시 팔레트를 쓴다.
 // ============================================================
+// ============================================================
+// 출석체크 — 접속률을 올리기 위한 신규 기능(2026-09-20 사용자 요청). 매일 접속해서 출석체크하면
+// 코인을 주고, 7일을 꼬박 채워 연속 출석하면 그 7일째에 코인을 두 배로 준다 — 다음 날부터는 다시
+// 1일째부터 새 주기가 시작된다("일주일 주기로"). 정확한 지급량은 스펙에 없어 팀 확인 전까지
+// 아래 값을 임시로 쓴다(GOAL_ACHIEVED_REWARD_COINS와 같은 성격의 placeholder).
+// ============================================================
+export const CHECKIN_REWARD_COINS = 5; // 팀 확인 전 placeholder — 하루 출석 기본 코인
+export const CHECKIN_STREAK_LENGTH = 7; // 이 일수를 연속으로 채우면 보너스, 다음 날 1일째로 리셋
+export const CHECKIN_STREAK_BONUS_MULTIPLIER = 2; // 주기의 마지막 날 코인 = 기본 × 이 값
+
 export const REACTION_EMOJI_PALETTE = [
   "👍", "❤️", "😂", "😮", "😢", "🔥", "🎉", "👏",
   "😍", "🤔", "😅", "💪", "🙏", "😱", "🥲", "✨",

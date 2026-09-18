@@ -45,14 +45,16 @@ export type StackScreen =
   | { id: "petCustomize" }
   // 목표(예산 대체, shooTbranch 통합) — 월별·카테고리별.
   | { id: "monthlyGoalSetting" }
-  | { id: "monthlyGoalReport" };
+  | { id: "monthlyGoalReport" }
+  // 개인 랭킹(2026-09-17 신규, "개인 = 경쟁/랭킹") — 그룹과는 무관하게 개인 펫끼리만 비교한다.
+  | { id: "personalRanking" };
 
 // 3a 화면의 카드 id → schema.sql group_type enum 매핑
 export const GROUP_TYPE_CARD_TO_ENUM: Record<string, GroupType> = {
   family: "FAMILY",
   marriage: "MARRIED_COUPLE",
   couple: "COUPLE",
-  roommate: "ROOMMATE",
+  friend: "FRIEND",
   club: "CLUB",
   etc: "OTHER",
 };

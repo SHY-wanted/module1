@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { useNav } from "../NavContext";
 import { useStore } from "@/lib/store";
+import KakaoLoginButton from "../KakaoLoginButton";
 import { MailPlusIcon } from "../icons";
 
 // 07-screens.md "1/1b 회원가입 — 이메일 형식 오류는 입력칸 밑 인라인 오류로 표시"(2026-09-11 팀 결정,
@@ -99,6 +100,14 @@ export default function SignupInput() {
         >
           가입하기
         </div>
+
+        <div style={{ display: "flex", alignItems: "center", gap: 10, margin: "20px 0" }}>
+          <div style={{ flex: 1, height: 1, background: "var(--shoot-border)" }} />
+          <div style={{ fontSize: 12, color: "var(--shoot-text-muted)", fontWeight: 600 }}>또는</div>
+          <div style={{ flex: 1, height: 1, background: "var(--shoot-border)" }} />
+        </div>
+        <KakaoLoginButton />
+
         <div style={{ flex: 1 }} />
         <div style={{ textAlign: "center", fontSize: 13, color: "var(--shoot-text-muted)", fontWeight: 600 }}>
           이미 계정이 있으신가요?{" "}

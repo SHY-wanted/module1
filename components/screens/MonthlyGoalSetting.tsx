@@ -6,7 +6,7 @@
 import { useMemo, useState } from "react";
 import { useNav } from "../NavContext";
 import { useStore } from "@/lib/store";
-import { PERSONAL_CATS, type CategoryDef } from "@/lib/categories";
+import type { CategoryDef } from "@/lib/categories";
 import { formatWon } from "@/lib/format";
 import { TODAY_DATE } from "@/lib/mock";
 import { currentMonthString } from "@/lib/pets";
@@ -34,10 +34,17 @@ function encouragementMessage(category: CategoryDef, amount: number, recommended
 export default function MonthlyGoalSetting() {
   const nav = useNav();
   const store = useStore();
-  const categories = PERSONAL_CATS;
+  // 2026-09-18 버그 수정: 고정된 기본 카테고리 목록(PERSONAL_CATS)을 직접 썼었다 — 설정(2c)에서
+  // 카테고리 이름을 바꾸거나 새로 추가해도 이 화면엔 반영이 안 됐고, category.label로 저장하다 보니
+  // 실제 지출 기록의 카테고리명과 어긋나 "목표를 설정해도 지출에 안 잡히는"(평균·달성 계산이 항상 0)
+  // 문제로 이어질 수 있었다. store.getCategoriesForScope로 실제 사용 중인 개인 카테고리를 쓴다.
+  // useMemo로 감싸는 이유: store.getCategoriesForScope()는 매 렌더 호출되는 메서드라, 아래
+  // avg3 useMemo가 category.label에 의존하면 리액트 컴파일러가 그 메모이제이션을 신뢰하지 못한다
+  // (호출 결과가 렌더마다 같다는 걸 정적으로 증명할 수 없어서 "Compilation Skipped" 경고가 났다).
+  const categories = useMemo(() => store.getCategoriesForScope({ kind: "personal" }), [store]);
   const month = currentMonthString(TODAY_DATE);
   const [selectedCategoryId, setSelectedCategoryId] = useState(categories[0].id);
-  const category = categories.find((c) => c.id === selectedCategoryId) ?? categories[0];
+  const category = useMemo(() => categories.find((c) => c.id === selectedCategoryId) ?? categories[0], [categories, selectedCategoryId]);
 
   // 실제 지난 3개월 지출(shooTbranch 원본은 하드코딩 샘플이었다 — 이제 진짜 store.expenses로 계산).
   const avg3 = useMemo(() => {

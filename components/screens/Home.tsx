@@ -13,7 +13,7 @@ import {
   getRecentOwnExpenses,
   getIncomeTotalForUser,
 } from "@/lib/selectors";
-import { formatRelativeTime, formatWon, stripSurname } from "@/lib/format";
+import { formatRelativeTime, formatWon } from "@/lib/format";
 import { getCategoryVisual } from "@/lib/categories";
 import { TODAY_DATE } from "@/lib/mock";
 import { CategoryIcon } from "../icons";
@@ -31,14 +31,17 @@ function toLinearMonth(year: number, monthIndex: number) {
 }
 const TODAY_LINEAR_MONTH = toLinearMonth(TODAY_YEAR, TODAY_MONTH_INDEX);
 const MAX_LINEAR_MONTH = TODAY_LINEAR_MONTH + 12; // 오늘과 같은 달의 내년까지
+// 2026-09-18 사용자 요청: 과거도 무제한이 아니라 올해 기준 5년 전까지만 넘길 수 있게 제한한다.
+const MIN_LINEAR_MONTH = TODAY_LINEAR_MONTH - 5 * 12;
 
 export default function Home() {
   const nav = useNav();
   const store = useStore();
   const [homeGroup, setHomeGroup] = useState<string>("me");
+  const [checkingIn, setCheckingIn] = useState(false);
 
   const me = store.profiles.find((p) => p.id === store.currentUserId);
-  const givenName = stripSurname(me?.name ?? "");
+  const givenName = me?.name ?? "";
   const myGroups = getGroupsForUser(store.groups, store.groupMembers, store.currentUserId);
 
   const expenseTotal = useMemo(() => {
@@ -64,6 +67,26 @@ export default function Home() {
     [store.expenses, store.currentUserId]
   );
 
+  // 출석체크(2026-09-20 신규) — 접속률을 올리기 위한 기능이라 홈 진입 즉시 보이는 자리에 둔다.
+  const todayCheckin = store.attendanceCheckins.find((c) => c.user_id === store.currentUserId && c.checkin_date === TODAY_DATE);
+
+  async function handleCheckIn() {
+    if (checkingIn || todayCheckin) return;
+    setCheckingIn(true);
+    const result = await store.checkInToday();
+    setCheckingIn(false);
+    if (!result.ok || !result.data) {
+      store.showToast(result.error ?? "출석체크에 실패했어요");
+      return;
+    }
+    const isBonusDay = result.data.streak_day >= 7;
+    store.showToast(
+      isBonusDay
+        ? `7일 연속 출석! 🪙+${result.data.coins_earned} (2배 보너스)`
+        : `출석체크 완료! 🪙+${result.data.coins_earned} · ${result.data.streak_day}일째`
+    );
+  }
+
   const incomeTotal = useMemo(
     () => getIncomeTotalForUser(store.incomes, store.currentUserId, CURRENT_MONTH),
     [store.incomes, store.currentUserId]
@@ -79,6 +102,7 @@ export default function Home() {
   const [calMonthIndex, setCalMonthIndex] = useState(TODAY_MONTH_INDEX); // 0=1월 ... 11=12월
   const calLinearMonth = toLinearMonth(calYear, calMonthIndex);
   const atMaxMonth = calLinearMonth >= MAX_LINEAR_MONTH;
+  const atMinMonth = calLinearMonth <= MIN_LINEAR_MONTH;
   // 2026-09-21 팀 요청(신규): 화살표로 한 달씩 넘기는 것 말고, 아래방향 화살표 바를 눌러 원하는 월·일로
   // 바로 이동할 수 있게 한다. 실제 달력 UI를 새로 그리는 대신 네이티브 <input type="date">를 투명하게
   // 겹쳐서 브라우저 날짜 선택기를 그대로 쓴다(ExpenseInput의 날짜 입력과 같은 방식).
@@ -89,9 +113,16 @@ export default function Home() {
     const lastDay = new Date(y, m + 1, 0).getDate();
     return `${y}-${String(m + 1).padStart(2, "0")}-${String(lastDay).padStart(2, "0")}`;
   }, []);
+  // 2026-09-18 사용자 요청: 과거도 올해 기준 5년 전까지만.
+  const minPickDate = useMemo(() => {
+    const y = Math.floor(MIN_LINEAR_MONTH / 12);
+    const m = MIN_LINEAR_MONTH % 12;
+    return `${y}-${String(m + 1).padStart(2, "0")}-01`;
+  }, []);
   const datePickerValue = `${calYear}-${String(calMonthIndex + 1).padStart(2, "0")}-${String(selectedDay ?? 1).padStart(2, "0")}`;
 
   function goPrevMonth() {
+    if (atMinMonth) return; // 5년 전보다 더 과거로는 넘어가지 않는다
     const prev = calLinearMonth - 1;
     setCalYear(Math.floor(prev / 12));
     setCalMonthIndex(((prev % 12) + 12) % 12);
@@ -107,7 +138,7 @@ export default function Home() {
   function handleDatePick(value: string) {
     if (!value) return;
     const [y, m, d] = value.split("-").map(Number);
-    const picked = Math.min(toLinearMonth(y, m - 1), MAX_LINEAR_MONTH);
+    const picked = Math.min(Math.max(toLinearMonth(y, m - 1), MIN_LINEAR_MONTH), MAX_LINEAR_MONTH);
     setCalYear(Math.floor(picked / 12));
     setCalMonthIndex(((picked % 12) + 12) % 12);
     setSelectedDay(d);
@@ -178,6 +209,39 @@ export default function Home() {
       </div>
 
       <div style={{ flex: 1, overflowY: "auto", padding: "0 20px 20px" }}>
+        {/* 출석체크(2026-09-20 신규, 사용자 요청) — "접속률을 올리기 위함"이라 홈 맨 위, 여는 즉시 보이는
+            자리에 둔다. 매일 코인 지급, 7일 연속 출석하면 그날 코인이 2배(lib/pets.ts CHECKIN_*). */}
+        <div
+          onClick={handleCheckIn}
+          style={{
+            marginTop: 18,
+            background: todayCheckin ? "var(--shoot-surface)" : "linear-gradient(135deg,#FFD166 0%,#F2A93B 100%)",
+            border: todayCheckin ? "1.5px solid var(--shoot-border)" : "none",
+            borderRadius: 22,
+            padding: "16px 20px",
+            display: "flex",
+            alignItems: "center",
+            gap: 12,
+            cursor: todayCheckin || checkingIn ? "default" : "pointer",
+            opacity: checkingIn ? 0.7 : 1,
+          }}
+        >
+          <div style={{ fontSize: 26, flexShrink: 0 }}>🪙</div>
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <div style={{ fontSize: 14, fontWeight: 800, color: todayCheckin ? "var(--shoot-text)" : "#5A3A00" }}>
+              {todayCheckin ? "오늘 출석체크 완료!" : "출석체크하고 코인 받기"}
+            </div>
+            <div style={{ fontSize: 11, fontWeight: 700, color: todayCheckin ? "var(--shoot-text-muted)" : "rgba(90,58,0,0.75)", marginTop: 2 }}>
+              {todayCheckin ? `${todayCheckin.streak_day}일째 연속 출석 중이에요` : "7일 꼬박 채우면 코인 2배!"}
+            </div>
+          </div>
+          {!todayCheckin && (
+            <div style={{ fontSize: 13, fontWeight: 800, color: "#5A3A00", background: "rgba(255,255,255,0.55)", borderRadius: 12, padding: "8px 14px", flexShrink: 0 }}>
+              출석하기
+            </div>
+          )}
+        </div>
+
         {/* 07-screens.md "2b 수입 카드 탭 → 2b-1a" — 2026-09-11 팀 결정으로 수입 기능이 이번 범위에 포함됐다. */}
         <div
           onClick={() => nav.push({ id: "incomeList" })}
@@ -294,19 +358,30 @@ export default function Home() {
               <input
                 type="date"
                 value={datePickerValue}
+                min={minPickDate}
                 max={maxPickDate}
                 onChange={(e) => handleDatePick(e.target.value)}
                 aria-label="월·일 선택"
                 style={{ position: "absolute", inset: 0, width: "100%", height: "100%", opacity: 0, cursor: "pointer", border: "none" }}
               />
             </div>
-            {/* 2026-09-14 팀 결정: 화살표로 월(과 그에 따른 연도)을 변경한다 — 과거는 제한 없음, 미래는 오늘 기준 +1년까지. */}
+            {/* 2026-09-14 팀 결정, 2026-09-18 수정: 화살표로 월(과 그에 따른 연도)을 변경한다 — 과거는
+                올해 기준 5년 전까지, 미래는 오늘 기준 +1년까지. */}
             <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
               <div
                 onClick={goPrevMonth}
-                style={{ width: 26, height: 26, borderRadius: "50%", background: "var(--shoot-surface-alt)", display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer" }}
+                style={{
+                  width: 26,
+                  height: 26,
+                  borderRadius: "50%",
+                  background: atMinMonth ? "var(--shoot-divider)" : "var(--shoot-surface-alt)",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  cursor: atMinMonth ? "default" : "pointer",
+                }}
               >
-                <ChevronLeftIcon size={13} color="var(--shoot-accent)" />
+                <ChevronLeftIcon size={13} color={atMinMonth ? "#C9C4D6" : "var(--shoot-accent)"} />
               </div>
               <div
                 onClick={goNextMonth}

@@ -2,7 +2,7 @@
 // components/screens/MyPage.tsx — 10. 마이페이지(design/shoot/MyPage.dc.html)
 import { useNav } from "../NavContext";
 import { useStore } from "@/lib/store";
-import { initialOf, stripSurname } from "@/lib/format";
+import { initialOf } from "@/lib/format";
 import { getPersonalPet } from "@/lib/selectors";
 import { MAX_STAGE_INDEX } from "@/lib/pets";
 import PetMascot from "../PetMascot";
@@ -13,7 +13,7 @@ export default function MyPage() {
   const store = useStore();
   const me = store.profiles.find((p) => p.id === store.currentUserId);
   const fullName = me?.name ?? "";
-  const givenName = stripSurname(fullName);
+  const givenName = fullName;
   // 저금통 펫 키우기(docs/08-pet-feature-spec.md §7, 2026-09-15 신규) — 펫이 아직 없으면 만들러 보낸다.
   const personalPet = getPersonalPet(store.pets, store.currentUserId);
 
@@ -53,25 +53,31 @@ export default function MyPage() {
           <ChevronRightIcon size={16} color="#A9A2B8" />
         </div>
 
-        <div style={{ marginTop: 16, background: "var(--shoot-surface)", borderRadius: 20, border: "1px solid var(--shoot-border)", overflow: "hidden" }}>
-          {/* 07-screens.md "10 '내 그룹 관리' → 10a" — 2026-09-11 팀 결정. */}
-          <div onClick={() => nav.push({ id: "myGroupsManage" })} style={{ padding: "16px 18px", display: "flex", alignItems: "center", gap: 12, cursor: "pointer" }}>
-            <div style={{ width: 34, height: 34, borderRadius: 10, background: "var(--shoot-surface-alt)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
-              <UsersIcon size={16} color="var(--shoot-accent)" />
-            </div>
-            <div style={{ flex: 1, fontSize: 14, fontWeight: 800, color: "var(--shoot-text)" }}>내 그룹 관리</div>
-            <ChevronRightIcon size={16} color="#A9A2B8" />
+        {/* 2026-09-18 재수정: 한 박스 안에 두 행을 욱여넣던 방식(구분선으로 나눔)이 화면에 따라
+            칸 높이가 안 맞거나 잘려 보이는 문제가 있었다 — 아래 다른 카드들(저금통 코인·나의 배지·
+            개인 랭킹)과 똑같이 각자 독립된 카드 + 여백으로 바꿔서 항상 같은 크기로 나오게 했다. */}
+        {/* 07-screens.md "10 '내 그룹 관리' → 10a" — 2026-09-11 팀 결정. */}
+        <div
+          onClick={() => nav.push({ id: "myGroupsManage" })}
+          style={{ marginTop: 16, background: "var(--shoot-surface)", borderRadius: 20, border: "1px solid var(--shoot-border)", padding: "16px 18px", display: "flex", alignItems: "center", gap: 12, cursor: "pointer" }}
+        >
+          <div style={{ width: 34, height: 34, borderRadius: 10, background: "var(--shoot-surface-alt)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+            <UsersIcon size={16} color="var(--shoot-accent)" />
           </div>
-          <div style={{ height: 1, background: "var(--shoot-border)" }} />
-          {/* 2026-09-20 팀 요청(신규): 월별 목표 설정 — 2b(홈) 목표 카드와 같은 화면으로 push. */}
-          <div onClick={() => nav.push({ id: "monthlyGoalSetting" })} style={{ padding: "16px 18px", display: "flex", alignItems: "center", gap: 12, cursor: "pointer" }}>
-            <div style={{ width: 34, height: 34, borderRadius: 10, background: "var(--shoot-surface-alt)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
-              <FlagIcon size={16} color="var(--shoot-accent)" />
-            </div>
-            <div style={{ flex: 1, fontSize: 14, fontWeight: 800, color: "var(--shoot-text)" }}>월별 목표 설정</div>
-            <span style={{ fontSize: 10, fontWeight: 800, color: "#fff", background: "var(--shoot-accent)", borderRadius: 999, padding: "2px 8px", marginRight: 6 }}>NEW</span>
-            <ChevronRightIcon size={16} color="#A9A2B8" />
+          <div style={{ flex: 1, minWidth: 0, fontSize: 14, fontWeight: 800, color: "var(--shoot-text)" }}>내 그룹 관리</div>
+          <ChevronRightIcon size={16} color="#A9A2B8" />
+        </div>
+        {/* 2026-09-20 팀 요청(신규): 월별 목표 설정 — 2b(홈) 목표 카드와 같은 화면으로 push. */}
+        <div
+          onClick={() => nav.push({ id: "monthlyGoalSetting" })}
+          style={{ marginTop: 10, background: "var(--shoot-surface)", borderRadius: 20, border: "1px solid var(--shoot-border)", padding: "16px 18px", display: "flex", alignItems: "center", gap: 12, cursor: "pointer" }}
+        >
+          <div style={{ width: 34, height: 34, borderRadius: 10, background: "var(--shoot-surface-alt)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+            <FlagIcon size={16} color="var(--shoot-accent)" />
           </div>
+          <div style={{ flex: 1, minWidth: 0, fontSize: 14, fontWeight: 800, color: "var(--shoot-text)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>월별 목표 설정</div>
+          <span style={{ fontSize: 10, fontWeight: 800, color: "#fff", background: "var(--shoot-accent)", borderRadius: 999, padding: "2px 8px", marginRight: 6, flexShrink: 0 }}>NEW</span>
+          <ChevronRightIcon size={16} color="#A9A2B8" style={{ flexShrink: 0 }} />
         </div>
 
         {/* §7 "저금통 코인 카드"·"나의 배지 카드"(디자인 파일 없음, 2026-09-15 신규 구현) */}
@@ -105,6 +111,21 @@ export default function MyPage() {
           <ChevronRightIcon size={16} color="#A9A2B8" />
         </div>
 
+        {/* 개인 랭킹(2026-09-17 신규) — "개인 = 경쟁/랭킹" 지침. 그룹 데이터와는 무관, 개인 펫끼리만 비교한다. */}
+        <div
+          onClick={() => nav.push({ id: "personalRanking" })}
+          style={{ marginTop: 10, background: "var(--shoot-surface)", borderRadius: 20, padding: 18, display: "flex", alignItems: "center", gap: 14, border: "1px solid var(--shoot-border)", cursor: "pointer" }}
+        >
+          <div style={{ width: 44, height: 44, borderRadius: "50%", background: "var(--shoot-surface-alt)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 20, flexShrink: 0 }}>
+            🏆
+          </div>
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <div style={{ fontSize: 13, fontWeight: 700, color: "var(--shoot-text-muted)" }}>개인 랭킹</div>
+            <div style={{ fontSize: 16, fontWeight: 800, color: "var(--shoot-text)", marginTop: 2 }}>다른 사용자와 순위 겨루기</div>
+          </div>
+          <ChevronRightIcon size={16} color="#A9A2B8" />
+        </div>
+
         <div style={{ flex: 1 }} />
 
         <div
@@ -114,7 +135,7 @@ export default function MyPage() {
             await store.signOut();
             nav.logout();
           }}
-          style={{ height: 48, borderRadius: 16, background: "var(--shoot-surface)", border: "1.5px solid #E8B4B4", color: "#B23B3B", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 14, fontWeight: 800, cursor: "pointer" }}
+          style={{ marginTop: 20, height: 48, borderRadius: 16, background: "var(--shoot-surface)", border: "1.5px solid #E8B4B4", color: "#B23B3B", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 14, fontWeight: 800, cursor: "pointer" }}
         >
           로그아웃
         </div>

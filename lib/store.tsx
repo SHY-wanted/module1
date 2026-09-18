@@ -19,6 +19,7 @@ import {
   TODAY_DATE,
   generateId,
   generateInviteCode,
+  type AttendanceCheckin,
   type CategoryGoal,
   type Expense,
   type ExpenseReaction,
@@ -32,8 +33,13 @@ import {
   type Saving,
 } from "./mock";
 import { PERSONAL_CATS, groupToCats, makeCategory, type CategoryDef, type CategoryScope } from "./categories";
+import { sortPersonalRanking, type PersonalRankingEntry } from "./ranking";
 import {
+  CHECKIN_REWARD_COINS,
+  CHECKIN_STREAK_BONUS_MULTIPLIER,
+  CHECKIN_STREAK_LENGTH,
   DEFAULT_PET_COLORS,
+  FEED_COIN_COST,
   FEED_XP_DEFAULT,
   GOAL_ACHIEVED_REWARD_COINS,
   GOAL_ACHIEVED_REWARD_XP,
@@ -42,6 +48,7 @@ import {
   GROUP_XP_PER_SHARED_EXPENSE,
   applyXpGain,
   currentMonthString,
+  shiftDateKST,
   type PetColorPart,
 } from "./pets";
 
@@ -103,6 +110,12 @@ interface StoreState {
   expenseReactions: ExpenseReaction[];
   // P3 "데일리 먹이주기 팝업" — 지출을 기록한 직후, 오늘 아직 개인 펫에게 밥을 안 줬으면 연다.
   feedPopupPetId: string | null;
+  // 8a→8b "영수증 촬영/갤러리 선택" 임시 이미지(2026-09-17 실제 OCR 연동 신규) — window.history.pushState
+  // 로 넘어가는 StackScreen 파라미터엔 절대 넣지 않는다(사진 base64는 커서 브라우저 history state
+  // 용량 제한에 걸릴 수 있다) — 대신 이 store 쪽 React 상태로만 화면 전환 중에도 들고 있는다.
+  pendingReceiptImage: File | null;
+  // 출석체크(2026-09-20 추가) — 접속률을 올리기 위한 신규 기능. 내 출석 기록만 들어있다(RLS).
+  attendanceCheckins: AttendanceCheckin[];
 }
 
 interface JoinResult {
@@ -161,6 +174,8 @@ interface StoreValue extends StoreState {
   signUp: (name: string, email: string, password: string) => Promise<AuthResult>;
   // 2(로그인) — 실제 supabase.auth.signInWithPassword 호출.
   signIn: (email: string, password: string) => Promise<AuthResult>;
+  // 카카오 계정으로 로그인/가입(2026-09-18 신규) — 카카오 로그인 화면으로 리다이렉트한다.
+  signInWithKakao: () => Promise<AuthResult>;
   // "비밀번호를 잊으셨나요?" — 실제 supabase.auth.resetPasswordForEmail 호출. 좋아하는 색·취미 같은
   // 지식 기반 질문은 추측·주변인 유출에 취약해 쓰지 않기로 했다(2026-09-22 대화 중 결정) — 이메일 재설정
   // 링크가 실제 인증 수단이다. 링크는 app/reset-password(SPA 밖 라우트)로 보낸다.
@@ -211,6 +226,19 @@ interface StoreValue extends StoreState {
   // F23 그룹 피드 이모지 반응(hybranch) — 그룹 멤버만 남길 수 있다.
   addReaction: (expenseId: string, emoji: string) => Promise<MutationResult<ExpenseReaction>>;
   removeReaction: (expenseId: string, emoji: string) => Promise<boolean>;
+
+  // 출석체크(2026-09-20 추가) — 오늘 이미 했으면 ok:false. 전날까지 연속 출석 중이었으면 streak_day가
+  // 이어지고, 7일째(CHECKIN_STREAK_LENGTH)를 채우면 그날 코인이 2배 지급된 뒤 다음 날 1일째로 리셋된다.
+  checkInToday: () => Promise<MutationResult<AttendanceCheckin>>;
+
+  // 개인 랭킹(2026-09-17 신규) — "개인 = 경쟁/랭킹". supabase/009_personal_ranking.sql의
+  // get_personal_ranking()을 호출한다 — pets 테이블 RLS(본인/그룹 멤버 펫만 조회 가능)를 그대로 둔 채,
+  // 랭킹에 필요한 최소 컬럼(닉네임+성장 지표)만 노출하는 별도 함수라 그룹 펫 데이터는 애초에 섞이지
+  // 않는다. 전역 상태로 캐시하지 않고 화면(PersonalRanking)이 열릴 때마다 최신값을 받아온다.
+  fetchPersonalRanking: () => Promise<MutationResult<PersonalRankingEntry[]>>;
+
+  // 8a "영수증 촬영/갤러리 선택" → 8b로 넘길 임시 이미지(2026-09-17 실제 OCR 연동 신규).
+  setPendingReceiptImage: (file: File | null) => void;
 }
 
 const StoreContext = createContext<StoreValue | null>(null);
@@ -248,6 +276,9 @@ export function StoreProvider({ children }: { children: ReactNode }) {
   const [goalRewards, setGoalRewards] = useState<GoalReward[]>([]);
   const [expenseReactions, setExpenseReactions] = useState<ExpenseReaction[]>([]);
   const [feedPopupPetId, setFeedPopupPetId] = useState<string | null>(null);
+  const [pendingReceiptImage, setPendingReceiptImage] = useState<File | null>(null);
+  // 출석체크 — 완전히 새 기능이라 목업 시드가 없다(다른 pets v2 테이블들과 같은 이유).
+  const [attendanceCheckins, setAttendanceCheckins] = useState<AttendanceCheckin[]>([]);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
   const toastTimerRef = useRef<number | null>(null);
 
@@ -268,9 +299,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     async (groupId: string, expenseUserId: string, expenseDate: string) => {
       const pet = pets.find((p) => p.group_id === groupId);
       if (!pet) return;
-      const windowStart = new Date(expenseDate + "T00:00:00");
-      windowStart.setDate(windowStart.getDate() - (GROUP_PARTICIPATION_WINDOW_DAYS - 1));
-      const windowStartStr = windowStart.toISOString().slice(0, 10);
+      const windowStartStr = shiftDateKST(expenseDate, -(GROUP_PARTICIPATION_WINDOW_DAYS - 1));
       const recentContributors = new Set(
         expenses.filter((e) => e.group_id === groupId && e.is_shared && e.date >= windowStartStr && e.date <= expenseDate).map((e) => e.user_id)
       );
@@ -347,7 +376,9 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       supabase.from("goal_rewards").select("*"),
       // F23 이모지 반응 — 내가 볼 수 있는 지출의 반응만(RLS).
       supabase.from("expense_reactions").select("*"),
-    ]).then(([groupsRes, membersRes, expensesRes, savingsRes, petsRes, goalsRes, rewardsRes, reactionsRes]) => {
+      // 출석체크 — 본인 것만(RLS). 연속 출석 계산에 최근 기록이 필요하므로 전부 읽어온다.
+      supabase.from("attendance_checkins").select("*"),
+    ]).then(([groupsRes, membersRes, expensesRes, savingsRes, petsRes, goalsRes, rewardsRes, reactionsRes, checkinsRes]) => {
       if (!active) return;
       if (!groupsRes.error && groupsRes.data) setGroups(groupsRes.data);
       if (!membersRes.error && membersRes.data) setGroupMembers(membersRes.data);
@@ -357,6 +388,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       if (!goalsRes.error && goalsRes.data) setCategoryGoals(goalsRes.data);
       if (!rewardsRes.error && rewardsRes.data) setGoalRewards(rewardsRes.data);
       if (!reactionsRes.error && reactionsRes.data) setExpenseReactions(reactionsRes.data);
+      if (!checkinsRes.error && checkinsRes.data) setAttendanceCheckins(checkinsRes.data);
     });
     return () => {
       active = false;
@@ -440,6 +472,8 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       goalRewards,
       expenseReactions,
       feedPopupPetId,
+      pendingReceiptImage,
+      attendanceCheckins,
       currentUserId,
 
       // P1: 그룹 이름이 비어 있으면 호출하는 쪽(화면)에서 막아야 한다 — 여기서도 방어적으로 한 번 더 막는다.
@@ -609,6 +643,21 @@ export function StoreProvider({ children }: { children: ReactNode }) {
         return { ok: true };
       },
 
+      // 카카오 계정 연동(2026-09-18 신규) — supabase.auth.signInWithOAuth은 카카오 로그인 화면으로
+      // 브라우저를 통째로 이동시킨다(팝업 아님). 로그인/동의 후 Supabase가 이 앱 주소(redirectTo)로
+      // 다시 돌려보내면, Supabase 클라이언트가 URL의 토큰을 자동으로 읽어 세션을 만든다 — 그러면
+      // 이미 있는 onAuthStateChange 구독이 session을 갱신하고, Main 화면의 effect가 자동으로
+      // enterApp()을 불러 홈으로 들어간다(신규 사용자면 Supabase가 profiles 행도 트리거로 만든다).
+      // 그래서 이 함수는 성공/실패를 굳이 안 돌려준다 — 리다이렉트 자체가 안 되는 드문 경우만 에러로 본다.
+      async signInWithKakao(): Promise<AuthResult> {
+        const { error } = await supabase.auth.signInWithOAuth({
+          provider: "kakao",
+          options: { redirectTo: window.location.origin },
+        });
+        if (error) return { ok: false, error: translateAuthError(error.message) };
+        return { ok: true };
+      },
+
       // "비밀번호를 잊으셨나요?" — 실제 supabase.auth.resetPasswordForEmail. 성공 여부와 무관하게(가입
       // 안 된 이메일이어도) 같은 안내를 보여주는 게 보통이지만, Supabase가 실제로 반환한 에러는 그대로
       // 옮겨서 화면에 보여준다(다른 signXxx 액션들과 일관되게).
@@ -754,17 +803,23 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       },
 
       // P3 "밥 주기" — 개인 펫 전용, 하루 1회 제한(§3). XP 지급·단계 승급은 lib/pets.ts applyXpGain 참고.
+      // 2026-09-18 사용자 요청: "하루 한 번" 제한을 없애고, 코인이 있는 만큼 계속 먹일 수 있게
+      // 바꿨다(먹일 때마다 FEED_COIN_COST만큼 코인을 쓴다 — 코인이 부족하면 못 먹인다).
+      // last_fed_date는 여전히 갱신한다 — "며칠째 안 먹였는지"로 시무룩 여부를 판단하는 데 쓰인다.
       async feedPet(petId: string): Promise<MutationResult<{ xpGained: number; leveledUp: boolean }>> {
         const pet = pets.find((p) => p.id === petId);
         if (!pet) return { ok: false, error: "펫을 찾을 수 없어요" };
-        if (pet.last_fed_date === TODAY_DATE) return { ok: false, error: "오늘은 이미 밥을 줬어요" };
+        if (pet.total_coins < FEED_COIN_COST) return { ok: false, error: "코인이 부족해요" };
         const { stageIndex, xpProgress } = applyXpGain(pet.stage_index, pet.xp_progress, FEED_XP_DEFAULT);
+        const newTotalCoins = pet.total_coins - FEED_COIN_COST;
         const { error } = await supabase
           .from("pets")
-          .update({ stage_index: stageIndex, xp_progress: xpProgress, last_fed_date: TODAY_DATE })
+          .update({ stage_index: stageIndex, xp_progress: xpProgress, last_fed_date: TODAY_DATE, total_coins: newTotalCoins })
           .eq("id", petId);
         if (error) return { ok: false, error: error.message };
-        setPets((prev) => prev.map((p) => (p.id === petId ? { ...p, stage_index: stageIndex, xp_progress: xpProgress, last_fed_date: TODAY_DATE } : p)));
+        setPets((prev) =>
+          prev.map((p) => (p.id === petId ? { ...p, stage_index: stageIndex, xp_progress: xpProgress, last_fed_date: TODAY_DATE, total_coins: newTotalCoins } : p))
+        );
         return { ok: true, data: { xpGained: FEED_XP_DEFAULT, leveledUp: stageIndex > pet.stage_index } };
       },
 
@@ -919,8 +974,54 @@ export function StoreProvider({ children }: { children: ReactNode }) {
         setExpenseReactions((prev) => prev.filter((r) => !(r.expense_id === expenseId && r.user_id === session.user.id && r.emoji === emoji)));
         return true;
       },
+
+      // 출석체크 — 접속률을 올리기 위한 신규 기능(2026-09-20 사용자 요청). 하루 한 번, 전날도 출석했으면
+      // streak_day가 이어지고 7일째면 코인이 2배(CHECKIN_STREAK_BONUS_MULTIPLIER) 지급된 뒤 리셋된다.
+      async checkInToday(): Promise<MutationResult<AttendanceCheckin>> {
+        if (!session) return { ok: false, error: "로그인이 필요해요" };
+        const already = attendanceCheckins.find((c) => c.user_id === session.user.id && c.checkin_date === TODAY_DATE);
+        if (already) return { ok: false, error: "오늘은 이미 출석체크했어요" };
+
+        const yesterdayStr = shiftDateKST(TODAY_DATE, -1);
+        const prevCheckin = attendanceCheckins.find((c) => c.user_id === session.user.id && c.checkin_date === yesterdayStr);
+        // 전날 기록이 있고 아직 주기(7일)를 다 안 채웠으면 이어가고, 없거나 이미 꽉 찼으면 1일째부터 새로 시작한다.
+        const streakDay = prevCheckin && prevCheckin.streak_day < CHECKIN_STREAK_LENGTH ? prevCheckin.streak_day + 1 : 1;
+        const coinsEarned = streakDay >= CHECKIN_STREAK_LENGTH ? CHECKIN_REWARD_COINS * CHECKIN_STREAK_BONUS_MULTIPLIER : CHECKIN_REWARD_COINS;
+
+        const newCheckin: AttendanceCheckin = {
+          id: crypto.randomUUID(),
+          user_id: session.user.id,
+          checkin_date: TODAY_DATE,
+          streak_day: streakDay,
+          coins_earned: coinsEarned,
+          created_at: new Date().toISOString(),
+        };
+        const { error } = await supabase.from("attendance_checkins").insert(newCheckin);
+        if (error) return { ok: false, error: error.message };
+        setAttendanceCheckins((prev) => [...prev, newCheckin]);
+
+        const personalPet = pets.find((p) => p.user_id === currentUserId);
+        if (personalPet) {
+          const newTotalCoins = personalPet.total_coins + coinsEarned;
+          await supabase.from("pets").update({ total_coins: newTotalCoins }).eq("id", personalPet.id);
+          setPets((prev) => prev.map((p) => (p.id === personalPet.id ? { ...p, total_coins: newTotalCoins } : p)));
+        }
+        return { ok: true, data: newCheckin };
+      },
+
+      // 개인 랭킹 — 로그인 전(목업 데모 계정)엔 RPC를 부를 세션이 없으니 빈 목록을 돌려준다.
+      async fetchPersonalRanking(): Promise<MutationResult<PersonalRankingEntry[]>> {
+        if (!session) return { ok: true, data: [] };
+        const { data, error } = await supabase.rpc("get_personal_ranking");
+        if (error) return { ok: false, error: error.message };
+        return { ok: true, data: sortPersonalRanking((data ?? []) as PersonalRankingEntry[]) };
+      },
+
+      setPendingReceiptImage(file: File | null) {
+        setPendingReceiptImage(file);
+      },
     }),
-    [profiles, session, authReady, currentUserId, currentUserAvatarUrl, groups, groupMembers, expenses, savings, incomes, personalCategories, groupCategoriesById, toastMessage, isLoggedIn, notificationSettings, darkMode, pets, categoryGoals, goalRewards, expenseReactions, feedPopupPetId, supabase, growGroupPetFromSharedExpense]
+    [profiles, session, authReady, currentUserId, currentUserAvatarUrl, groups, groupMembers, expenses, savings, incomes, personalCategories, groupCategoriesById, toastMessage, isLoggedIn, notificationSettings, darkMode, pets, categoryGoals, goalRewards, expenseReactions, feedPopupPetId, pendingReceiptImage, attendanceCheckins, supabase, growGroupPetFromSharedExpense]
   );
 
   return <StoreContext.Provider value={value}>{children}</StoreContext.Provider>;

@@ -6,7 +6,7 @@ import GroupCreateType from "./screens/GroupCreateType";
 import GroupNameFamily from "./screens/GroupNameFamily";
 import GroupNameMarried from "./screens/GroupNameMarried";
 import GroupNameCouple from "./screens/GroupNameCouple";
-import GroupNameRoommate from "./screens/GroupNameRoommate";
+import GroupNameFriend from "./screens/GroupNameFriend";
 import GroupNameClub from "./screens/GroupNameClub";
 import GroupNameOther from "./screens/GroupNameOther";
 import GroupCreateDone from "./screens/GroupCreateDone";
@@ -28,6 +28,7 @@ import PetCustomize from "./screens/PetCustomize";
 import MyBadges from "./screens/MyBadges";
 import MonthlyGoalSetting from "./screens/MonthlyGoalSetting";
 import MonthlyGoalReport from "./screens/MonthlyGoalReport";
+import PersonalRanking from "./screens/PersonalRanking";
 
 export type StackPhase = "entering" | "settled" | "leaving";
 
@@ -49,8 +50,8 @@ function renderScreen(screen: StackScreen) {
           return <GroupNameMarried />;
         case "COUPLE":
           return <GroupNameCouple />;
-        case "ROOMMATE":
-          return <GroupNameRoommate />;
+        case "FRIEND":
+          return <GroupNameFriend />;
         case "CLUB":
           return <GroupNameClub />;
         default:
@@ -95,6 +96,8 @@ function renderScreen(screen: StackScreen) {
       return <MonthlyGoalSetting />;
     case "monthlyGoalReport":
       return <MonthlyGoalReport />;
+    case "personalRanking":
+      return <PersonalRanking />;
     default:
       return null;
   }

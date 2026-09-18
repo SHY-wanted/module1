@@ -35,15 +35,12 @@ export function formatFullDateKorean(dateStr: string): string {
 }
 
 // Home(2b)·MyPage(10)·GroupDetail(5b)에서 공통으로 쓰는 "성 뗀 이름" 로직.
-// design/shoot/Home.dc.html·MyPage.dc.html의 stripSurname()을 그대로 옮김.
-const COMPOUND_SURNAMES = ["남궁", "황보", "제갈", "사공", "선우", "서문", "독고", "동방"];
-export function stripSurname(fullName: string): string {
-  const twoChar = COMPOUND_SURNAMES.find((s) => fullName.startsWith(s));
-  if (twoChar && fullName.length > twoChar.length) return fullName.slice(twoChar.length);
-  return fullName.length > 1 ? fullName.slice(1) : fullName;
-}
-
+// 2026-09-19: 이 필드는 실제 "성+이름"이 아니라 자유 형식 닉네임이다(profiles.name — 마이페이지
+// "10b 내 정보 변경"에서 사용자가 직접 정한다, docs/07-screens.md:127). 예전엔 design/shoot의
+// Home.dc.html·MyPage.dc.html을 그대로 옮긴 stripSurname()으로 첫 글자를 "성"으로 보고 뗐는데,
+// "포도"처럼 성이 없는 닉네임을 넣으면 "포"가 성인 줄 알고 떼어내 "도"만 남았다(사용자 신고).
+// docs/07-screens.md:43의 팀 결정도 "1(회원가입)에서 받은 이름이... 그대로 표시된다"라고 못박고
+// 있어서, 애초에 성을 떼면 안 됐다. 그래서 이 함수를 지우고 부르던 자리는 원본 이름을 그대로 쓴다.
 export function initialOf(fullName: string): string {
-  const given = stripSurname(fullName);
-  return given.charAt(0) || fullName.charAt(0) || "?";
+  return fullName.charAt(0) || "?";
 }

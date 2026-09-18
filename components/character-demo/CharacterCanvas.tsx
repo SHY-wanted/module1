@@ -11,15 +11,19 @@
 // 코인은 어떤 마스크에도 없으므로 어떤 색을 골라도 금색 그대로 남는다.
 import { useEffect, useRef, useState } from "react";
 import {
+  cheekMaskPath,
+  grooveMaskPath,
   maskPath,
   stageCustomization,
+  stageHasCheek,
+  stageHasGroove,
   stageImageCrop,
   stageImageSizes,
   stageImages,
   type CharacterStage,
   type ColorPart,
 } from "@/lib/characterStages";
-import { applyMaskColor } from "@/lib/recolor";
+import { applyMaskColor, paintCheek, paintPureWhite } from "@/lib/recolor";
 import styles from "./characterDemo.module.css";
 
 /** 이미지를 ImageData로 한 번만 읽어두고 재사용한다(색을 바꿀 때마다 다시 디코딩하지 않도록). */
@@ -79,6 +83,19 @@ export default function CharacterCanvas({
         for (const part of parts) {
           const mask = await loadImageData(maskPath(stage, part), size.width, size.height);
           applyMaskColor(working.data, mask.data, colors[part]);
+        }
+
+        // 볼터치는 부위 색을 다 입힌 뒤 고정색으로 얹는다. 몸 마스크에서 빼내지 않으므로
+        // 두 영역이 어긋나 가장자리가 번지거나 흰 얼룩으로 남는 일이 없다.
+        if (stageHasCheek[stage]) {
+          const cheek = await loadImageData(cheekMaskPath(stage), size.width, size.height);
+          paintCheek(working.data, cheek.data);
+        }
+
+        // 가계부 안쪽 밝은 홈은 어떤 색을 골라도 순백색으로 고정한다.
+        if (stageHasGroove[stage]) {
+          const groove = await loadImageData(grooveMaskPath(stage), size.width, size.height);
+          paintPureWhite(working.data, groove.data);
         }
         if (cancelled) return;
 

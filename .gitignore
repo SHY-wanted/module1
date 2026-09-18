@@ -42,3 +42,8 @@ supabase/.temp
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# tesseract.js가 Node에서 OCR을 실행할 때 작업 디렉터리에 내려받는 언어 데이터 캐시 — 소스 아님.
+*.traineddata
+
+certificates
