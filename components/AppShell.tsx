@@ -18,6 +18,7 @@ import Home from "./screens/Home";
 import GroupList from "./screens/GroupList";
 import ExpenseListTab from "./screens/ExpenseListTab";
 import MyPage from "./screens/MyPage";
+import PetFeedPopup from "./PetFeedPopup";
 
 interface HistoryState {
   stack: StackScreen[];
@@ -198,6 +199,9 @@ export default function AppShell() {
         <div className="shoot-toast" data-visible={store.toastMessage !== null}>
           {store.toastMessage}
         </div>
+        {/* P3 "데일리 먹이주기 팝업"(docs/08-pet-feature-spec.md §3, 2026-09-15 신규) — 토스트와 같은
+            자리(화면 전체 공용)에서 store.feedPopupPetId가 켜지면 뜬다. */}
+        <PetFeedPopup />
       </div>
     </NavContext.Provider>
   );

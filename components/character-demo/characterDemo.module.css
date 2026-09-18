@@ -1,0 +1,421 @@
+/* components/character-demo/characterDemo.module.css
+   성장형 캐릭터 데모 전용 스타일. 스펙 원문의 App.css 자리 — 이 프로젝트는 Next.js라서
+   전역 CSS를 더럽히지 않도록 CSS Module로 둔다(클래스명이 자동으로 격리된다).
+   루트 layout.tsx가 body에 overflow-hidden을 걸어두므로, 스크롤은 .page가 직접 맡는다. */
+
+.page {
+  --demo-bg: #f6f5f9;
+  --demo-surface: #ffffff;
+  --demo-border: #e5e2ef;
+  --demo-ink: #232030;
+  --demo-ink-soft: #6f6a80;
+  --demo-accent: #6a5ecf;
+  --demo-accent-soft: #ece9fb;
+  --demo-locked: #9a94ab;
+
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  background: var(--demo-bg);
+  color: var(--demo-ink);
+  font-family: var(--font-geist-sans), system-ui, sans-serif;
+  padding: 28px 20px 48px;
+}
+
+@media (prefers-color-scheme: dark) {
+  .page {
+    --demo-bg: #16151c;
+    --demo-surface: #201f28;
+    --demo-border: #33313f;
+    --demo-ink: #ece9f5;
+    --demo-ink-soft: #a29cb4;
+    --demo-accent: #9c90f0;
+    --demo-accent-soft: #2e2a44;
+    --demo-locked: #6a6479;
+  }
+}
+
+.inner {
+  max-width: 560px;
+  margin: 0 auto;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.title {
+  font-size: 22px;
+  font-weight: 800;
+  margin: 0;
+  text-wrap: balance;
+}
+
+/* ---------- 선택된 캐릭터 ---------- */
+
+.characterCard {
+  background: var(--demo-surface);
+  border: 1px solid var(--demo-border);
+  border-radius: 20px;
+  padding: 20px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+}
+
+/* 원본 PNG에 박혀 있는 라벨 배지·가장자리 자국을 가리기 위한 크롭 프레임.
+   PNG 파일 자체는 그대로 두고, 여기서 보이는 영역만 제한한다(StageImage.tsx 참고). */
+.cropFrame {
+  position: relative;
+  overflow: hidden;
+  margin: 0 auto;
+}
+
+.cropImage {
+  position: absolute;
+  max-width: none;
+}
+
+/* 캐릭터를 바꿀 때만 재생되는 페이드+스케일 — PNG 자체는 건드리지 않는다. */
+.characterEnter {
+  animation: characterEnter 260ms ease-out;
+}
+
+@keyframes characterEnter {
+  from {
+    opacity: 0;
+    transform: scale(0.92);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .characterEnter {
+    animation: none;
+  }
+}
+
+.characterMeta {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+  justify-content: center;
+}
+
+.metaItem {
+  background: var(--demo-accent-soft);
+  border-radius: 12px;
+  padding: 8px 14px;
+  text-align: center;
+  min-width: 96px;
+}
+
+.metaLabel {
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--demo-ink-soft);
+}
+
+.metaValue {
+  font-size: 15px;
+  font-weight: 800;
+  margin-top: 2px;
+}
+
+.characterCanvas {
+  display: block;
+  margin: 0 auto;
+}
+
+.canvasError {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 12px;
+  color: var(--demo-ink-soft);
+  text-align: center;
+}
+
+/* ---------- 캐릭터 꾸미기 ---------- */
+
+.customizer {
+  background: var(--demo-surface);
+  border: 1px solid var(--demo-border);
+  border-radius: 20px;
+  padding: 18px 20px 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.partList {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.partRow {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding-bottom: 12px;
+  border-bottom: 1px solid var(--demo-border);
+}
+
+.partRow:last-child {
+  padding-bottom: 0;
+  border-bottom: none;
+}
+
+.partHead {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.partLabel {
+  font-size: 14px;
+  font-weight: 700;
+}
+
+.colorInput {
+  width: 40px;
+  height: 28px;
+  padding: 0;
+  border: 1px solid var(--demo-border);
+  border-radius: 8px;
+  background: none;
+  cursor: pointer;
+}
+
+.presetRow {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.presetDot {
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  border: 2px solid var(--demo-border);
+  padding: 0;
+  cursor: pointer;
+  transition: transform 120ms ease-out;
+}
+
+.presetDot:hover {
+  transform: scale(1.1);
+}
+
+.presetDotOn {
+  border-color: var(--demo-ink);
+  box-shadow: 0 0 0 2px var(--demo-surface) inset;
+}
+
+.presetDot:focus-visible,
+.colorInput:focus-visible {
+  outline: 2px solid var(--demo-accent);
+  outline-offset: 2px;
+}
+
+.customizerNote {
+  margin: 0;
+  font-size: 12px;
+  color: var(--demo-ink-soft);
+}
+
+/* ---------- 성장 진행도 ---------- */
+
+.progressCard {
+  background: var(--demo-surface);
+  border: 1px solid var(--demo-border);
+  border-radius: 20px;
+  padding: 18px 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.progressHead {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.progressTitle {
+  font-size: 14px;
+  font-weight: 800;
+  margin: 0;
+}
+
+.progressValue {
+  font-size: 14px;
+  font-weight: 800;
+  color: var(--demo-accent);
+  font-variant-numeric: tabular-nums;
+}
+
+.progressTrack {
+  height: 10px;
+  border-radius: 999px;
+  background: var(--demo-accent-soft);
+  overflow: hidden;
+}
+
+.progressFill {
+  height: 100%;
+  border-radius: 999px;
+  background: var(--demo-accent);
+  transition: width 320ms ease-out;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .progressFill {
+    transition: none;
+  }
+}
+
+.progressNote {
+  font-size: 12px;
+  color: var(--demo-ink-soft);
+  margin: 0;
+  line-height: 1.5;
+}
+
+/* ---------- 성장 버튼 ---------- */
+
+.growButton {
+  width: 100%;
+  height: 52px;
+  border: none;
+  border-radius: 16px;
+  background: var(--demo-accent);
+  color: #ffffff;
+  font-size: 15px;
+  font-weight: 800;
+  font-family: inherit;
+  cursor: pointer;
+  transition: filter 120ms ease-out;
+}
+
+.growButton:hover:not(:disabled) {
+  filter: brightness(1.06);
+}
+
+.growButton:disabled {
+  background: var(--demo-accent-soft);
+  color: var(--demo-ink-soft);
+  cursor: default;
+}
+
+.growButton:focus-visible,
+.stageCard:focus-visible {
+  outline: 2px solid var(--demo-accent);
+  outline-offset: 2px;
+}
+
+/* ---------- 캐릭터 선택 ---------- */
+
+.selectorSection {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.sectionTitle {
+  font-size: 16px;
+  font-weight: 800;
+  margin: 0;
+}
+
+.stageGrid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 10px;
+}
+
+@media (max-width: 420px) {
+  .stageGrid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+.stageCard {
+  background: var(--demo-surface);
+  border: 2px solid var(--demo-border);
+  border-radius: 16px;
+  padding: 10px 8px 12px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  font-family: inherit;
+  color: inherit;
+  cursor: pointer;
+  transition: border-color 120ms ease-out, transform 120ms ease-out;
+}
+
+.stageCard:hover:not(:disabled) {
+  transform: translateY(-2px);
+}
+
+.stageCardSelected {
+  border-color: var(--demo-accent);
+  background: var(--demo-accent-soft);
+}
+
+.stageCardLocked {
+  cursor: default;
+  color: var(--demo-locked);
+}
+
+.stageThumbFrame {
+  position: relative;
+  width: 100%;
+  height: 72px;
+  display: flex;
+  justify-content: center;
+}
+
+.stageThumbLocked {
+  /* 잠긴 단계는 실루엣만 — 원본 PNG는 그대로 두고 화면에서만 가린다. */
+  filter: grayscale(1) brightness(1.35) opacity(0.45);
+}
+
+.lockMark {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 22px;
+}
+
+.stageNo {
+  font-size: 10px;
+  font-weight: 700;
+  color: var(--demo-ink-soft);
+  letter-spacing: 0.04em;
+}
+
+.stageName {
+  font-size: 13px;
+  font-weight: 800;
+}
+
+.stageState {
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--demo-accent);
+  min-height: 15px;
+}
+
+.stageStateLocked {
+  color: var(--demo-locked);
+}

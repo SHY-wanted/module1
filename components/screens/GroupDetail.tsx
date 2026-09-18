@@ -4,11 +4,13 @@
 import { useState } from "react";
 import { useNav } from "../NavContext";
 import { useStore } from "@/lib/store";
-import { getGroupMembersWithProfile, getGroupFeed } from "@/lib/selectors";
+import { getGroupMembersWithProfile, getGroupFeed, getGroupPet } from "@/lib/selectors";
 import { GROUP_TYPE_VISUAL } from "@/lib/groupTypeVisual";
 import { formatRelativeTime, formatSignedWon, initialOf } from "@/lib/format";
 import { getCategoryVisual } from "@/lib/categories";
-import { ChevronLeftIcon, ShareIcon, UsersIcon } from "../icons";
+import { REACTION_EMOJI_PALETTE } from "@/lib/pets";
+import PetMascot from "../PetMascot";
+import { ChevronLeftIcon, ChevronRightIcon, ShareIcon, UsersIcon } from "../icons";
 import { typeIconFor } from "./groupIcon";
 
 const AVATAR_PALETTE = ["#FFF0F6", "#F0EEFF", "#E8F9F7", "#FFFBE8", "#EBF5FF"];
@@ -17,9 +19,14 @@ export default function GroupDetail({ groupId }: { groupId: string }) {
   const nav = useNav();
   const store = useStore();
   const [panelOpen, setPanelOpen] = useState(false);
+  // F23 이모지 반응(hybranch, 2026-09-15 추가) — 어느 지출 카드에 이모지 피커가 열려있는지.
+  const [reactingExpenseId, setReactingExpenseId] = useState<string | null>(null);
   const group = store.groups.find((g) => g.id === groupId);
   const members = getGroupMembersWithProfile(store.groupMembers, store.profiles, groupId);
   const feed = getGroupFeed(store.expenses, store.savings, groupId);
+  // 저금통 펫 키우기(docs/08-pet-feature-spec.md §1, 2026-09-15 신규) — 그룹 펫(그룹원이 함께 키움).
+  // P6(그룹 랭킹)은 그룹 펫 XP 산정 방식이 팀 미정이라 뺐다(07-screens.md 참고) — 여기선 펫 카드만.
+  const groupPet = getGroupPet(store.pets, groupId);
 
   if (!group) {
     return (
@@ -102,6 +109,25 @@ export default function GroupDetail({ groupId }: { groupId: string }) {
           </>
         )}
 
+        {/* §1 "그룹 펫"(디자인 파일 없음, 2026-09-15 신규) — 그룹원이 함께 키우는 펫 1마리. */}
+        <div
+          onClick={() =>
+            nav.push(groupPet ? { id: "petDetail", scope: { kind: "group", groupId } } : { id: "petSelect", scope: { kind: "group", groupId } })
+          }
+          style={{ background: "var(--shoot-surface)", borderRadius: 16, border: "1px solid var(--shoot-border)", padding: "14px 16px", display: "flex", alignItems: "center", gap: 12, cursor: "pointer", marginBottom: 18 }}
+        >
+          <div style={{ width: 40, height: 40, borderRadius: "50%", background: "var(--shoot-surface-alt)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0, overflow: "hidden" }}>
+            {groupPet ? <PetMascot pet={groupPet} size={34} /> : <span style={{ fontSize: 18 }}>🐣</span>}
+          </div>
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <div style={{ fontSize: 13, fontWeight: 800, color: "var(--shoot-text)" }}>그룹 저금통 펫</div>
+            <div style={{ fontSize: 11, color: "var(--shoot-text-muted)", fontWeight: 600, marginTop: 2 }}>
+              {groupPet ? `${groupPet.pet_name?.trim() || "우리 펫"} · ${groupPet.stage_index}단계` : "아직 없어요 — 함께 데려와요"}
+            </div>
+          </div>
+          <ChevronRightIcon size={16} color="#A9A2B8" />
+        </div>
+
         <div style={{ fontSize: 13, fontWeight: 800, color: "var(--shoot-text-muted)", marginBottom: 10 }}>지출·저금 피드</div>
         <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
           {feed.map((f) => {
@@ -111,19 +137,75 @@ export default function GroupDetail({ groupId }: { groupId: string }) {
             const category = isSaving ? "저금" : f.data.category;
             const visualCat = isSaving ? { light: "#E8F9F7", ink: "#1D7A69" } : getCategoryVisual(f.data.category);
             const key = `${f.kind}-${f.data.id}`;
+            // F23 이모지 반응(hybranch) — 저금 카드엔 없고 지출 카드에만("그룹 피드 지출 카드" 스펙 그대로).
+            const reactions = isSaving ? [] : store.expenseReactions.filter((r) => r.expense_id === f.data.id);
+            const reactionCounts = new Map<string, number>();
+            for (const r of reactions) reactionCounts.set(r.emoji, (reactionCounts.get(r.emoji) ?? 0) + 1);
+            const myEmojis = new Set(reactions.filter((r) => r.user_id === store.currentUserId).map((r) => r.emoji));
             return (
-              <div key={key} style={{ background: "var(--shoot-surface)", borderRadius: 16, padding: "12px 14px", display: "flex", alignItems: "center", gap: 12, boxShadow: "0 2px 8px rgba(45,42,62,0.05)" }}>
-                {/* visualCat.light도 고정 파스텔이라 글자색은 항상 어두운 고정색이어야 한다. */}
-                <div style={{ width: 34, height: 34, borderRadius: 12, background: visualCat.light, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 13, fontWeight: 800, color: "#2D2A3E", flexShrink: 0 }}>
-                  {initialOf(authorName)}
-                </div>
-                <div style={{ flex: 1, minWidth: 0 }}>
-                  <div style={{ fontSize: 13, fontWeight: 800, color: "var(--shoot-text)" }}>{merchant}</div>
-                  <div style={{ fontSize: 11, color: "var(--shoot-text-muted)", fontWeight: 600 }}>
-                    {category} · {formatRelativeTime(f.data.created_at)}
+              <div key={key} style={{ background: "var(--shoot-surface)", borderRadius: 16, padding: "12px 14px", boxShadow: "0 2px 8px rgba(45,42,62,0.05)" }}>
+                <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+                  {/* visualCat.light도 고정 파스텔이라 글자색은 항상 어두운 고정색이어야 한다. */}
+                  <div style={{ width: 34, height: 34, borderRadius: 12, background: visualCat.light, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 13, fontWeight: 800, color: "#2D2A3E", flexShrink: 0 }}>
+                    {initialOf(authorName)}
                   </div>
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{ fontSize: 13, fontWeight: 800, color: "var(--shoot-text)" }}>{merchant}</div>
+                    <div style={{ fontSize: 11, color: "var(--shoot-text-muted)", fontWeight: 600 }}>
+                      {category} · {formatRelativeTime(f.data.created_at)}
+                    </div>
+                  </div>
+                  <div style={{ fontSize: 14, fontWeight: 800, color: isSaving ? "#1D7A69" : "#B23B3B" }}>{formatSignedWon(f.data.amount, isSaving)}</div>
                 </div>
-                <div style={{ fontSize: 14, fontWeight: 800, color: isSaving ? "#1D7A69" : "#B23B3B" }}>{formatSignedWon(f.data.amount, isSaving)}</div>
+
+                {!isSaving && (
+                  <div style={{ display: "flex", flexWrap: "wrap", alignItems: "center", gap: 6, marginTop: 10 }}>
+                    {Array.from(reactionCounts.entries()).map(([emoji, count]) => {
+                      const mine = myEmojis.has(emoji);
+                      return (
+                        <div
+                          key={emoji}
+                          onClick={() => (mine ? store.removeReaction(f.data.id, emoji) : store.addReaction(f.data.id, emoji))}
+                          style={{
+                            fontSize: 12,
+                            fontWeight: 700,
+                            padding: "3px 9px",
+                            borderRadius: 12,
+                            background: mine ? "var(--shoot-surface-alt)" : "var(--shoot-divider)",
+                            border: mine ? "1.5px solid var(--shoot-accent)" : "1.5px solid transparent",
+                            color: "var(--shoot-text)",
+                            cursor: "pointer",
+                          }}
+                        >
+                          {emoji} {count}
+                        </div>
+                      );
+                    })}
+                    <div
+                      onClick={() => setReactingExpenseId((cur) => (cur === f.data.id ? null : f.data.id))}
+                      style={{ fontSize: 12, fontWeight: 700, padding: "3px 9px", borderRadius: 12, border: "1.5px dashed var(--shoot-border)", color: "var(--shoot-text-muted)", cursor: "pointer" }}
+                    >
+                      + 반응
+                    </div>
+                  </div>
+                )}
+
+                {reactingExpenseId === f.data.id && (
+                  <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginTop: 8, padding: 8, background: "var(--shoot-surface-alt)", borderRadius: 12 }}>
+                    {REACTION_EMOJI_PALETTE.map((emoji) => (
+                      <div
+                        key={emoji}
+                        onClick={() => {
+                          store.addReaction(f.data.id, emoji);
+                          setReactingExpenseId(null);
+                        }}
+                        style={{ fontSize: 16, cursor: "pointer", padding: 2 }}
+                      >
+                        {emoji}
+                      </div>
+                    ))}
+                  </div>
+                )}
               </div>
             );
           })}

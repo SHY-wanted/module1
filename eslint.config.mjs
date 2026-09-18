@@ -12,6 +12,8 @@ const eslintConfig = defineConfig([
     "out/**",
     "build/**",
     "next-env.d.ts",
+    // Node로 직접 돌리는 일회성 도구 스크립트(CommonJS) — Next.js 앱 번들에 안 들어간다.
+    "scripts/**",
   ]),
 ]);
 

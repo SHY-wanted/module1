@@ -111,6 +111,9 @@ export default function ExpenseInput({ expenseId }: { expenseId?: string }) {
       if (store.notificationSettings.expenseConfirm) {
         store.showToast(`${formatWon(amount)}, ${category}가 저장됐어요`);
       }
+      // P3 "데일리 먹이주기 팝업"(docs/08-pet-feature-spec.md §3) — "지출을 하나라도 기록한 직후"만
+      // 해당(수정 제외), 개인 펫이 있고 오늘 아직 안 먹였으면 store가 알아서 연다.
+      store.openFeedPopupIfEligible();
     }
     // 07-screens.md "6 '저장하기' → 7(지출 목록)로 복귀" — 2026-09-11 팀 결정.
     nav.back();

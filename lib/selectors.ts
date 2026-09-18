@@ -1,11 +1,19 @@
 // lib/selectors.ts — 화면에서 그대로 쓰는 "표시용" 파생 데이터를 스토어 원본 배열에서 계산한다.
 // 그룹명·작성자 이름처럼 표시용 텍스트는 mock.ts에 중복 저장하지 않고 여기서 id로 조인해서 만든다.
 
-import type { Expense, Group, GroupMember, MockIncome, Profile, Saving } from "./mock";
+import type { Expense, Group, GroupMember, MockIncome, Pet, Profile, Saving } from "./mock";
 import { monthLabel } from "./format";
 
 export function getProfile(profiles: Profile[], userId: string): Profile | undefined {
   return profiles.find((p) => p.id === userId);
+}
+
+// 저금통 펫(docs/08-pet-feature-spec.md) — 개인 펫은 user_id로, 그룹 펫은 group_id로 찾는다(배타적).
+export function getPersonalPet(pets: Pet[], userId: string): Pet | undefined {
+  return pets.find((p) => p.user_id === userId);
+}
+export function getGroupPet(pets: Pet[], groupId: string): Pet | undefined {
+  return pets.find((p) => p.group_id === groupId);
 }
 
 export function getGroup(groups: Group[], groupId: string | null): Group | undefined {
