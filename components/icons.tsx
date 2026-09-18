@@ -280,6 +280,19 @@ export function SwitchCameraIcon({ size, color, strokeWidth, style }: IconProps)
   );
 }
 
+// 카카오 로그인 버튼용 말풍선 아이콘(2026-09-18 신규) — 다른 아이콘들과 달리 채워진(fill) 모양이라
+// base()를 안 쓰고 직접 그린다. 카카오톡 로고의 둥근 말풍선 + 아래쪽 꼬리 형태를 단순화했다.
+export function KakaoIcon({ size = 17, color = "#191919", style }: IconProps) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" style={style} aria-hidden>
+      <path
+        fill={color}
+        d="M12 3.5C6.75 3.5 2.5 6.86 2.5 11c0 2.64 1.74 4.96 4.37 6.29-.19.71-.69 2.57-.79 2.97-.12.49.18.48.38.35.16-.1 2.47-1.68 3.47-2.37.68.1 1.38.15 2.07.15 5.25 0 9.5-3.36 9.5-7.5s-4.25-7.4-9.5-7.4Z"
+      />
+    </svg>
+  );
+}
+
 // 아래 5개는 design/shoot/Settings.dc.html 아이콘을 그대로 옮김.
 export function BellIcon({ size, color, strokeWidth, style }: IconProps) {
   return (

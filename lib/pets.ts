@@ -15,6 +15,10 @@ export const MAX_STAGE_INDEX = 4;
 // 스펙이 제시한 기본값(15)을 그대로 쓴다. 개인 펫 "밥 주기" 1회당 XP.
 export const FEED_XP_DEFAULT = 15;
 
+// 2026-09-18 사용자 요청: "하루 한 번" 제한이 너무 느리다 — 대신 코인이 있는 만큼 계속 먹일 수
+// 있게 바꿨다(코인이 다하면 못 먹인다). 값은 사용자 확인(출석체크 보상 5코인으로 5번 먹일 수 있는 수준).
+export const FEED_COIN_COST = 1;
+
 // XP → 단계 승급: 100 넘으면 stage_index+1, 초과분 이월. 최대 단계는 XP만 누적.
 export function applyXpGain(stageIndex: number, xpProgress: number, xpGained: number): { stageIndex: number; xpProgress: number } {
   if (stageIndex >= MAX_STAGE_INDEX) {
@@ -87,6 +91,19 @@ export function daysBetween(fromDateStr: string, toDateStr: string): number {
   const from = new Date(fromDateStr + "T00:00:00");
   const to = new Date(toDateStr + "T00:00:00");
   return Math.round((to.getTime() - from.getTime()) / 86400000);
+}
+
+/**
+ * "YYYY-MM-DD" 날짜를 며칠 이동시킨다(예: -1이면 전날). 반드시 "T00:00:00Z"(UTC)로 파싱하고
+ * setUTCDate/getUTCDate만 쓴다 — "T00:00:00"(타임존 없음)으로 파싱하면 브라우저의 로컬 타임존으로
+ * 해석되는데, 그 뒤 toISOString()은 항상 UTC로 돌려주기 때문에 한국(UTC+9)처럼 UTC보다 빠른 타임존
+ * 에서는 자정 근처에서 날짜가 하루 더 밀리는 버그가 생긴다(2026-09-18 발견 — 출석체크 연속일수가
+ * 매번 1일차로 초기화되던 원인. 전날 날짜를 이 버그로 잘못 계산해서 어제 기록을 못 찾았었다).
+ */
+export function shiftDateKST(dateStr: string, days: number): string {
+  const d = new Date(dateStr + "T00:00:00Z");
+  d.setUTCDate(d.getUTCDate() + days);
+  return d.toISOString().slice(0, 10);
 }
 
 // ============================================================

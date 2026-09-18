@@ -6,7 +6,7 @@ import { useNav } from "../NavContext";
 import { useStore } from "@/lib/store";
 import type { CategoryScope } from "@/lib/categories";
 import { getGroupPet, getPersonalPet } from "@/lib/selectors";
-import { GROUP_SULK_AFTER_DAYS, MAX_STAGE_INDEX, PERSONAL_SULK_AFTER_DAYS, PET_STAGE_LABELS, daysBetween } from "@/lib/pets";
+import { FEED_COIN_COST, GROUP_SULK_AFTER_DAYS, MAX_STAGE_INDEX, PERSONAL_SULK_AFTER_DAYS, PET_STAGE_LABELS, daysBetween } from "@/lib/pets";
 import { TODAY_DATE } from "@/lib/mock";
 import PetMascot, { petMascotSize } from "../PetMascot";
 import { useState } from "react";
@@ -41,7 +41,8 @@ export default function PetDetail({ scope }: { scope: CategoryScope }) {
   }
 
   const displayName = pet.pet_name?.trim() || (scope.kind === "personal" ? "저금통이" : "우리 펫");
-  const fedToday = pet.last_fed_date === TODAY_DATE;
+  // 2026-09-18 사용자 요청: "하루 한 번" 제한 대신 코인이 있는 만큼 계속 먹일 수 있게 바꿨다.
+  const canAffordFeed = pet.total_coins >= FEED_COIN_COST;
 
   // 방치 시 "시무룩"(hybranch F22) — 단계는 안 내려가고 화면 표시만 바뀐다.
   let sulking = false;
@@ -142,18 +143,18 @@ export default function PetDetail({ scope }: { scope: CategoryScope }) {
                 marginTop: 16,
                 height: 50,
                 borderRadius: 16,
-                background: fedToday ? "var(--shoot-surface-alt)" : "linear-gradient(135deg,#E3DFFB 0%,#BDB2F2 100%)",
-                color: fedToday ? "var(--shoot-text-muted)" : "#3F3480",
+                background: canAffordFeed ? "linear-gradient(135deg,#E3DFFB 0%,#BDB2F2 100%)" : "var(--shoot-surface-alt)",
+                color: canAffordFeed ? "#3F3480" : "var(--shoot-text-muted)",
                 display: "flex",
                 alignItems: "center",
                 justifyContent: "center",
                 fontSize: 15,
                 fontWeight: 800,
-                cursor: fedToday ? "default" : "pointer",
+                cursor: canAffordFeed ? "pointer" : "default",
                 opacity: feeding ? 0.6 : 1,
               }}
             >
-              {fedToday ? "오늘은 이미 밥을 줬어요" : "밥 주기"}
+              {canAffordFeed ? `밥 주기 (🪙${FEED_COIN_COST})` : "코인이 부족해요"}
             </div>
           </>
         ) : (

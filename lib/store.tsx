@@ -39,6 +39,7 @@ import {
   CHECKIN_STREAK_BONUS_MULTIPLIER,
   CHECKIN_STREAK_LENGTH,
   DEFAULT_PET_COLORS,
+  FEED_COIN_COST,
   FEED_XP_DEFAULT,
   GOAL_ACHIEVED_REWARD_COINS,
   GOAL_ACHIEVED_REWARD_XP,
@@ -47,6 +48,7 @@ import {
   GROUP_XP_PER_SHARED_EXPENSE,
   applyXpGain,
   currentMonthString,
+  shiftDateKST,
   type PetColorPart,
 } from "./pets";
 
@@ -172,6 +174,8 @@ interface StoreValue extends StoreState {
   signUp: (name: string, email: string, password: string) => Promise<AuthResult>;
   // 2(로그인) — 실제 supabase.auth.signInWithPassword 호출.
   signIn: (email: string, password: string) => Promise<AuthResult>;
+  // 카카오 계정으로 로그인/가입(2026-09-18 신규) — 카카오 로그인 화면으로 리다이렉트한다.
+  signInWithKakao: () => Promise<AuthResult>;
   // "비밀번호를 잊으셨나요?" — 실제 supabase.auth.resetPasswordForEmail 호출. 좋아하는 색·취미 같은
   // 지식 기반 질문은 추측·주변인 유출에 취약해 쓰지 않기로 했다(2026-09-22 대화 중 결정) — 이메일 재설정
   // 링크가 실제 인증 수단이다. 링크는 app/reset-password(SPA 밖 라우트)로 보낸다.
@@ -293,9 +297,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     async (groupId: string, expenseUserId: string, expenseDate: string) => {
       const pet = pets.find((p) => p.group_id === groupId);
       if (!pet) return;
-      const windowStart = new Date(expenseDate + "T00:00:00");
-      windowStart.setDate(windowStart.getDate() - (GROUP_PARTICIPATION_WINDOW_DAYS - 1));
-      const windowStartStr = windowStart.toISOString().slice(0, 10);
+      const windowStartStr = shiftDateKST(expenseDate, -(GROUP_PARTICIPATION_WINDOW_DAYS - 1));
       const recentContributors = new Set(
         expenses.filter((e) => e.group_id === groupId && e.is_shared && e.date >= windowStartStr && e.date <= expenseDate).map((e) => e.user_id)
       );
@@ -639,6 +641,21 @@ export function StoreProvider({ children }: { children: ReactNode }) {
         return { ok: true };
       },
 
+      // 카카오 계정 연동(2026-09-18 신규) — supabase.auth.signInWithOAuth은 카카오 로그인 화면으로
+      // 브라우저를 통째로 이동시킨다(팝업 아님). 로그인/동의 후 Supabase가 이 앱 주소(redirectTo)로
+      // 다시 돌려보내면, Supabase 클라이언트가 URL의 토큰을 자동으로 읽어 세션을 만든다 — 그러면
+      // 이미 있는 onAuthStateChange 구독이 session을 갱신하고, Main 화면의 effect가 자동으로
+      // enterApp()을 불러 홈으로 들어간다(신규 사용자면 Supabase가 profiles 행도 트리거로 만든다).
+      // 그래서 이 함수는 성공/실패를 굳이 안 돌려준다 — 리다이렉트 자체가 안 되는 드문 경우만 에러로 본다.
+      async signInWithKakao(): Promise<AuthResult> {
+        const { error } = await supabase.auth.signInWithOAuth({
+          provider: "kakao",
+          options: { redirectTo: window.location.origin },
+        });
+        if (error) return { ok: false, error: translateAuthError(error.message) };
+        return { ok: true };
+      },
+
       // "비밀번호를 잊으셨나요?" — 실제 supabase.auth.resetPasswordForEmail. 성공 여부와 무관하게(가입
       // 안 된 이메일이어도) 같은 안내를 보여주는 게 보통이지만, Supabase가 실제로 반환한 에러는 그대로
       // 옮겨서 화면에 보여준다(다른 signXxx 액션들과 일관되게).
@@ -784,17 +801,23 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       },
 
       // P3 "밥 주기" — 개인 펫 전용, 하루 1회 제한(§3). XP 지급·단계 승급은 lib/pets.ts applyXpGain 참고.
+      // 2026-09-18 사용자 요청: "하루 한 번" 제한을 없애고, 코인이 있는 만큼 계속 먹일 수 있게
+      // 바꿨다(먹일 때마다 FEED_COIN_COST만큼 코인을 쓴다 — 코인이 부족하면 못 먹인다).
+      // last_fed_date는 여전히 갱신한다 — "며칠째 안 먹였는지"로 시무룩 여부를 판단하는 데 쓰인다.
       async feedPet(petId: string): Promise<MutationResult<{ xpGained: number; leveledUp: boolean }>> {
         const pet = pets.find((p) => p.id === petId);
         if (!pet) return { ok: false, error: "펫을 찾을 수 없어요" };
-        if (pet.last_fed_date === TODAY_DATE) return { ok: false, error: "오늘은 이미 밥을 줬어요" };
+        if (pet.total_coins < FEED_COIN_COST) return { ok: false, error: "코인이 부족해요" };
         const { stageIndex, xpProgress } = applyXpGain(pet.stage_index, pet.xp_progress, FEED_XP_DEFAULT);
+        const newTotalCoins = pet.total_coins - FEED_COIN_COST;
         const { error } = await supabase
           .from("pets")
-          .update({ stage_index: stageIndex, xp_progress: xpProgress, last_fed_date: TODAY_DATE })
+          .update({ stage_index: stageIndex, xp_progress: xpProgress, last_fed_date: TODAY_DATE, total_coins: newTotalCoins })
           .eq("id", petId);
         if (error) return { ok: false, error: error.message };
-        setPets((prev) => prev.map((p) => (p.id === petId ? { ...p, stage_index: stageIndex, xp_progress: xpProgress, last_fed_date: TODAY_DATE } : p)));
+        setPets((prev) =>
+          prev.map((p) => (p.id === petId ? { ...p, stage_index: stageIndex, xp_progress: xpProgress, last_fed_date: TODAY_DATE, total_coins: newTotalCoins } : p))
+        );
         return { ok: true, data: { xpGained: FEED_XP_DEFAULT, leveledUp: stageIndex > pet.stage_index } };
       },
 
@@ -949,9 +972,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
         const already = attendanceCheckins.find((c) => c.user_id === session.user.id && c.checkin_date === TODAY_DATE);
         if (already) return { ok: false, error: "오늘은 이미 출석체크했어요" };
 
-        const yesterday = new Date(TODAY_DATE + "T00:00:00");
-        yesterday.setDate(yesterday.getDate() - 1);
-        const yesterdayStr = yesterday.toISOString().slice(0, 10);
+        const yesterdayStr = shiftDateKST(TODAY_DATE, -1);
         const prevCheckin = attendanceCheckins.find((c) => c.user_id === session.user.id && c.checkin_date === yesterdayStr);
         // 전날 기록이 있고 아직 주기(7일)를 다 안 채웠으면 이어가고, 없거나 이미 꽉 찼으면 1일째부터 새로 시작한다.
         const streakDay = prevCheckin && prevCheckin.streak_day < CHECKIN_STREAK_LENGTH ? prevCheckin.streak_day + 1 : 1;
