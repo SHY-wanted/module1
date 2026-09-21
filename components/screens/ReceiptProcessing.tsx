@@ -10,6 +10,7 @@ import { useNav } from "../NavContext";
 import { useStore } from "@/lib/store";
 import { TODAY_DATE } from "@/lib/mock";
 import type { ParsedReceipt } from "@/lib/receiptOcr";
+import { fileToCompressedDataUrl } from "@/lib/image";
 import { CheckIcon, ChevronLeftIcon } from "../icons";
 
 // OCR이 실제로 끝난 뒤에도 "인식 완료" 카드를 잠깐 보여주고 넘어간다(원래 디자인의 딜레이 느낌 유지).
@@ -47,6 +48,22 @@ export default function ReceiptProcessing() {
       if (!active) return;
       setResult({ amount, memo });
 
+      // 신규 기능: 영수증 원본을 나중에 다시 볼 수 있도록 압축한 data URL을 image_url에 저장한다
+      // (Storage 버킷 없이 profiles.avatar_url과 같은 방식 — lib/image.ts 참고). 압축이 실패해도
+      // P7 원칙(인식 실패해도 저장 자체는 항상 성공)은 그대로 유지 — image_url만 null로 남긴다.
+      // 2026-09-21 버그 수정: 실패해도 console.error만 남기고 화면엔 아무 표시가 없어서, 갤러리에서
+      // 불러온 사진(HEIC 등 브라우저가 못 읽는 포맷일 수 있음)이 조용히 저장 안 돼도 사용자는 몰랐다
+      // — 이제 실패하면 토스트로 알려준다(저장 자체는 그대로 성공).
+      let imageUrl: string | null = null;
+      if (image) {
+        try {
+          imageUrl = await fileToCompressedDataUrl(image);
+        } catch (err) {
+          console.error(`[receipt-ocr] image compression failed (type=${image.type}, size=${image.size}):`, err);
+          store.showToast("영수증 사진은 저장하지 못했어요 (지출 기록은 저장돼요)");
+        }
+      }
+
       // P7: 인식에 실패했다고 해서 저장 자체를 실패시킬 수 없다 — 항상 category="확인 필요"로 저장은 성공한다.
       const saveResult = await store.addExpense({
         user_id: store.currentUserId,
@@ -56,8 +73,9 @@ export default function ReceiptProcessing() {
         memo,
         date,
         source_type: "RECEIPT",
-        image_url: null,
+        image_url: imageUrl,
         is_shared: false,
+        recurring_expense_id: null,
       });
       // P3 "데일리 먹이주기 팝업" — 영수증으로 기록한 것도 "지출을 하나라도 기록한 직후"에 해당한다.
       if (saveResult.ok) store.openFeedPopupIfEligible();
