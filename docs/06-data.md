@@ -278,6 +278,22 @@ E4 Expense에 `recurring_expense_id`(FK, nullable) 컬럼이 추가됐다 — �
 | Group 1 — N GroupCategoryGoal | 그룹·카테고리·달마다 하나씩(E17), 그룹장만 쓰기 가능 | 사용자 요청, 2026-09-21 |
 | Pet(그룹) 1 — N PetFeeding | 그룹원마다 하루 1건씩(E18) | 사용자 요청, 2026-09-21 |
 
+## 실시간 동기화 (2026-09-21 신규 — 01~05 근거 없음, 사용자 요청)
+
+앱은 원래 로그인 직후 위 테이블을 **한 번만** 읽어 화면에 뿌렸다. 공유 가계부인데도 다른 그룹원이 무엇을 바꾸면 내 화면은 새로고침해야 따라왔고, 초대 코드로 막 들어간 사람은 멤버 목록에 자기 혼자만 보였다. 이를 고치려고 화면이 읽는 테이블을 전부 Supabase Realtime(Postgres Changes)으로 구독한다.
+
+| 마이그레이션 | publication에 넣은 테이블 |
+|---|---|
+| `004_enable_realtime_expenses.sql` | `expenses` — 원래는 2c "그룹원 기록 확인 알림"용이었다 |
+| `019_realtime_members_and_pets.sql` | `group_members`, `pets` |
+| `020_realtime_remaining_tables.sql` | `savings`, `expense_reactions`, `group_category_goals`, `groups`, `profiles`, `incomes`, `category_goals`, `goal_rewards`, `recurring_expenses`, `attendance_checkins` |
+
+- 합쳐서 **13개 테이블**. 확인: `select tablename from pg_publication_tables where pubname = 'supabase_realtime' and schemaname = 'public';` 가 13줄이면 된다.
+- **RLS가 그대로 적용된다**(05-policy.md P17) — 내가 조회할 수 있는 행만 이벤트로 온다. 실시간을 켜는 것이 새 열람 권한을 만들지 않으므로 정책 추가는 없다.
+- DELETE 이벤트는 replica identity가 기본값이라 **기본키만** 실려 온다. 클라이언트는 그 `id`로 지운다.
+- `profiles`만 예외 처리한다 — 조회 정책이 `profiles_select_any_authenticated`(로그인한 사람은 누구나)라서 **우리 그룹과 무관한 가입자의 변경까지** 이벤트로 온다. 그래서 클라이언트는 *이미 아는 사람의 이름만 갱신하고 모르는 사람은 담지 않는다*(안 그러면 앱을 켜둘수록 남의 프로필이 메모리에 쌓인다).
+- `019`·`020`을 실행하지 않아도 앱은 그대로 돈다 — 해당 테이블만 예전처럼 로그인 시 1회 조회로 동작한다. **조용히 실시간만 꺼지므로 알아채기 어렵다**는 점이 이 마이그레이션의 함정이다.
+
 ## 상태값과 데이터 연동
 - 그룹장(Role) 상태(05-policy.md 상태값1): `group_members.role`이 OWNER↔MEMBER로 전환됨. 그룹원이 OWNER 혼자뿐이면 위임 없이 `groups` 행 자체를 삭제 — 이때 `expenses.group_id`는 null로, `group_members`는 cascade로 함께 삭제(SHY 스펙 "설계 포인트").
 - 지출 인식 상태(05-policy.md 상태값2): 정상 등록 ↔ "확인 필요"(F10에서 수정 시 정상 복귀) — 위 E4 표의 "[?] 확인 필요 표시 방식" 항목 참고.
