@@ -336,9 +336,9 @@ export const INITIAL_INCOMES: MockIncome[] = [
 // ------------------------------------------------------------------
 
 // E9. Pet — schema.sql: id, user_id, group_id, pet_name, stage_index, xp_progress, total_coins,
-// last_fed_date, body_color, ledger_color, bag_color, eye_color, leaf_color, created_at.
-// user_id·group_id는 배타적(개인 펫 또는 그룹 펫). 색상 5종은 개인 펫만 커스텀 가능(그룹 펫은
-// 기본값 그대로 — "개인용 펫... 색상 변경 가능"이라는 사용자 발화 그대로).
+// last_fed_date, body_color, ledger_color, bag_color, eye_color, leaf_color, display_stage_index,
+// created_at. user_id·group_id는 배타적(개인 펫 또는 그룹 펫). 색상 5종은 개인 펫만 커스텀 가능(그룹
+// 펫은 기본값 그대로 — "개인용 펫... 색상 변경 가능"이라는 사용자 발화 그대로).
 export interface Pet {
   id: string;
   user_id: string | null;
@@ -353,6 +353,9 @@ export interface Pet {
   bag_color: string;
   eye_color: string;
   leaf_color: string;
+  // 015 마이그레이션 — "꾸미기"에서 고른 표시용 단계. null이면 stage_index를 그대로 보여준다.
+  // lib/pets.ts의 effectiveStageIndex()로 항상 이 값을 거쳐서 읽어야 한다(직접 읽지 말 것).
+  display_stage_index: number | null;
   created_at: string;
 }
 

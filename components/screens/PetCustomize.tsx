@@ -5,7 +5,7 @@ import { useState } from "react";
 import { useNav } from "../NavContext";
 import { useStore } from "@/lib/store";
 import { getPersonalPet } from "@/lib/selectors";
-import { PET_COLOR_PALETTE, PET_COLOR_PARTS, PET_STAGE_LABELS, colorPartsForStage, type PetColorPart } from "@/lib/pets";
+import { PET_COLOR_PALETTE, PET_COLOR_PARTS, PET_STAGE_LABELS, colorPartsForStage, effectiveStageIndex, type PetColorPart } from "@/lib/pets";
 import PetMascot from "../PetMascot";
 import { ChevronLeftIcon } from "../icons";
 
@@ -20,9 +20,13 @@ export default function PetCustomize() {
       : { body: "#8C81E0", ledger: "#6A5ECF", bag: "#BDB2F2", eyes: "#2D2A3E", leaf: "#6FC5BA" }
   );
   const [saving, setSaving] = useState(false);
-  // 개발 중 미리보기용 — 실제 XP를 안 쌓아도 4단계 그림을 전부 볼 수 있게 임시로 넣었다(2026-09-15
-  // 사용자 요청 "다 해금 해서 보여줘"). pet.stage_index 자체는 안 바꾸고 화면 미리보기만 바꾼다.
-  const [previewStage, setPreviewStage] = useState(pet?.stage_index ?? 1);
+  // 2026-09-21 버그 수정: 이전엔 여기서 고른 단계(예: 알)가 이 화면 안에서만 미리보기로 바뀌고
+  // "적용하기"를 눌러도 실제로는 저장이 안 돼서, 펫 상세·마이페이지 등에는 항상 실제 성장 단계만
+  // 보였다("유년기 고정"). pet.display_stage_index(없으면 stage_index)에서 시작해서, 적용 시
+  // 함께 저장한다 — 성장 진행(stage_index·xp_progress) 자체는 그대로 둔다.
+  const [previewStage, setPreviewStage] = useState(pet ? effectiveStageIndex(pet) : 1);
+  // 아직 도달하지 못한 단계는 고를 수 없다(성장 잠금과 동일한 규칙 — 펫 상세의 🔒 트래커 참고).
+  const reachedStages = PET_STAGE_LABELS.map((label, i) => ({ label, stage: i + 1 })).filter(({ stage }) => stage <= (pet?.stage_index ?? 1));
 
   function setPart(part: PetColorPart, color: string) {
     setColors((prev) => ({ ...prev, [part]: color }));
@@ -31,7 +35,7 @@ export default function PetCustomize() {
   async function handleApply() {
     if (!pet || saving) return;
     setSaving(true);
-    await store.setPetColors(pet.id, colors);
+    await store.setPetColors(pet.id, colors, previewStage);
     setSaving(false);
     store.showToast("펫을 꾸몄어요");
     nav.back();
@@ -66,10 +70,9 @@ export default function PetCustomize() {
           <PetMascot pet={{ stage_index: previewStage, body_color: colors.body, ledger_color: colors.ledger, bag_color: colors.bag, eye_color: colors.eyes, leaf_color: colors.leaf }} size={120} />
         </div>
 
-        {/* 개발 중 미리보기 — 실제 성장 단계(pet.stage_index)와 무관하게 4단계를 다 볼 수 있다. */}
+        {/* 이미 자란 단계만 고를 수 있다 — 아직 도달 못 한 단계(예: 청소년기)는 여기서도 잠겨 있다. */}
         <div style={{ display: "flex", justifyContent: "center", gap: 6, marginBottom: 18 }}>
-          {PET_STAGE_LABELS.map((label, i) => {
-            const stage = i + 1;
+          {reachedStages.map(({ label, stage }) => {
             const selected = stage === previewStage;
             return (
               <div

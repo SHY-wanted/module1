@@ -362,6 +362,9 @@ create table pets (
   bag_color     text not null default '#BDB2F2',
   eye_color     text not null default '#2D2A3E',
   leaf_color    text not null default '#6FC5BA',
+  -- 015 마이그레이션: "꾸미기"에서 고른 표시용 단계 — null이면 실제 stage_index를 그대로 보여준다.
+  -- 성장(stage_index·xp_progress)과 분리해서, 유년기까지 자란 뒤에도 알 이미지로 보여줄 수 있다.
+  display_stage_index int check (display_stage_index between 1 and 4),
   created_at    timestamptz not null default now(),
   constraint pets_owner_exclusive check (
     (user_id is not null and group_id is null) or (user_id is null and group_id is not null)

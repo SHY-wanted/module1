@@ -257,7 +257,9 @@ interface StoreValue extends StoreState {
   openFeedPopupIfEligible: () => void;
   closeFeedPopup: () => void;
   // 개인 펫 색상 커스텀 — 그룹 펫엔 안 쓴다(사용자 확인: "개인용 펫만" 색상 변경 가능).
-  setPetColors: (petId: string, colors: Partial<Record<PetColorPart, string>>) => Promise<MutationResult<Pet>>;
+  // displayStageIndex(선택) — 015 마이그레이션: "꾸미기"에서 고른 표시용 단계를 같이 저장한다.
+  // 성장 단계(stage_index)보다 앞선 값은 store 안에서 실제 단계로 눌러서 저장한다(잠긴 단계 노출 방지).
+  setPetColors: (petId: string, colors: Partial<Record<PetColorPart, string>>, displayStageIndex?: number | null) => Promise<MutationResult<Pet>>;
   // 월별·카테고리별 목표(shooTbranch 통합, mg의 주간 예산 대체) — 없으면 새로 만들고 있으면 갱신(upsert).
   setCategoryGoal: (category: string, month: string, amount: number) => Promise<MutationResult<CategoryGoal>>;
   // 2026-09-23 팀 요청(신규): 설정한 목표를 지울 수 있게 — deleteExpense와 같은 패턴(RLS로 본인 것만 지워짐).
@@ -996,6 +998,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
           bag_color: DEFAULT_PET_COLORS.bag,
           eye_color: DEFAULT_PET_COLORS.eyes,
           leaf_color: DEFAULT_PET_COLORS.leaf,
+          display_stage_index: null,
           created_at: new Date().toISOString(),
         };
         const { error } = await supabase.from("pets").insert(newPet);
@@ -1040,7 +1043,10 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       },
 
       // 개인 펫 색상 커스텀(그룹 펫엔 안 씀 — "개인용 펫만" 색상 변경 가능이라는 사용자 확인 그대로).
-      async setPetColors(petId: string, colors: Partial<Record<PetColorPart, string>>): Promise<MutationResult<Pet>> {
+      // 2026-09-21 버그 수정: "꾸미기"에서 성장 단계(예: 알)를 눌러도 그 화면 안에서만 미리보기가
+      // 바뀌고 실제로는 저장이 안 돼서, 펫 상세·마이페이지 등 다른 화면엔 늘 실제 성장 단계만
+      // 보였다("적용해도 안 바뀐다") — displayStageIndex를 같이 받아서 함께 저장한다.
+      async setPetColors(petId: string, colors: Partial<Record<PetColorPart, string>>, displayStageIndex?: number | null): Promise<MutationResult<Pet>> {
         const pet = pets.find((p) => p.id === petId);
         if (!pet) return { ok: false, error: "펫을 찾을 수 없어요" };
         const patch = {
@@ -1049,6 +1055,8 @@ export function StoreProvider({ children }: { children: ReactNode }) {
           ...(colors.bag !== undefined ? { bag_color: colors.bag } : {}),
           ...(colors.eyes !== undefined ? { eye_color: colors.eyes } : {}),
           ...(colors.leaf !== undefined ? { leaf_color: colors.leaf } : {}),
+          // 아직 도달하지 못한 단계를 저장하려는 시도는 실제 성장 단계로 눌러서 막는다(잠긴 단계 노출 방지).
+          ...(displayStageIndex !== undefined ? { display_stage_index: displayStageIndex === null ? null : Math.min(displayStageIndex, pet.stage_index) } : {}),
         };
         const { error } = await supabase.from("pets").update(patch).eq("id", petId);
         if (error) return { ok: false, error: error.message };
