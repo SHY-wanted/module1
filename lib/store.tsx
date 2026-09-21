@@ -100,7 +100,9 @@ interface StoreState {
   toastMessage: string | null;
   isLoggedIn: boolean;
   notificationSettings: NotificationSettings;
+  // 실제로 적용된 값(라이트/다크). "시스템" 선택 중이면 OS 설정을 그대로 따라간다.
   darkMode: boolean;
+  darkModePreference: DarkModePreference;
   // 저금통 펫 키우기 v2(2026-09-15, mg·hybranch·shooTbranch 통합) — 내 개인 펫 + 내가 속한 그룹들의
   // 그룹 펫이 함께 들어있다(RLS가 이미 "내가 볼 수 있는 펫"만 걸러준다). 그룹 펫은 hybranch F22(반려
   // 캐릭터)와 합쳐져 참여도 기반으로 자동 성장한다(수동 밥주기는 개인 펫만).
@@ -138,6 +140,8 @@ export interface MutationResult<T> {
   data?: T;
   error?: string;
 }
+
+export type DarkModePreference = "light" | "dark" | "system";
 
 export interface NotificationSettings {
   expenseConfirm: boolean;
@@ -207,7 +211,8 @@ interface StoreValue extends StoreState {
   // "지출 기록 시 확인 알림" 토글이 꺼져 있으면 아무것도 안 띄운다. 켜져 있으면 인앱 토스트 +
   // (권한 허용 시) 실제 브라우저 알림까지 띄운다.
   notifyExpenseSaved: (message: string) => void;
-  toggleDarkMode: () => void;
+  // 2c "앱 외형" — 라이트/다크/시스템 설정 중 하나로 고른다.
+  setDarkModePreference: (preference: DarkModePreference) => void;
   // 10a "그룹장 위임"(F18) — 현재 OWNER인 나 대신 선택한 멤버를 새 OWNER로 바꾼다. 새 그룹장을
   // 먼저 OWNER로 올리고 나서 내 role을 MEMBER로 내리는 순서로 실제 UPDATE 2번을 보낸다(순서를
   // 바꾸면 RLS members_update_owner_transfers_role이 두 번째 요청을 막는다 — schema.sql 참고).
@@ -295,7 +300,21 @@ export function StoreProvider({ children }: { children: ReactNode }) {
   const [personalCategories, setPersonalCategories] = useState<CategoryDef[]>(PERSONAL_CATS);
   const [groupCategoriesById, setGroupCategoriesById] = useState<Record<string, CategoryDef[]>>({});
   const [notificationSettings, setNotificationSettings] = useState<NotificationSettings>(DEFAULT_NOTIFICATION_SETTINGS);
-  const [darkMode, setDarkMode] = useState(false);
+  // 신규 기능(2026-09-21): 다크모드를 라이트/다크로 수동 고정하는 것 외에 "시스템 설정 따라가기"도
+  // 고를 수 있게 한다. darkModePreference가 실제 저장하는 값이고, darkMode(boolean)는 화면이 그대로
+  // 쓰던 파생값이라 계속 내보낸다 — AppShell의 data-dark 속성 등 기존 호출부를 안 바꿔도 되게.
+  const [darkModePreference, setDarkModePreference] = useState<DarkModePreference>("light");
+  const [systemPrefersDark, setSystemPrefersDark] = useState(
+    () => typeof window !== "undefined" && !!window.matchMedia?.("(prefers-color-scheme: dark)").matches
+  );
+  useEffect(() => {
+    if (typeof window === "undefined" || !window.matchMedia) return;
+    const query = window.matchMedia("(prefers-color-scheme: dark)");
+    const handleChange = (e: MediaQueryListEvent) => setSystemPrefersDark(e.matches);
+    query.addEventListener("change", handleChange);
+    return () => query.removeEventListener("change", handleChange);
+  }, []);
+  const darkMode = darkModePreference === "system" ? systemPrefersDark : darkModePreference === "dark";
   // 저금통 펫 키우기 — 완전히 새 기능이라 목업 시드가 없다(빈 배열로 시작, 로그인 후 실제로 채워짐).
   const [pets, setPets] = useState<Pet[]>([]);
   const [categoryGoals, setCategoryGoals] = useState<CategoryGoal[]>([]);
@@ -525,6 +544,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       isLoggedIn,
       notificationSettings,
       darkMode,
+      darkModePreference,
       pets,
       categoryGoals,
       goalRewards,
@@ -812,8 +832,8 @@ export function StoreProvider({ children }: { children: ReactNode }) {
         notifyBrowser(message);
       },
 
-      toggleDarkMode() {
-        setDarkMode((prev) => !prev);
+      setDarkModePreference(preference: DarkModePreference) {
+        setDarkModePreference(preference);
       },
 
       // F18 · P10 상태값1: 현재 OWNER(나)를 지정한 멤버로 교체한다. 새 그룹장을 먼저 OWNER로 올리고
@@ -1117,7 +1137,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
         setPendingReceiptImage(file);
       },
     }),
-    [profiles, session, authReady, currentUserId, currentUserAvatarUrl, groups, groupMembers, expenses, savings, incomes, personalCategories, groupCategoriesById, toastMessage, isLoggedIn, notificationSettings, darkMode, pets, categoryGoals, goalRewards, expenseReactions, feedPopupPetId, pendingReceiptImage, attendanceCheckins, supabase, growGroupPetFromSharedExpense]
+    [profiles, session, authReady, currentUserId, currentUserAvatarUrl, groups, groupMembers, expenses, savings, incomes, personalCategories, groupCategoriesById, toastMessage, isLoggedIn, notificationSettings, darkMode, darkModePreference, pets, categoryGoals, goalRewards, expenseReactions, feedPopupPetId, pendingReceiptImage, attendanceCheckins, supabase, growGroupPetFromSharedExpense]
   );
 
   return <StoreContext.Provider value={value}>{children}</StoreContext.Provider>;

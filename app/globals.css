@@ -157,6 +157,16 @@ body {
   }
 }
 
+/* 지출 목록(7) 실행 취소 토스트 — 남은 시간을 보여주는 바가 오른쪽으로 줄어든다. */
+@keyframes shoot-undo-shrink {
+  from {
+    width: 100%;
+  }
+  to {
+    width: 0%;
+  }
+}
+
 /* P2(펫 상세) — docs/08-pet-feature-spec.md §2 "살짝 위아래로 움직이는 애니메이션" */
 @keyframes petBounce {
   0%, 100% {
