@@ -133,7 +133,7 @@ export default function GroupDetail({ groupId }: { groupId: string }) {
                         {/* 신규 기능: 방장 배지 — 기존 "기타" 카테고리와 같은 금색 팔레트(lib/categories.ts)를 재사용. */}
                         {isOwnerMember && (
                           <span style={{ fontSize: 10, fontWeight: 800, color: "#8A6A12", background: "#FFFBE8", padding: "2px 7px", borderRadius: 8, border: "1px solid rgba(245,213,133,0.6)", flexShrink: 0 }}>
-                            👑 방장
+                            방장
                           </span>
                         )}
                       </div>
