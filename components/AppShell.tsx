@@ -48,8 +48,19 @@ export default function AppShell() {
 
   const keyCounter = useRef(0);
   const suppressNextPopRef = useRef(false);
+  // 2026-09-21 버그 수정(사용자 신고): 버튼을 빠르게 두 번 누르면(따닥) push()가 두 번 실행돼 같은
+  // 화면이 두 겹 쌓였다 — "적용하기"·뒤로가기로 하나를 닫아도 똑같은 화면이 또 나와서 "적용이 안 먹힌다"고
+  // 느껴졌다(사실은 겹쳐 쌓인 두 번째 화면). isTransitioning은 상태(비동기)라 같은 틱에 두 번 호출되면
+  // 못 걸러내서, ref로 그 즉시(동기) 잠근다 — 슬라이드 애니메이션 한 번 끝나는 동안만 새 push를 막는다.
+  const pushLockRef = useRef(false);
 
   const push = useCallback((screen: StackScreen) => {
+    if (pushLockRef.current) return;
+    pushLockRef.current = true;
+    window.setTimeout(() => {
+      pushLockRef.current = false;
+    }, STACK_ANIMATION_MS);
+
     const key = `s${++keyCounter.current}`;
     const current = renderItemsRef.current.filter((it) => it.phase !== "leaving");
     const newStack = [...current.map((it) => it.screen), screen];
