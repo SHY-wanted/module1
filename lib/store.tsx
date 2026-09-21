@@ -186,6 +186,10 @@ interface StoreValue extends StoreState {
   // 4 "참여하기" — 실제 join_group_by_invite_code RPC(schema.sql 참고, 초대 코드로 아직 멤버가
   // 아닌 그룹을 찾으려면 일반 select로는 안 되기 때문).
   joinGroupByInviteCode: (code: string) => Promise<JoinResult>;
+  // 5b를 열 때 그 그룹의 멤버를 다시 읽는다 — group_members에는 realtime이 걸려있지 않아(expenses만
+  // supabase/004에서 publication에 넣었다), 내가 보고 있는 동안 새로 들어온 사람이 새로고침 전까지
+  // 안 보이던 문제를 화면 진입 시점의 재조회로 메운다.
+  refreshGroupMembers: (groupId: string) => Promise<void>;
   addExpense: (input: Omit<Expense, "id" | "created_at">) => Promise<MutationResult<Expense>>;
   // P6 · F14: 본인 지출만 수정 가능 — 그룹장도 예외 없음(05-policy.md).
   updateExpense: (id: string, patch: Omit<Expense, "id" | "created_at" | "user_id">) => Promise<boolean>;
@@ -710,15 +714,35 @@ export function StoreProvider({ children }: { children: ReactNode }) {
           return { ok: false, reason: "not_found" };
         }
         const newGroup = data as Group;
-        const { data: newMember } = await supabase
-          .from("group_members")
-          .select("*")
-          .eq("group_id", newGroup.id)
-          .eq("user_id", session.user.id)
-          .maybeSingle();
+        // 2026-09-21 버그 수정: 여기서 "본인 행 하나"만 읽어오는 바람에, 초대 코드로 막 들어간
+        // 사람의 5b 멤버 목록에 자기 자신만 나왔다(새로고침해서 전체 select가 다시 돌아야 나머지
+        // 그룹원이 보였다). 참여 직후 그 그룹의 멤버 전체를 읽어와 합친다 — 이미 멤버였던
+        // 사람들의 이름은 groupMembers가 바뀌면 도는 profiles 보충 effect가 이어서 채운다.
+        const { data: joinedMembers } = await supabase.from("group_members").select("*").eq("group_id", newGroup.id);
         setGroups((prev) => (prev.some((g) => g.id === newGroup.id) ? prev : [...prev, newGroup]));
-        if (newMember) setGroupMembers((prev) => [...prev, newMember]);
+        if (joinedMembers && joinedMembers.length > 0) {
+          setGroupMembers((prev) => {
+            const existingIds = new Set(prev.map((m) => m.id));
+            const toAdd = joinedMembers.filter((m) => !existingIds.has(m.id));
+            return toAdd.length > 0 ? [...prev, ...toAdd] : prev;
+          });
+        }
         return { ok: true, group: newGroup };
+      },
+
+      async refreshGroupMembers(groupId: string): Promise<void> {
+        if (!session) return;
+        const { data, error } = await supabase.from("group_members").select("*").eq("group_id", groupId);
+        if (error || !data) return;
+        setGroupMembers((prev) => {
+          const fetchedIds = new Set(data.map((m) => m.id));
+          // 이 그룹 행만 새로 읽은 것으로 갈아끼운다(나간 사람은 빠지고 새로 들어온 사람은 들어온다).
+          // 다른 그룹 행은 건드리지 않는다.
+          const others = prev.filter((m) => m.group_id !== groupId);
+          const unchanged = prev.filter((m) => m.group_id === groupId && fetchedIds.has(m.id));
+          if (unchanged.length === data.length && prev.length === others.length + unchanged.length) return prev;
+          return [...others, ...data];
+        });
       },
 
       async addExpense(input: Omit<Expense, "id" | "created_at">): Promise<MutationResult<Expense>> {
