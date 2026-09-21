@@ -13,6 +13,23 @@ import { getCategoryVisual } from "@/lib/categories";
 import { formatWon } from "@/lib/format";
 import { ChevronLeftIcon, CheckIcon, TrashIcon } from "../icons";
 
+// 신규 기능: "이 속도면 넘길 것 같아요" 페이스 경고 — 지금까지 쓴 돈을 지난 날수로 나눠 이번 달
+// 남은 날까지 같은 속도로 쓴다고 가정한 예상 총 지출을 구한다. 달성 못 한 목표에서만, 예상치가
+// 목표보다 5% 넘게 클 때만 보여준다(오차 범위 안이면 굳이 겁줄 필요 없어서).
+const PACE_WARNING_THRESHOLD = 1.05;
+
+// 버그 수정(2026-09-18): today가 month와 다른 달이면(예: 자정을 넘겨 오래 켜둔 세션) today의
+// "며칠째"를 month의 날수에 끼워 맞춰버려서 말이 안 되는 예상치가 나올 수 있었다 — 그럴 땐 그냥
+// 지금까지 쓴 금액을 그대로 돌려준다(투영하지 않음 → 호출부에서 목표 초과로 안 잡히니 경고도 안 뜬다).
+function projectedMonthTotal(spentSoFar: number, month: string, today: string): number {
+  if (!today.startsWith(month)) return spentSoFar;
+  const dayOfMonth = Number(today.slice(8, 10));
+  const [year, monthNum] = month.split("-").map(Number);
+  const daysInMonth = new Date(year, monthNum, 0).getDate();
+  if (dayOfMonth <= 0) return spentSoFar;
+  return Math.round((spentSoFar / dayOfMonth) * daysInMonth);
+}
+
 export default function MonthlyGoalReport() {
   const nav = useNav();
   const store = useStore();
@@ -104,6 +121,8 @@ export default function MonthlyGoalReport() {
             <div style={{ display: "flex", flexDirection: "column", gap: 10, marginTop: 16 }}>
               {rewards.map((r) => {
                 const visual = getCategoryVisual(r.category);
+                const projected = projectedMonthTotal(r.spent_amount, month, TODAY_DATE);
+                const showPaceWarning = !r.achieved && r.goal_amount > 0 && projected > r.goal_amount * PACE_WARNING_THRESHOLD;
                 return (
                   <div key={r.category} style={{ background: "var(--shoot-surface)", border: `1.5px solid ${r.achieved ? visual.accent : "var(--shoot-border)"}`, borderRadius: 16, padding: 14, opacity: deletingCategory === r.category ? 0.5 : 1 }}>
                     <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
@@ -141,6 +160,11 @@ export default function MonthlyGoalReport() {
                       />
                     </div>
                     {r.achieved && <div style={{ fontSize: 11, color: "#1D7A69", fontWeight: 700, marginTop: 6 }}>퀘스트 보상: 코인 +{r.coins_earned} · XP +{r.xp_gained}</div>}
+                    {showPaceWarning && (
+                      <div style={{ fontSize: 11, color: "#B23B3B", fontWeight: 700, marginTop: 6 }}>
+                        ⚠ 이 속도면 이번 달 약 {formatWon(projected)}까지 쓸 것 같아요
+                      </div>
+                    )}
                   </div>
                 );
               })}
