@@ -51,12 +51,16 @@ export default function ReceiptProcessing() {
       // 신규 기능: 영수증 원본을 나중에 다시 볼 수 있도록 압축한 data URL을 image_url에 저장한다
       // (Storage 버킷 없이 profiles.avatar_url과 같은 방식 — lib/image.ts 참고). 압축이 실패해도
       // P7 원칙(인식 실패해도 저장 자체는 항상 성공)은 그대로 유지 — image_url만 null로 남긴다.
+      // 2026-09-21 버그 수정: 실패해도 console.error만 남기고 화면엔 아무 표시가 없어서, 갤러리에서
+      // 불러온 사진(HEIC 등 브라우저가 못 읽는 포맷일 수 있음)이 조용히 저장 안 돼도 사용자는 몰랐다
+      // — 이제 실패하면 토스트로 알려준다(저장 자체는 그대로 성공).
       let imageUrl: string | null = null;
       if (image) {
         try {
           imageUrl = await fileToCompressedDataUrl(image);
         } catch (err) {
-          console.error("[receipt-ocr] image compression failed:", err);
+          console.error(`[receipt-ocr] image compression failed (type=${image.type}, size=${image.size}):`, err);
+          store.showToast("영수증 사진은 저장하지 못했어요 (지출 기록은 저장돼요)");
         }
       }
 
