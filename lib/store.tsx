@@ -597,63 +597,74 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     };
   }, [session, supabase, groups, profiles, notificationSettings]);
 
-  // 2026-09-21 팀 요청("진짜 실시간으로") — 서버 변경을 로컬 상태에 반영하는 전용 채널.
-  // expenses·group_members·pets 세 테이블을 구독한다. 그전까지 이 셋은 로그인 직후 한 번만
-  // 읽어서 ① 그룹 상세를 보고 있는 중에 누가 들어오면 나갔다 들어와야 했고 ② 다른 그룹원이
-  // 그룹 펫 색을 바꿔도 새로고침해야 했고 ③ 그룹원의 새 지출이 피드에 바로 안 떴다.
+  // 2026-09-21 팀 요청("다 실시간으로") — 서버 변경을 로컬 상태에 반영하는 전용 채널.
+  // 화면이 읽는 테이블을 전부 구독한다. 그전까지 이 값들은 로그인 직후 한 번만 읽어서, 다른
+  // 그룹원이 무엇을 하든(참여·지출·저금·이모지·펫 꾸미기·예산 변경) 내 화면은 새로고침해야 바뀌었다.
   // 어느 테이블이든 RLS가 그대로 걸려 "내가 볼 수 있는 행"만 이벤트로 온다 — 새 정책은 없다.
   //
-  // publication 등록 상태: expenses는 supabase/004에서 이미 들어갔고, group_members·pets는
-  // supabase/019_realtime_members_and_pets.sql을 실행해야 한다. 019를 실행하지 않으면 그 두
-  // 테이블 이벤트만 안 올 뿐이고(조용히 아무 일도 안 일어난다), 화면 진입 시 재조회가 남아
-  // 있어 앱은 그대로 돈다.
+  // publication 등록: expenses(004) · group_members·pets(019) · 나머지(020). 아직 실행하지 않은
+  // 마이그레이션이 있으면 그 테이블 이벤트만 안 올 뿐이고(조용히 아무 일도 안 일어난다), 로그인 시
+  // 전체 조회와 화면 진입 시 재조회가 남아 있어 앱은 그대로 돈다.
   //
-  // groups·profiles 같은 자주 바뀌는 값에 의존하지 않게 해서, 데이터가 바뀔 때마다 구독을
-  // 끊었다 다시 맺는 일이 없도록 한다(setState 함수는 리렌더와 무관하게 동일하다).
+  // 알림용 expenses 구독(위 "expenses-inserts" 채널)은 일부러 그대로 뒀다 — 그쪽은 알림 설정·그룹·
+  // 프로필 값에 의존해 자주 다시 맺어지는 구조라, 잘 돌고 있는 알림 로직을 건드리는 대신 역할을
+  // 나눴다(저쪽은 알림, 이쪽은 상태 동기화).
+  //
+  // groups·profiles 같은 자주 바뀌는 값에 의존하지 않게 해서, 데이터가 바뀔 때마다 구독을 끊었다
+  // 다시 맺는 일이 없도록 한다(setState 함수는 리렌더와 무관하게 동일하다).
   useEffect(() => {
     if (!session) return;
-    const channel = supabase
-      .channel("live-sync")
-      // 2026-09-21 팀 요청("지출도 실시간으로") — 그룹 피드·지출 목록도 서버 변경을 바로 따라간다.
-      // 지출은 이미 supabase_realtime publication에 있어(supabase/004) SQL 추가 실행이 필요 없다.
-      // 알림용 expenses 구독(위 "expenses-inserts" 채널)은 일부러 그대로 뒀다 — 그쪽은 알림 설정·
-      // 그룹·프로필 값에 의존해 자주 다시 맺어지는 구조라, 잘 돌고 있는 알림 로직을 건드리는 대신
-      // 상태 반영만 이 안정적인 채널에서 따로 한다(역할이 다르다: 저쪽은 알림, 이쪽은 상태 동기화).
-      // 내가 직접 추가한 지출은 addExpense가 이미 상태에 넣어두므로 같은 행이 한 번 더 오는데,
-      // 아래 id 중복 검사가 걸러낸다(정기 지출 upsert로 들어온 행도 마찬가지).
-      .on("postgres_changes", { event: "*", schema: "public", table: "expenses" }, (payload) => {
+    const channel = supabase.channel("live-sync");
+
+    // 테이블마다 같은 코드를 쓰지 않도록 한 곳에 모은다.
+    // - DELETE 이벤트는 기본 replica identity라 old에 기본키만 담겨 온다 — 그 id로 지운다.
+    // - 내가 직접 만든 행은 이미 상태에 들어 있는데 같은 행이 한 번 더 오므로, id 중복 검사로 거른다
+    //   (정기 지출 upsert처럼 한 번에 여러 행이 들어온 경우도 마찬가지).
+    // - prepend: 최신이 위인 목록(지출·저금·수입)은 맨 앞에, 그 외에는 뒤에 붙인다.
+    // - onlyKnown: 이미 알고 있는 행만 갱신하고 새 행은 무시한다(profiles 전용 — select 정책이
+    //   "로그인한 사람은 누구나"라 남의 프로필 변경까지 오기 때문에, 모르는 사람은 담지 않는다).
+    function bind<T extends { id: string }>(
+      table: string,
+      setter: React.Dispatch<React.SetStateAction<T[]>>,
+      options: { prepend?: boolean; onlyKnown?: boolean } = {}
+    ) {
+      channel.on("postgres_changes", { event: "*", schema: "public", table }, (payload) => {
         if (payload.eventType === "DELETE") {
           const removedId = (payload.old as { id?: string }).id;
           if (!removedId) return;
-          setExpenses((prev) => prev.filter((e) => e.id !== removedId));
+          setter((prev) => prev.filter((row) => row.id !== removedId));
           return;
         }
-        const row = payload.new as Expense;
-        // 목록은 created_at 내림차순(최신이 위)이라, 새 지출은 맨 앞에 넣는다.
-        setExpenses((prev) => (prev.some((e) => e.id === row.id) ? prev.map((e) => (e.id === row.id ? row : e)) : [row, ...prev]));
-      })
-      .on("postgres_changes", { event: "*", schema: "public", table: "group_members" }, (payload) => {
-        if (payload.eventType === "DELETE") {
-          // DELETE 이벤트는 기본 replica identity라 old에 기본키만 담겨 온다 — 그 id만 빼면 된다.
-          const removedId = (payload.old as { id?: string }).id;
-          if (!removedId) return;
-          setGroupMembers((prev) => prev.filter((m) => m.id !== removedId));
-          return;
-        }
-        const row = payload.new as GroupMember;
-        setGroupMembers((prev) => (prev.some((m) => m.id === row.id) ? prev.map((m) => (m.id === row.id ? row : m)) : [...prev, row]));
-      })
-      .on("postgres_changes", { event: "*", schema: "public", table: "pets" }, (payload) => {
-        if (payload.eventType === "DELETE") {
-          const removedId = (payload.old as { id?: string }).id;
-          if (!removedId) return;
-          setPets((prev) => prev.filter((p) => p.id !== removedId));
-          return;
-        }
-        const row = payload.new as Pet;
-        setPets((prev) => (prev.some((p) => p.id === row.id) ? prev.map((p) => (p.id === row.id ? row : p)) : [...prev, row]));
-      })
-      .subscribe();
+        const incoming = payload.new as T;
+        setter((prev) => {
+          if (prev.some((row) => row.id === incoming.id)) {
+            return prev.map((row) => (row.id === incoming.id ? { ...row, ...incoming } : row));
+          }
+          if (options.onlyKnown) return prev;
+          return options.prepend ? [incoming, ...prev] : [...prev, incoming];
+        });
+      });
+    }
+
+    // 그룹원이 함께 보는 것 — 여기가 실시간의 핵심이다.
+    bind<Expense>("expenses", setExpenses, { prepend: true });
+    bind<Saving>("savings", setSavings, { prepend: true });
+    bind<GroupMember>("group_members", setGroupMembers);
+    bind<Pet>("pets", setPets);
+    bind<ExpenseReaction>("expense_reactions", setExpenseReactions);
+    bind<GroupCategoryGoal>("group_category_goals", setGroupCategoryGoals);
+    bind<Group>("groups", setGroups);
+    // 이름이 바뀌면 피드·멤버 목록에 바로 반영 — 단, 모르는 사람은 담지 않는다(위 onlyKnown 설명).
+    bind<Profile>("profiles", setProfiles, { onlyKnown: true });
+
+    // 본인 것 — 같은 계정을 다른 기기·탭에서 열어둔 경우 서로 따라가게 한다.
+    bind<MockIncome>("incomes", setIncomes, { prepend: true });
+    bind<CategoryGoal>("category_goals", setCategoryGoals);
+    bind<GoalReward>("goal_rewards", setGoalRewards);
+    bind<RecurringExpense>("recurring_expenses", setRecurringExpenses);
+    bind<AttendanceCheckin>("attendance_checkins", setAttendanceCheckins);
+
+    channel.subscribe();
     return () => {
       supabase.removeChannel(channel);
     };
