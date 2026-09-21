@@ -47,11 +47,16 @@ function CategoryDonut({ rows }: { rows: CategoryBreakdownRow[] }) {
   const strokeWidth = 10;
   const radius = 16;
   const circumference = 2 * Math.PI * radius;
+  // 사용자 요청(2026-09-21): 완전한 원으로 채워지게 — row.pct는 정수로 반올림돼 있어서 합이 100이 안 될 수 있고
+  // (예: 33/33/34 → 100이지만 33/33/33 → 99), 그 어긋난 만큼 원에 빈틈이 생겼다. dash는 반올림 전 실제
+  // 비율(row.amount / 전체 amount)로 계산해서 합이 항상 정확히 원 전체(circumference)를 채우게 한다 —
+  // 화면에 보여주는 %(row.pct)는 그대로 반올림값을 쓴다(사람이 읽기엔 정수 %가 자연스러워서).
+  const totalAmount = rows.reduce((sum, row) => sum + row.amount, 0);
   // 각 구간이 시작하는 위치(누적 길이)를 reduce로 계산한다 — 렌더 중에 바깥 변수를 다시 대입하면
   // (offset += dash 같은 식) React Compiler의 불변성 규칙에 걸려서, 누적값도 매번 새로 만든다.
   const segments = rows.reduce<{ list: { category: string; dash: number; startOffset: number }[]; cumulative: number }>(
     (acc, row) => {
-      const dash = (row.pct / 100) * circumference;
+      const dash = totalAmount > 0 ? (row.amount / totalAmount) * circumference : 0;
       return { list: [...acc.list, { category: row.category, dash, startOffset: acc.cumulative }], cumulative: acc.cumulative + dash };
     },
     { list: [], cumulative: 0 }
@@ -327,12 +332,15 @@ export default function Home() {
           ) : (
             <div style={{ display: "flex", alignItems: "center", gap: 16, marginTop: 16 }}>
               <CategoryDonut rows={categoryBreakdown} />
-              <div style={{ flex: 1, display: "flex", flexDirection: "column", gap: 6, minWidth: 0 }}>
+              {/* 사용자 요청(2026-09-21): 도넛 옆 목록에 막대도 같이 보여주고, 금액 없이 퍼센트만 표시. */}
+              <div style={{ flex: 1, display: "flex", flexDirection: "column", gap: 8, minWidth: 0 }}>
                 {topCategoryRows.map((row) => (
-                  <div key={row.category} style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 11, fontWeight: 700, color: "rgba(255,255,255,0.9)" }}>
-                    <div style={{ width: 8, height: 8, borderRadius: "50%", background: getCategoryVisual(row.category).accent, flexShrink: 0 }} />
-                    <span style={{ flex: 1, minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{row.category}</span>
-                    <span style={{ flexShrink: 0 }}>{row.pct}%</span>
+                  <div key={row.category} style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 11, fontWeight: 700, color: "rgba(255,255,255,0.9)" }}>
+                    <span style={{ width: 44, flexShrink: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{row.category}</span>
+                    <div style={{ flex: 1, minWidth: 0, height: 6, borderRadius: 3, background: "rgba(255,255,255,0.25)", overflow: "hidden" }}>
+                      <div style={{ width: `${row.pct}%`, height: "100%", borderRadius: 3, background: getCategoryVisual(row.category).accent }} />
+                    </div>
+                    <span style={{ flexShrink: 0, width: 30, textAlign: "right" }}>{row.pct}%</span>
                   </div>
                 ))}
               </div>
