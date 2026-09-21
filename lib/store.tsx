@@ -72,12 +72,12 @@ export function translateAuthError(message: string): string {
   return "요청을 처리하지 못했어요. 잠시 후 다시 시도해주세요";
 }
 
-// 그룹 예산(supabase/013_group_category_goals.sql) INSERT/UPDATE 실패 원인별 안내 — 2026-09-21 버그
+// 그룹 예산(supabase/014_group_category_goals.sql) INSERT/UPDATE 실패 원인별 안내 — 2026-09-21 버그
 // 수정. 원인을 구분 안 하면 "테이블이 아직 없음"과 "권한 없음"이 똑같이 "그룹장이 아니다"로 보여서
 // 실제로는 그룹장인데 마이그레이션을 안 돌린 경우에도 헷갈렸다(사용자 제보).
 function translateGroupGoalError(error: { code?: string; message: string }): string {
   if (error.code === "42P01" || error.message.includes("does not exist")) {
-    return "그룹 예산 기능이 아직 준비되지 않았어요 — supabase/013_group_category_goals.sql 마이그레이션을 먼저 실행해주세요";
+    return "그룹 예산 기능이 아직 준비되지 않았어요 — supabase/014_group_category_goals.sql 마이그레이션을 먼저 실행해주세요";
   }
   if (error.code === "42501" || error.message.toLowerCase().includes("row-level security")) {
     return "그룹장만 예산을 정할 수 있어요";
@@ -99,6 +99,10 @@ interface StoreState {
   // 프로필 사진은 06-data.md에 정의된 적 없는 신규 항목이라, email·password와 같은 방식으로 세션 흉내용
   // 상태로만 둔다(파일을 실제로 어디 업로드하지 않고, 브라우저에서 읽은 data URL을 그대로 들고 있는다).
   currentUserAvatarUrl: string | null;
+  // 신규 기능(2026-09-21): 온보딩 투어를 이미 봤는지(profiles.onboarding_seen, 012 마이그레이션).
+  // 아직 로딩 전(로그인은 됐는데 profiles 조회가 안 끝난 순간)엔 true로 둔다 — false가 확실할 때만
+  // 투어를 띄워야, 이미 본 사람한테 잠깐이라도 깜빡였다 사라지는 게 안 생긴다.
+  onboardingSeen: boolean;
   groups: Group[];
   groupMembers: GroupMember[];
   expenses: Expense[];
@@ -115,7 +119,9 @@ interface StoreState {
   toastMessage: string | null;
   isLoggedIn: boolean;
   notificationSettings: NotificationSettings;
+  // 실제로 적용된 값(라이트/다크). "시스템" 선택 중이면 OS 설정을 그대로 따라간다.
   darkMode: boolean;
+  darkModePreference: DarkModePreference;
   // 저금통 펫 키우기 v2(2026-09-15, mg·hybranch·shooTbranch 통합) — 내 개인 펫 + 내가 속한 그룹들의
   // 그룹 펫이 함께 들어있다(RLS가 이미 "내가 볼 수 있는 펫"만 걸러준다). 그룹 펫은 hybranch F22(반려
   // 캐릭터)와 합쳐져 참여도 기반으로 자동 성장한다(수동 밥주기는 개인 펫만).
@@ -157,6 +163,8 @@ export interface MutationResult<T> {
   data?: T;
   error?: string;
 }
+
+export type DarkModePreference = "light" | "dark" | "system";
 
 export interface NotificationSettings {
   expenseConfirm: boolean;
@@ -219,6 +227,9 @@ interface StoreValue extends StoreState {
   // 10b "내 정보 변경" — 프로필 사진을 바꾼다. null이면 사진을 지우고 이니셜로 되돌린다.
   // profiles.avatar_url(011 마이그레이션)에 실제로 저장된다.
   updateCurrentUserAvatar: (url: string | null) => Promise<void>;
+  // 온보딩 투어 마지막 슬라이드("시작하기") — profiles.onboarding_seen을 true로 남겨서 다음부터
+  // (로그아웃 후 재로그인 포함) 다시 안 뜨게 한다.
+  completeOnboarding: () => Promise<void>;
   // 토글을 켜는 순간 브라우저 알림 권한을 요청한다(꺼져 있으면 notify()가 인앱 토스트만 띄운다).
   toggleNotification: (key: keyof NotificationSettings) => void;
   // 2.2초 동안 화면 위에 알림 문구를 띄운다 — 알림 설정과 무관한 일반 토스트용(내 정보 저장 등).
@@ -226,7 +237,8 @@ interface StoreValue extends StoreState {
   // "지출 기록 시 확인 알림" 토글이 꺼져 있으면 아무것도 안 띄운다. 켜져 있으면 인앱 토스트 +
   // (권한 허용 시) 실제 브라우저 알림까지 띄운다.
   notifyExpenseSaved: (message: string) => void;
-  toggleDarkMode: () => void;
+  // 2c "앱 외형" — 라이트/다크/시스템 설정 중 하나로 고른다.
+  setDarkModePreference: (preference: DarkModePreference) => void;
   // 10a "그룹장 위임"(F18) — 현재 OWNER인 나 대신 선택한 멤버를 새 OWNER로 바꾼다. 새 그룹장을
   // 먼저 OWNER로 올리고 나서 내 role을 MEMBER로 내리는 순서로 실제 UPDATE 2번을 보낸다(순서를
   // 바꾸면 RLS members_update_owner_transfers_role이 두 번째 요청을 막는다 — schema.sql 참고).
@@ -313,6 +325,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
   // 아직 사진을 안 바꿨으면 null — 이때 화면들은 이니셜(글자) 아바타로 대신 보여준다.
   // [?] schema.sql profiles엔 avatar_url 컬럼이 없어 로컬 상태로만 남아있다(위 StoreValue 주석 참고).
   const [currentUserAvatarUrl, setCurrentUserAvatarUrl] = useState<string | null>(null);
+  const [onboardingSeen, setOnboardingSeen] = useState(true);
   const [groups, setGroups] = useState<Group[]>(INITIAL_GROUPS);
   const [groupMembers, setGroupMembers] = useState<GroupMember[]>(INITIAL_GROUP_MEMBERS);
   const [expenses, setExpenses] = useState<Expense[]>(INITIAL_EXPENSES);
@@ -321,7 +334,21 @@ export function StoreProvider({ children }: { children: ReactNode }) {
   const [personalCategories, setPersonalCategories] = useState<CategoryDef[]>(PERSONAL_CATS);
   const [groupCategoriesById, setGroupCategoriesById] = useState<Record<string, CategoryDef[]>>({});
   const [notificationSettings, setNotificationSettings] = useState<NotificationSettings>(DEFAULT_NOTIFICATION_SETTINGS);
-  const [darkMode, setDarkMode] = useState(false);
+  // 신규 기능(2026-09-21): 다크모드를 라이트/다크로 수동 고정하는 것 외에 "시스템 설정 따라가기"도
+  // 고를 수 있게 한다. darkModePreference가 실제 저장하는 값이고, darkMode(boolean)는 화면이 그대로
+  // 쓰던 파생값이라 계속 내보낸다 — AppShell의 data-dark 속성 등 기존 호출부를 안 바꿔도 되게.
+  const [darkModePreference, setDarkModePreference] = useState<DarkModePreference>("light");
+  const [systemPrefersDark, setSystemPrefersDark] = useState(
+    () => typeof window !== "undefined" && !!window.matchMedia?.("(prefers-color-scheme: dark)").matches
+  );
+  useEffect(() => {
+    if (typeof window === "undefined" || !window.matchMedia) return;
+    const query = window.matchMedia("(prefers-color-scheme: dark)");
+    const handleChange = (e: MediaQueryListEvent) => setSystemPrefersDark(e.matches);
+    query.addEventListener("change", handleChange);
+    return () => query.removeEventListener("change", handleChange);
+  }, []);
+  const darkMode = darkModePreference === "system" ? systemPrefersDark : darkModePreference === "dark";
   // 저금통 펫 키우기 — 완전히 새 기능이라 목업 시드가 없다(빈 배열로 시작, 로그인 후 실제로 채워짐).
   const [pets, setPets] = useState<Pet[]>([]);
   const [categoryGoals, setCategoryGoals] = useState<CategoryGoal[]>([]);
@@ -398,7 +425,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     let active = true;
     supabase
       .from("profiles")
-      .select("id,name,avatar_url")
+      .select("id,name,avatar_url,onboarding_seen")
       .eq("id", session.user.id)
       .single()
       .then(({ data, error }) => {
@@ -407,6 +434,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
           prev.some((p) => p.id === data.id) ? prev.map((p) => (p.id === data.id ? { ...p, name: data.name } : p)) : [...prev, { id: data.id, name: data.name }]
         );
         setCurrentUserAvatarUrl(data.avatar_url);
+        setOnboardingSeen(data.onboarding_seen);
       });
     return () => {
       active = false;
@@ -435,9 +463,9 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       supabase.from("expense_reactions").select("*"),
       // 출석체크 — 본인 것만(RLS). 연속 출석 계산에 최근 기록이 필요하므로 전부 읽어온다.
       supabase.from("attendance_checkins").select("*"),
-      // 정기 지출 템플릿(신규, supabase/012_recurring_expenses.sql) — 본인 것만(RLS).
+      // 정기 지출 템플릿(신규, supabase/013_recurring_expenses.sql) — 본인 것만(RLS).
       supabase.from("recurring_expenses").select("*"),
-      // 그룹 예산(신규, supabase/013_group_category_goals.sql) — 내가 속한 그룹의 예산만(RLS).
+      // 그룹 예산(신규, supabase/014_group_category_goals.sql) — 내가 속한 그룹의 예산만(RLS).
       supabase.from("group_category_goals").select("*"),
     ]).then(async ([groupsRes, membersRes, expensesRes, savingsRes, incomesRes, petsRes, goalsRes, rewardsRes, reactionsRes, checkinsRes, recurringRes, groupGoalsRes]) => {
       if (!active) return;
@@ -582,6 +610,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       session,
       authReady,
       currentUserAvatarUrl,
+      onboardingSeen,
       groups,
       groupMembers,
       expenses,
@@ -593,6 +622,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       isLoggedIn,
       notificationSettings,
       darkMode,
+      darkModePreference,
       pets,
       categoryGoals,
       goalRewards,
@@ -862,6 +892,12 @@ export function StoreProvider({ children }: { children: ReactNode }) {
         await supabase.from("profiles").update({ avatar_url: url }).eq("id", session.user.id);
       },
 
+      async completeOnboarding() {
+        setOnboardingSeen(true);
+        if (!session) return;
+        await supabase.from("profiles").update({ onboarding_seen: true }).eq("id", session.user.id);
+      },
+
       toggleNotification(key: keyof NotificationSettings) {
         setNotificationSettings((prev) => {
           const next = !prev[key];
@@ -882,8 +918,8 @@ export function StoreProvider({ children }: { children: ReactNode }) {
         notifyBrowser(message);
       },
 
-      toggleDarkMode() {
-        setDarkMode((prev) => !prev);
+      setDarkModePreference(preference: DarkModePreference) {
+        setDarkModePreference(preference);
       },
 
       // F18 · P10 상태값1: 현재 OWNER(나)를 지정한 멤버로 교체한다. 새 그룹장을 먼저 OWNER로 올리고
@@ -1083,7 +1119,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       // 그룹 예산(신규) — category_goals와 같은 upsert 패턴. RLS(group_category_goals_insert_owner /
       // _update_owner)가 그룹장이 아니면 막는다 — 2026-09-21 버그 수정: 예전엔 어떤 에러든 무조건
       // "그룹장만 예산을 정할 수 있어요"로 뭉개버려서, 실제로는 그룹장인데도 마이그레이션
-      // (supabase/013_group_category_goals.sql)을 아직 안 돌려 테이블 자체가 없는 경우("relation
+      // (supabase/014_group_category_goals.sql)을 아직 안 돌려 테이블 자체가 없는 경우("relation
       // ... does not exist", 42P01)에도 똑같이 "그룹장이 아니다"라고 나와 원인 파악이 안 됐다.
       // 이제 원인별로 다른 메시지를 준다 — translateGroupGoalError 참고.
       async setGroupCategoryGoal(groupId: string, category: string, month: string, amount: number): Promise<MutationResult<GroupCategoryGoal>> {
@@ -1259,7 +1295,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
         setPendingReceiptImage(file);
       },
     }),
-    [profiles, session, authReady, currentUserId, currentUserAvatarUrl, groups, groupMembers, expenses, savings, incomes, personalCategories, groupCategoriesById, toastMessage, isLoggedIn, notificationSettings, darkMode, pets, categoryGoals, goalRewards, expenseReactions, feedPopupPetId, pendingReceiptImage, attendanceCheckins, recurringExpenses, groupCategoryGoals, supabase, growGroupPetFromSharedExpense]
+    [profiles, session, authReady, currentUserId, currentUserAvatarUrl, onboardingSeen, groups, groupMembers, expenses, savings, incomes, personalCategories, groupCategoriesById, toastMessage, isLoggedIn, notificationSettings, darkMode, darkModePreference, pets, categoryGoals, goalRewards, expenseReactions, feedPopupPetId, pendingReceiptImage, attendanceCheckins, recurringExpenses, groupCategoryGoals, supabase, growGroupPetFromSharedExpense]
   );
 
   return <StoreContext.Provider value={value}>{children}</StoreContext.Provider>;

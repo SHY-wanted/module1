@@ -46,7 +46,7 @@ export interface GroupMember {
 // 스키마에 없는 merchant·needsReview 필드는 만들지 않는다.
 // - "가맹점명"은 memo에 넣는다.
 // - "확인 필요" 배지는 category === '확인 필요'로 판정한다(05-policy.md P7 방식).
-// - recurring_expense_id(신규, supabase/012_recurring_expenses.sql): 이 지출이 어느 정기 지출
+// - recurring_expense_id(신규, supabase/013_recurring_expenses.sql): 이 지출이 어느 정기 지출
 //   템플릿에서 자동 생성됐는지. 수동으로 만든 지출은 null.
 export interface Expense {
   id: string;
@@ -369,7 +369,7 @@ export interface CategoryGoal {
   updated_at: string;
 }
 
-// E16. RecurringExpense(정기 지출) — schema.sql(supabase/012_recurring_expenses.sql): id, user_id,
+// E16. RecurringExpense(정기 지출) — schema.sql(supabase/013_recurring_expenses.sql): id, user_id,
 // group_id, amount, category, memo, day_of_month, is_shared, active, created_at. 월세·구독료처럼
 // 매달 반복되는 지출의 "템플릿"만 들고 있고, 실제 Expense 행은 store.tsx가 매달 이 템플릿을 보고
 // 자동 생성한다(day_of_month는 그 달의 지출이 생기는 날짜 — 29~31일 월 길이 문제를 피하려고 1~28로 제한).
@@ -386,7 +386,7 @@ export interface RecurringExpense {
   created_at: string;
 }
 
-// E17. GroupCategoryGoal(그룹 예산) — schema.sql(supabase/013_group_category_goals.sql): id, group_id,
+// E17. GroupCategoryGoal(그룹 예산) — schema.sql(supabase/014_group_category_goals.sql): id, group_id,
 // category, month, goal_amount, created_by, created_at, updated_at. CategoryGoal(개인 목표)과 같은
 // 모양이지만 user_id 대신 group_id를 쓰고, 그룹장(OWNER)만 정하고 고칠 수 있다(RLS로 강제).
 export interface GroupCategoryGoal {

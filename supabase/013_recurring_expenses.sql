@@ -1,9 +1,10 @@
--- supabase/012_recurring_expenses.sql
+-- supabase/013_recurring_expenses.sql
 -- 2026-09-21 — 신규 기능: 정기 지출(월세·구독료처럼 매달 반복되는 지출). 실제 Expense 행을 매달
 -- 자동으로 만드는 "템플릿" 테이블만 여기서 추가한다 — 생성 로직 자체는 배치가 아니라 store.tsx가
 -- 로그인 시 한 번 계산하는 방식(category_goals의 goal_rewards와 같은 패턴, supabase/006 참고).
--- 이미 supabase/011_incomes_avatar_account_deletion.sql을 실행해 둔 프로젝트의 SQL Editor에
--- 이 파일만 추가로 실행할 것.
+-- 2026-09-22 번호 수정: 원래 012였는데, main에 먼저 병합된 012_onboarding_seen.sql과 번호가
+-- 겹쳐서 013으로 밀었다 — 내용은 그대로다.
+-- 이미 supabase/012_onboarding_seen.sql까지 실행해 둔 프로젝트의 SQL Editor에 이 파일만 추가로 실행할 것.
 
 create table recurring_expenses (
   id           uuid primary key default gen_random_uuid(),

@@ -286,10 +286,43 @@ export default function Settings() {
 
         <div style={{ fontSize: 12, fontWeight: 800, color: "var(--shoot-text-muted)", margin: "22px 0 8px" }}>앱 외형</div>
         <div style={{ background: "var(--shoot-surface)", borderRadius: 16, border: "1px solid var(--shoot-border)", padding: 14 }}>
-          <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 10 }}>
             <MoonIcon size={17} color="var(--shoot-text-muted)" />
             <div style={{ flex: 1, fontSize: 14, fontWeight: 700, color: "var(--shoot-text)" }}>다크 모드</div>
-            <Toggle on={store.darkMode} onClick={() => store.toggleDarkMode()} />
+          </div>
+          {/* 신규 기능(2026-09-21): 켜기/끄기 토글만 있던 걸 라이트/다크/시스템 3택으로 바꿨다 —
+              "시스템"이면 OS의 다크모드 설정을 그대로 따라간다(store의 matchMedia 구독). */}
+          <div style={{ display: "flex", gap: 6 }}>
+            {(
+              [
+                { value: "light", label: "라이트" },
+                { value: "dark", label: "다크" },
+                { value: "system", label: "시스템 설정" },
+              ] as const
+            ).map((opt) => {
+              const selected = store.darkModePreference === opt.value;
+              return (
+                <div
+                  key={opt.value}
+                  onClick={() => store.setDarkModePreference(opt.value)}
+                  style={{
+                    flex: 1,
+                    height: 38,
+                    borderRadius: 12,
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    fontSize: 12,
+                    fontWeight: 800,
+                    cursor: "pointer",
+                    background: selected ? "var(--shoot-accent)" : "var(--shoot-surface-alt)",
+                    color: selected ? "#fff" : "var(--shoot-text-muted)",
+                  }}
+                >
+                  {opt.label}
+                </div>
+              );
+            })}
           </div>
         </div>
       </div>
