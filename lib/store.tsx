@@ -1005,12 +1005,14 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       },
 
       // P3 "밥 주기" — 개인 펫 전용, 하루 1회 제한(§3). XP 지급·단계 승급은 lib/pets.ts applyXpGain 참고.
-      // 2026-09-18 사용자 요청: "하루 한 번" 제한을 없애고, 코인이 있는 만큼 계속 먹일 수 있게
-      // 바꿨다(먹일 때마다 FEED_COIN_COST만큼 코인을 쓴다 — 코인이 부족하면 못 먹인다).
-      // last_fed_date는 여전히 갱신한다 — "며칠째 안 먹였는지"로 시무룩 여부를 판단하는 데 쓰인다.
+      // 2026-09-21 사용자 요청: 2026-09-18에 없앴던 "하루 한 번" 제한을 되살렸다 — 코인을 모아뒀다가
+      // 한 번에 다 쓰면 며칠치 성장이 한순간에 끝나서(알→성체가 최소 4일), 매일 들어와야 할 이유가
+      // 없어졌다는 문제 때문이다. 코인은 그대로 하루 5개(출석)로 제한돼 있으니, 먹이기도 다시
+      // 하루 1회로 묶으면 "쌓아뒀다 몰아쓰기"가 막혀 최소 20일로 늘어난다.
       async feedPet(petId: string): Promise<MutationResult<{ xpGained: number; leveledUp: boolean }>> {
         const pet = pets.find((p) => p.id === petId);
         if (!pet) return { ok: false, error: "펫을 찾을 수 없어요" };
+        if (pet.last_fed_date === TODAY_DATE) return { ok: false, error: "오늘은 이미 밥을 줬어요" };
         if (pet.total_coins < FEED_COIN_COST) return { ok: false, error: "코인이 부족해요" };
         const { stageIndex, xpProgress } = applyXpGain(pet.stage_index, pet.xp_progress, FEED_XP_DEFAULT);
         const newTotalCoins = pet.total_coins - FEED_COIN_COST;
