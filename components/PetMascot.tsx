@@ -11,11 +11,13 @@
 // 캐릭터 쪽은 0(알)~3(성년기)이라 1을 뺀다. lib/pets.ts의 colorPartsForStage()가 단계별로
 // 실제 존재하는 부위를 이미 캐릭터 쪽 stageCustomization과 1:1로 맞춰뒀다(이름만 다름).
 //
-// "시무룩" 표현은 원래 SVG 버전처럼 눈매·팔 자세를 다시 그리지 않는다 — 원본 PNG에는 그런
-// 표정이 없고, 새로 그리려면 전용 마스크를 새로 떠야 한다(이번 교체의 범위 밖). 대신 캐릭터
-// 위에 옅은 무채색 톤과 한숨 구름만 얹어 "시무룩함"을 표시한다. 나중에 전용 표정 마스크를
-// 만들면 이 오버레이만 교체하면 된다.
+// "시무룩" 표현(2026-09-21 교체): 기존엔 성장 단계 그림 위에 회색 필터 + 한숨 구름만 얹어서
+// "시무룩해 보이는 성체"였다(사용자 신고). 이제 사용자가 준 전용 일러스트(public/pet_sulking.png,
+// 배경 제거·별 반짝이 제거만 거친 원본)를 그대로 쓴다 — 이 그림은 성장 단계별 색상 커스터마이징
+// 마스크 대상이 아니라(다른 단계 그림들과 달리 부위별 마스크가 없다) 고정된 색으로 나온다.
+// 그래서 시무룩할 때는 그 단계·색 커스터마이징이 잠깐 안 보이는 대신, 실제로 시무룩한 표정이 보인다.
 import { useMemo } from "react";
+import Image from "next/image";
 import type { Pet } from "@/lib/mock";
 import { MAX_STAGE_INDEX } from "@/lib/pets";
 import CharacterCanvas from "./character-demo/CharacterCanvas";
@@ -52,28 +54,12 @@ export default function PetMascot({
     [pet.body_color, pet.eye_color, pet.leaf_color, pet.ledger_color, pet.bag_color]
   );
 
-  return (
-    <div
-      style={{
-        position: "relative",
-        display: "inline-block",
-        lineHeight: 0,
-        filter: sulking ? "grayscale(0.35) brightness(0.94)" : undefined,
-      }}
-    >
-      <CharacterCanvas stage={stage} colors={colors} height={px} />
-      {sulking && (
-        <svg
-          width={px * 0.4}
-          height={px * 0.32}
-          viewBox="0 0 40 32"
-          style={{ position: "absolute", top: "2%", right: "-8%", opacity: 0.55, pointerEvents: "none" }}
-          aria-hidden
-        >
-          <circle cx="22" cy="16" r="8" fill="#9A97B0" />
-          <circle cx="32" cy="8" r="5.5" fill="#9A97B0" />
-        </svg>
-      )}
-    </div>
-  );
+  if (sulking) {
+    // 원본 비율(286x376)을 그대로 유지 — 다른 단계 그림들과 폭이 아니라 "높이" 기준으로 크기를
+    // 맞추므로, 세로 px 그대로 두고 폭은 원본 비율대로 계산한다.
+    const width = Math.round(px * (286 / 376));
+    return <Image src="/pet_sulking.png" alt="시무룩한 저금통 펫" width={width} height={px} unoptimized />;
+  }
+
+  return <CharacterCanvas stage={stage} colors={colors} height={px} />;
 }
