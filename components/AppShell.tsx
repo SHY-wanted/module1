@@ -19,6 +19,7 @@ import GroupList from "./screens/GroupList";
 import ExpenseListTab from "./screens/ExpenseListTab";
 import MyPage from "./screens/MyPage";
 import PetFeedPopup from "./PetFeedPopup";
+import OnboardingTour from "./OnboardingTour";
 
 interface HistoryState {
   stack: StackScreen[];
@@ -202,6 +203,9 @@ export default function AppShell() {
         {/* P3 "데일리 먹이주기 팝업"(docs/08-pet-feature-spec.md §3, 2026-09-15 신규) — 토스트와 같은
             자리(화면 전체 공용)에서 store.feedPopupPetId가 켜지면 뜬다. */}
         <PetFeedPopup />
+        {/* 신규 기능: 처음 가입한 유저에게만 온보딩 투어 — 로그인 화면(authScreen)에는 안 뜨고,
+            실제 로그인된 뒤(탭 화면)에만 뜬다. */}
+        {!authScreen && <OnboardingTour />}
       </div>
     </NavContext.Provider>
   );

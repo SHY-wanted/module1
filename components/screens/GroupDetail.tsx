@@ -6,9 +6,10 @@ import { useNav } from "../NavContext";
 import { useStore } from "@/lib/store";
 import { getGroupMembersWithProfile, getGroupFeed, getGroupPet } from "@/lib/selectors";
 import { GROUP_TYPE_VISUAL } from "@/lib/groupTypeVisual";
-import { formatRelativeTime, formatSignedWon, initialOf } from "@/lib/format";
+import { formatRelativeTime, formatSignedWon, formatWon, initialOf } from "@/lib/format";
 import { getCategoryVisual } from "@/lib/categories";
 import { REACTION_EMOJI_PALETTE } from "@/lib/pets";
+import { TODAY_DATE } from "@/lib/mock";
 import PetMascot from "../PetMascot";
 import { ChevronLeftIcon, ChevronRightIcon, ShareIcon, UsersIcon } from "../icons";
 import { typeIconFor } from "./groupIcon";
@@ -46,6 +47,23 @@ export default function GroupDetail({ groupId }: { groupId: string }) {
   // 저금통 펫 키우기(docs/08-pet-feature-spec.md §1, 2026-09-15 신규) — 그룹 펫(그룹원이 함께 키움).
   // P6(그룹 랭킹)은 그룹 펫 XP 산정 방식이 팀 미정이라 뺐다(07-screens.md 참고) — 여기선 펫 카드만.
   const groupPet = getGroupPet(store.pets, groupId);
+
+  // 신규 기능: 그룹원별 이번 달 지출 비교표 — 정산(더치페이) 자동계산 대신, "누가 얼마나 썼는지"만
+  // 나란히 보여준다(04-features.md에 이미 언급된 절충안). 공유(is_shared) 지출만 센다 — 개인 지출은
+  // 애초에 이 그룹과 무관하다.
+  const CURRENT_MONTH = TODAY_DATE.slice(0, 7);
+  const memberSpendTotals = useMemo(() => {
+    const totals = new Map<string, number>();
+    for (const e of store.expenses) {
+      if (e.group_id === groupId && e.is_shared && e.date.startsWith(CURRENT_MONTH)) {
+        totals.set(e.user_id, (totals.get(e.user_id) ?? 0) + e.amount);
+      }
+    }
+    return members
+      .map((m) => ({ userId: m.user_id, name: m.profile?.name ?? "?", amount: totals.get(m.user_id) ?? 0 }))
+      .sort((a, b) => b.amount - a.amount);
+  }, [members, store.expenses, groupId, CURRENT_MONTH]);
+  const maxMemberSpend = Math.max(1, ...memberSpendTotals.map((m) => m.amount));
 
   if (!group) {
     return (
@@ -145,6 +163,26 @@ export default function GroupDetail({ groupId }: { groupId: string }) {
             </div>
           </div>
           <ChevronRightIcon size={16} color="#A9A2B8" />
+        </div>
+
+        {/* 신규 기능: 정산(더치페이) 자동계산 대신 "누가 얼마나 썼는지"만 나란히 보여준다. */}
+        <div style={{ fontSize: 13, fontWeight: 800, color: "var(--shoot-text-muted)", marginBottom: 10 }}>이번 달 그룹원별 지출</div>
+        <div style={{ background: "var(--shoot-surface)", borderRadius: 16, border: "1px solid var(--shoot-border)", padding: "14px 16px", marginBottom: 18, display: "flex", flexDirection: "column", gap: 10 }}>
+          {memberSpendTotals.length === 0 ? (
+            <div style={{ fontSize: 12, color: "var(--shoot-text-muted)", fontWeight: 600 }}>아직 그룹원이 없어요</div>
+          ) : (
+            memberSpendTotals.map((m) => (
+              <div key={m.userId}>
+                <div style={{ display: "flex", justifyContent: "space-between", fontSize: 12, fontWeight: 700, color: "var(--shoot-text)", marginBottom: 4 }}>
+                  <span>{m.name}</span>
+                  <span>{formatWon(m.amount)}</span>
+                </div>
+                <div style={{ height: 6, borderRadius: 4, background: "var(--shoot-divider)" }}>
+                  <div style={{ width: `${(m.amount / maxMemberSpend) * 100}%`, height: "100%", borderRadius: 4, background: visual.accent }} />
+                </div>
+              </div>
+            ))
+          )}
         </div>
 
         <div style={{ fontSize: 13, fontWeight: 800, color: "var(--shoot-text-muted)", marginBottom: 10 }}>지출·저금 피드</div>

@@ -25,6 +25,9 @@ export default function ExpenseList({ initialCategoryFilter, pushed }: { initial
   const [endDate, setEndDate] = useState<string>("");
   // 신규 기능: 메모 검색 — 카테고리·기간 필터는 있는데 텍스트로 찾을 방법이 없었다.
   const [memoQuery, setMemoQuery] = useState<string>("");
+  // 신규 기능: 정렬 — 지금까지는 날짜(최신순) 고정이었다. 월별로 묶는 기준(date)은 그대로 두고,
+  // 각 달 안에서 보여주는 순서만 바꾼다.
+  const [sortOrder, setSortOrder] = useState<"date_desc" | "amount_desc" | "amount_asc">("date_desc");
   // 2026-09-19 팀 요청: 삭제 버튼 — 바로 지우지 않고 확인 팝업을 한 번 띄운다(10a "그룹 나가기"와 같은 패턴).
   const [confirmingId, setConfirmingId] = useState<string | null>(null);
   // 신규 기능: 실행 취소 — "삭제" 확인 후에도 UNDO_WINDOW_MS 동안은 실제로 지우지 않고 목록에서만
@@ -92,7 +95,14 @@ export default function ExpenseList({ initialCategoryFilter, pushed }: { initial
     });
   }, [ownExpenses, categoryFilter, startDate, endDate, memoQuery]);
 
-  const months = groupExpensesByMonth(filtered);
+  const months = useMemo(() => {
+    const grouped = groupExpensesByMonth(filtered);
+    if (sortOrder === "date_desc") return grouped; // groupExpensesByMonth가 이미 최신순으로 묶어준다.
+    return grouped.map((mo) => ({
+      ...mo,
+      items: mo.items.slice().sort((a, b) => (sortOrder === "amount_desc" ? b.amount - a.amount : a.amount - b.amount)),
+    }));
+  }, [filtered, sortOrder]);
 
   return (
     <div style={{ height: "100%", width: "100%", boxSizing: "border-box", background: "var(--shoot-bg)", display: "flex", flexDirection: "column", position: "relative" }}>
@@ -123,18 +133,30 @@ export default function ExpenseList({ initialCategoryFilter, pushed }: { initial
             onChange={(e) => setMemoQuery(e.target.value)}
             style={{ width: "100%", boxSizing: "border-box", height: 42, borderRadius: 12, border: "1.5px solid var(--shoot-border)", background: "var(--shoot-surface)", padding: "0 12px", fontSize: 13, fontWeight: 600, color: "var(--shoot-text)" }}
           />
-          <select
-            value={categoryFilter}
-            onChange={(e) => setCategoryFilter(e.target.value)}
-            style={{ width: "100%", boxSizing: "border-box", height: 42, borderRadius: 12, border: "1.5px solid var(--shoot-border)", background: "var(--shoot-surface)", padding: "0 12px", fontSize: 13, fontWeight: 700, color: "var(--shoot-text)" }}
-          >
-            <option value="all">전체 카테고리</option>
-            {categoryOptions.map((c) => (
-              <option key={c} value={c}>
-                {c}
-              </option>
-            ))}
-          </select>
+          <div style={{ display: "flex", gap: 8 }}>
+            <select
+              value={categoryFilter}
+              onChange={(e) => setCategoryFilter(e.target.value)}
+              style={{ flex: 1, boxSizing: "border-box", height: 42, borderRadius: 12, border: "1.5px solid var(--shoot-border)", background: "var(--shoot-surface)", padding: "0 12px", fontSize: 13, fontWeight: 700, color: "var(--shoot-text)" }}
+            >
+              <option value="all">전체 카테고리</option>
+              {categoryOptions.map((c) => (
+                <option key={c} value={c}>
+                  {c}
+                </option>
+              ))}
+            </select>
+            {/* 신규 기능: 정렬 옵션 — 기본은 날짜(최신순), 금액 큰/작은 순으로도 볼 수 있게. */}
+            <select
+              value={sortOrder}
+              onChange={(e) => setSortOrder(e.target.value as typeof sortOrder)}
+              style={{ flex: 1, boxSizing: "border-box", height: 42, borderRadius: 12, border: "1.5px solid var(--shoot-border)", background: "var(--shoot-surface)", padding: "0 12px", fontSize: 13, fontWeight: 700, color: "var(--shoot-text)" }}
+            >
+              <option value="date_desc">최신순</option>
+              <option value="amount_desc">금액 큰 순</option>
+              <option value="amount_asc">금액 작은 순</option>
+            </select>
+          </div>
           <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
             <input
               type="date"

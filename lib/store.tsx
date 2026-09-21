@@ -84,6 +84,10 @@ interface StoreState {
   // 프로필 사진은 06-data.md에 정의된 적 없는 신규 항목이라, email·password와 같은 방식으로 세션 흉내용
   // 상태로만 둔다(파일을 실제로 어디 업로드하지 않고, 브라우저에서 읽은 data URL을 그대로 들고 있는다).
   currentUserAvatarUrl: string | null;
+  // 신규 기능(2026-09-21): 온보딩 투어를 이미 봤는지(profiles.onboarding_seen, 012 마이그레이션).
+  // 아직 로딩 전(로그인은 됐는데 profiles 조회가 안 끝난 순간)엔 true로 둔다 — false가 확실할 때만
+  // 투어를 띄워야, 이미 본 사람한테 잠깐이라도 깜빡였다 사라지는 게 안 생긴다.
+  onboardingSeen: boolean;
   groups: Group[];
   groupMembers: GroupMember[];
   expenses: Expense[];
@@ -204,6 +208,9 @@ interface StoreValue extends StoreState {
   // 10b "내 정보 변경" — 프로필 사진을 바꾼다. null이면 사진을 지우고 이니셜로 되돌린다.
   // profiles.avatar_url(011 마이그레이션)에 실제로 저장된다.
   updateCurrentUserAvatar: (url: string | null) => Promise<void>;
+  // 온보딩 투어 마지막 슬라이드("시작하기") — profiles.onboarding_seen을 true로 남겨서 다음부터
+  // (로그아웃 후 재로그인 포함) 다시 안 뜨게 한다.
+  completeOnboarding: () => Promise<void>;
   // 토글을 켜는 순간 브라우저 알림 권한을 요청한다(꺼져 있으면 notify()가 인앱 토스트만 띄운다).
   toggleNotification: (key: keyof NotificationSettings) => void;
   // 2.2초 동안 화면 위에 알림 문구를 띄운다 — 알림 설정과 무관한 일반 토스트용(내 정보 저장 등).
@@ -292,6 +299,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
   // 아직 사진을 안 바꿨으면 null — 이때 화면들은 이니셜(글자) 아바타로 대신 보여준다.
   // [?] schema.sql profiles엔 avatar_url 컬럼이 없어 로컬 상태로만 남아있다(위 StoreValue 주석 참고).
   const [currentUserAvatarUrl, setCurrentUserAvatarUrl] = useState<string | null>(null);
+  const [onboardingSeen, setOnboardingSeen] = useState(true);
   const [groups, setGroups] = useState<Group[]>(INITIAL_GROUPS);
   const [groupMembers, setGroupMembers] = useState<GroupMember[]>(INITIAL_GROUP_MEMBERS);
   const [expenses, setExpenses] = useState<Expense[]>(INITIAL_EXPENSES);
@@ -388,7 +396,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     let active = true;
     supabase
       .from("profiles")
-      .select("id,name,avatar_url")
+      .select("id,name,avatar_url,onboarding_seen")
       .eq("id", session.user.id)
       .single()
       .then(({ data, error }) => {
@@ -397,6 +405,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
           prev.some((p) => p.id === data.id) ? prev.map((p) => (p.id === data.id ? { ...p, name: data.name } : p)) : [...prev, { id: data.id, name: data.name }]
         );
         setCurrentUserAvatarUrl(data.avatar_url);
+        setOnboardingSeen(data.onboarding_seen);
       });
     return () => {
       active = false;
@@ -533,6 +542,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       session,
       authReady,
       currentUserAvatarUrl,
+      onboardingSeen,
       groups,
       groupMembers,
       expenses,
@@ -810,6 +820,12 @@ export function StoreProvider({ children }: { children: ReactNode }) {
         setCurrentUserAvatarUrl(url);
         if (!session) return;
         await supabase.from("profiles").update({ avatar_url: url }).eq("id", session.user.id);
+      },
+
+      async completeOnboarding() {
+        setOnboardingSeen(true);
+        if (!session) return;
+        await supabase.from("profiles").update({ onboarding_seen: true }).eq("id", session.user.id);
       },
 
       toggleNotification(key: keyof NotificationSettings) {
@@ -1137,7 +1153,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
         setPendingReceiptImage(file);
       },
     }),
-    [profiles, session, authReady, currentUserId, currentUserAvatarUrl, groups, groupMembers, expenses, savings, incomes, personalCategories, groupCategoriesById, toastMessage, isLoggedIn, notificationSettings, darkMode, darkModePreference, pets, categoryGoals, goalRewards, expenseReactions, feedPopupPetId, pendingReceiptImage, attendanceCheckins, supabase, growGroupPetFromSharedExpense]
+    [profiles, session, authReady, currentUserId, currentUserAvatarUrl, onboardingSeen, groups, groupMembers, expenses, savings, incomes, personalCategories, groupCategoriesById, toastMessage, isLoggedIn, notificationSettings, darkMode, darkModePreference, pets, categoryGoals, goalRewards, expenseReactions, feedPopupPetId, pendingReceiptImage, attendanceCheckins, supabase, growGroupPetFromSharedExpense]
   );
 
   return <StoreContext.Provider value={value}>{children}</StoreContext.Provider>;

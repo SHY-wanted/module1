@@ -13,6 +13,7 @@ import {
   getRecentOwnExpenses,
   getIncomeTotalForUser,
 } from "@/lib/selectors";
+import type { CategoryBreakdownRow } from "@/lib/selectors";
 import { formatRelativeTime, formatWon } from "@/lib/format";
 import { getCategoryVisual } from "@/lib/categories";
 import { TODAY_DATE } from "@/lib/mock";
@@ -39,6 +40,42 @@ const MIN_LINEAR_MONTH = TODAY_LINEAR_MONTH - 5 * 12;
 const PREVIOUS_MONTH_DATE = new Date(TODAY_YEAR, TODAY_MONTH_INDEX - 1, 1);
 const PREVIOUS_MONTH = `${PREVIOUS_MONTH_DATE.getFullYear()}-${String(PREVIOUS_MONTH_DATE.getMonth() + 1).padStart(2, "0")}`;
 
+// 신규 기능: 카테고리 비중 도넛 차트 — 막대 3줄 나열보다 한눈에 비중을 비교하기 쉽다. 차트 라이브러리를
+// 새로 안 넣고 SVG 원 하나에 카테고리 수만큼 stroke-dasharray로 구간을 나눠 그린다(고전적인 방법).
+function CategoryDonut({ rows }: { rows: CategoryBreakdownRow[] }) {
+  const size = 72;
+  const strokeWidth = 10;
+  const radius = 16;
+  const circumference = 2 * Math.PI * radius;
+  // 각 구간이 시작하는 위치(누적 길이)를 reduce로 계산한다 — 렌더 중에 바깥 변수를 다시 대입하면
+  // (offset += dash 같은 식) React Compiler의 불변성 규칙에 걸려서, 누적값도 매번 새로 만든다.
+  const segments = rows.reduce<{ list: { category: string; dash: number; startOffset: number }[]; cumulative: number }>(
+    (acc, row) => {
+      const dash = (row.pct / 100) * circumference;
+      return { list: [...acc.list, { category: row.category, dash, startOffset: acc.cumulative }], cumulative: acc.cumulative + dash };
+    },
+    { list: [], cumulative: 0 }
+  ).list;
+  return (
+    <svg width={size} height={size} viewBox="0 0 36 36" style={{ flexShrink: 0, transform: "rotate(-90deg)" }}>
+      <circle cx="18" cy="18" r={radius} fill="none" stroke="rgba(255,255,255,0.25)" strokeWidth={strokeWidth} />
+      {segments.map((seg) => (
+        <circle
+          key={seg.category}
+          cx="18"
+          cy="18"
+          r={radius}
+          fill="none"
+          stroke={getCategoryVisual(seg.category).accent}
+          strokeWidth={strokeWidth}
+          strokeDasharray={`${seg.dash} ${circumference - seg.dash}`}
+          strokeDashoffset={-seg.startOffset}
+        />
+      ))}
+    </svg>
+  );
+}
+
 export default function Home() {
   const nav = useNav();
   const store = useStore();
@@ -63,14 +100,14 @@ export default function Home() {
 
   // 2026-09-23 버그 수정: "이번 달 총 지출" 카드 아래 카테고리별 % 막대가 식비 42%·생활 28%·문화 17%로
   // 고정돼 있어서 실제 지출 카테고리와 안 맞았다 — expenseTotal과 같은 필터 기준으로 실제 계산한다.
-  // 카드에는 3줄만 들어가므로 비중이 큰 상위 3개 카테고리만 보여준다.
   const categoryBreakdown = useMemo(() => {
-    const rows =
-      homeGroup === "me"
-        ? getPersonalExpenseCategoryBreakdown(store.expenses, store.currentUserId, CURRENT_MONTH)
-        : getGroupExpenseCategoryBreakdown(store.expenses, homeGroup, CURRENT_MONTH);
-    return rows.slice(0, 3);
+    return homeGroup === "me"
+      ? getPersonalExpenseCategoryBreakdown(store.expenses, store.currentUserId, CURRENT_MONTH)
+      : getGroupExpenseCategoryBreakdown(store.expenses, homeGroup, CURRENT_MONTH);
   }, [store.expenses, store.currentUserId, homeGroup]);
+  // 신규 기능: 도넛 차트는 전체 카테고리로 그려야 원이 꽉 채워진다 — 글자로 나열하는 범례는
+  // 카드 폭이 좁아 상위 3개만(기존 그대로).
+  const topCategoryRows = categoryBreakdown.slice(0, 3);
 
   // 2026-09-17 팀 결정: 3개 → 5개로 늘림. store.expenses 기준으로 매번 다시 계산되므로(위 useMemo 의존성)
   // 현재 실시간 상태를 그대로 반영한다 — 새 지출을 기록하면 바로 목록에 반영된다.
@@ -285,23 +322,22 @@ export default function Home() {
               {momChangePct === 0 ? "지난달과 비슷해요" : momChangePct > 0 ? `지난달보다 ${momChangePct}% 늘었어요` : `지난달보다 ${Math.abs(momChangePct)}% 줄었어요`}
             </div>
           )}
-          <div style={{ display: "flex", flexDirection: "column", gap: 8, marginTop: 16 }}>
-            {categoryBreakdown.length === 0 ? (
-              <div style={{ fontSize: 11, fontWeight: 700, color: "rgba(255,255,255,0.75)" }}>이번 달 지출이 아직 없어요</div>
-            ) : (
-              categoryBreakdown.map((row) => (
-                <div key={row.category}>
-                  <div style={{ display: "flex", justifyContent: "space-between", fontSize: 11, fontWeight: 700, color: "rgba(255,255,255,0.9)", marginBottom: 4 }}>
-                    <span>{row.category}</span>
-                    <span>{row.pct}%</span>
+          {categoryBreakdown.length === 0 ? (
+            <div style={{ fontSize: 11, fontWeight: 700, color: "rgba(255,255,255,0.75)", marginTop: 16 }}>이번 달 지출이 아직 없어요</div>
+          ) : (
+            <div style={{ display: "flex", alignItems: "center", gap: 16, marginTop: 16 }}>
+              <CategoryDonut rows={categoryBreakdown} />
+              <div style={{ flex: 1, display: "flex", flexDirection: "column", gap: 6, minWidth: 0 }}>
+                {topCategoryRows.map((row) => (
+                  <div key={row.category} style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 11, fontWeight: 700, color: "rgba(255,255,255,0.9)" }}>
+                    <div style={{ width: 8, height: 8, borderRadius: "50%", background: getCategoryVisual(row.category).accent, flexShrink: 0 }} />
+                    <span style={{ flex: 1, minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{row.category}</span>
+                    <span style={{ flexShrink: 0 }}>{row.pct}%</span>
                   </div>
-                  <div style={{ height: 5, borderRadius: 3, background: "rgba(255,255,255,0.25)" }}>
-                    <div style={{ width: `${row.pct}%`, height: "100%", borderRadius: 3, background: "var(--shoot-surface)" }} />
-                  </div>
-                </div>
-              ))
-            )}
-          </div>
+                ))}
+              </div>
+            </div>
+          )}
         </div>
 
         <div
