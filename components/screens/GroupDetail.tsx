@@ -1,7 +1,7 @@
 "use client";
 // components/screens/GroupDetail.tsx — 5b. 그룹 상세(피드)(design/shoot/GroupDetail.dc.html)
 // GroupList(5a)에서 어떤 그룹 카드를 탭했는지(groupId)를 스택 항목에 담아 그 그룹의 데이터를 조회한다.
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useNav } from "../NavContext";
 import { useStore } from "@/lib/store";
 import { getGroupMembersWithProfile, getGroupFeed, getGroupPet, getGroupCategorySpent } from "@/lib/selectors";
@@ -25,6 +25,13 @@ export default function GroupDetail({ groupId }: { groupId: string }) {
   const group = store.groups.find((g) => g.id === groupId);
   const members = getGroupMembersWithProfile(store.groupMembers, store.profiles, groupId);
   const feed = getGroupFeed(store.expenses, store.savings, groupId);
+
+  // 2026-09-21 버그 수정: 이 화면을 열 때 멤버를 다시 읽는다. 로그인 직후 한 번만 읽어오기 때문에,
+  // 그 뒤에 초대 코드로 들어온 사람은 새로고침을 해야만 목록에 나타났다.
+  const refreshGroupMembers = store.refreshGroupMembers;
+  useEffect(() => {
+    refreshGroupMembers(groupId);
+  }, [refreshGroupMembers, groupId]);
 
   // 신규 기능: 그룹 피드 카테고리·기간 필터 — 개인 지출 목록(7)에는 있었는데 그룹 피드엔 없었다.
   // "저금"은 카테고리가 없어 별도 카테고리처럼 취급한다(피드 카드에 표시되는 그대로).

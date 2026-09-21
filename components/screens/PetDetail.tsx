@@ -82,11 +82,12 @@ export default function PetDetail({ scope }: { scope: CategoryScope }) {
         <div style={{ fontSize: 18, fontWeight: 800, color: "var(--shoot-text)", flex: 1 }}>
           {scope.kind === "personal" ? "내 저금통 펫" : "그룹 저금통 펫"}
         </div>
-        {scope.kind === "personal" && (
-          <div onClick={() => nav.push({ id: "petCustomize" })} style={{ fontSize: 12, fontWeight: 700, color: "var(--shoot-accent)", cursor: "pointer" }}>
-            꾸미기
-          </div>
-        )}
+        {/* 2026-09-21 팀 요청: 그룹 펫도 꾸밀 수 있다(그전까진 개인 펫에만 이 버튼이 있었다).
+            그룹 펫 색은 그룹원 누구나 바꿀 수 있고 모두에게 같이 보인다 — pets_update_own_or_group_member
+            정책이 이미 "내가 속한 그룹의 펫"까지 허용하고 있어 SQL 변경은 필요 없다. */}
+        <div onClick={() => nav.push({ id: "petCustomize", scope })} style={{ fontSize: 12, fontWeight: 700, color: "var(--shoot-accent)", cursor: "pointer" }}>
+          꾸미기
+        </div>
       </div>
 
       <div style={{ flex: 1, overflowY: "auto", padding: "10px 24px 28px", display: "flex", flexDirection: "column", alignItems: "center" }}>
