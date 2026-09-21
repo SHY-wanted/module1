@@ -1,7 +1,7 @@
 "use client";
 // components/screens/GroupDetail.tsx — 5b. 그룹 상세(피드)(design/shoot/GroupDetail.dc.html)
 // GroupList(5a)에서 어떤 그룹 카드를 탭했는지(groupId)를 스택 항목에 담아 그 그룹의 데이터를 조회한다.
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { useNav } from "../NavContext";
 import { useStore } from "@/lib/store";
 import { getGroupMembersWithProfile, getGroupFeed, getGroupPet } from "@/lib/selectors";
@@ -24,6 +24,25 @@ export default function GroupDetail({ groupId }: { groupId: string }) {
   const group = store.groups.find((g) => g.id === groupId);
   const members = getGroupMembersWithProfile(store.groupMembers, store.profiles, groupId);
   const feed = getGroupFeed(store.expenses, store.savings, groupId);
+
+  // 신규 기능: 그룹 피드 카테고리·기간 필터 — 개인 지출 목록(7)에는 있었는데 그룹 피드엔 없었다.
+  // "저금"은 카테고리가 없어 별도 카테고리처럼 취급한다(피드 카드에 표시되는 그대로).
+  const [categoryFilter, setCategoryFilter] = useState<string>("all");
+  const [startDate, setStartDate] = useState<string>("");
+  const [endDate, setEndDate] = useState<string>("");
+  const categoryOptions = useMemo(() => {
+    const set = new Set(feed.map((f) => (f.kind === "saving" ? "저금" : f.data.category)));
+    return Array.from(set);
+  }, [feed]);
+  const filteredFeed = useMemo(() => {
+    return feed.filter((f) => {
+      const category = f.kind === "saving" ? "저금" : f.data.category;
+      if (categoryFilter !== "all" && category !== categoryFilter) return false;
+      if (startDate && f.data.date < startDate) return false;
+      if (endDate && f.data.date > endDate) return false;
+      return true;
+    });
+  }, [feed, categoryFilter, startDate, endDate]);
   // 저금통 펫 키우기(docs/08-pet-feature-spec.md §1, 2026-09-15 신규) — 그룹 펫(그룹원이 함께 키움).
   // P6(그룹 랭킹)은 그룹 펫 XP 산정 방식이 팀 미정이라 뺐다(07-screens.md 참고) — 여기선 펫 카드만.
   const groupPet = getGroupPet(store.pets, groupId);
@@ -129,8 +148,52 @@ export default function GroupDetail({ groupId }: { groupId: string }) {
         </div>
 
         <div style={{ fontSize: 13, fontWeight: 800, color: "var(--shoot-text-muted)", marginBottom: 10 }}>지출·저금 피드</div>
+        <div style={{ display: "flex", flexDirection: "column", gap: 8, marginBottom: 12 }}>
+          <select
+            value={categoryFilter}
+            onChange={(e) => setCategoryFilter(e.target.value)}
+            style={{ width: "100%", boxSizing: "border-box", height: 40, borderRadius: 12, border: "1.5px solid var(--shoot-border)", background: "var(--shoot-surface)", padding: "0 12px", fontSize: 13, fontWeight: 700, color: "var(--shoot-text)" }}
+          >
+            <option value="all">전체 카테고리</option>
+            {categoryOptions.map((c) => (
+              <option key={c} value={c}>
+                {c}
+              </option>
+            ))}
+          </select>
+          <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+            <input
+              type="date"
+              value={startDate}
+              onChange={(e) => setStartDate(e.target.value)}
+              style={{ flex: 1, boxSizing: "border-box", height: 40, borderRadius: 12, border: "1.5px solid var(--shoot-border)", background: "var(--shoot-surface)", padding: "0 10px", fontSize: 12, fontWeight: 600, color: "var(--shoot-text)" }}
+            />
+            <span style={{ fontSize: 12, color: "#A9A2B8", fontWeight: 700 }}>~</span>
+            <input
+              type="date"
+              value={endDate}
+              onChange={(e) => setEndDate(e.target.value)}
+              style={{ flex: 1, boxSizing: "border-box", height: 40, borderRadius: 12, border: "1.5px solid var(--shoot-border)", background: "var(--shoot-surface)", padding: "0 10px", fontSize: 12, fontWeight: 600, color: "var(--shoot-text)" }}
+            />
+            {(categoryFilter !== "all" || startDate || endDate) && (
+              <div
+                onClick={() => {
+                  setCategoryFilter("all");
+                  setStartDate("");
+                  setEndDate("");
+                }}
+                style={{ flexShrink: 0, fontSize: 12, fontWeight: 700, color: "#B23B3B", cursor: "pointer", padding: "0 4px" }}
+              >
+                초기화
+              </div>
+            )}
+          </div>
+        </div>
         <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-          {feed.map((f) => {
+          {filteredFeed.length === 0 && (
+            <div style={{ textAlign: "center", color: "var(--shoot-text-muted)", fontSize: 13, fontWeight: 600, padding: "12px 0" }}>이 필터에 맞는 항목이 없어요</div>
+          )}
+          {filteredFeed.map((f) => {
             const isSaving = f.kind === "saving";
             const authorName = store.profiles.find((p) => p.id === f.data.user_id)?.name ?? "?";
             const merchant = isSaving ? f.data.title ?? "저금" : f.data.memo ?? "지출";

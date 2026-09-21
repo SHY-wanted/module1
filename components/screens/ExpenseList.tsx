@@ -1,7 +1,7 @@
 "use client";
 // components/screens/ExpenseList.tsx — 7. 지출 목록(design/shoot/ExpenseList.dc.html)
 // "확인 필요"는 별도 boolean이 아니라 category==='확인 필요'로 판정한다(05-policy.md P7 방식, 06-data.md E4 [?] 채택).
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useNav } from "../NavContext";
 import { useStore } from "@/lib/store";
 import { getOwnExpenses, groupExpensesByMonth } from "@/lib/selectors";
@@ -9,6 +9,8 @@ import { getCategoryVisual } from "@/lib/categories";
 import { formatRelativeTime, formatWon } from "@/lib/format";
 import { CategoryIcon, ChevronLeftIcon, PlusIcon, TrashIcon } from "../icons";
 import type { CategoryIconKey } from "../icons";
+
+const UNDO_WINDOW_MS = 5000;
 
 // 2026-09-19 팀 요청: 2c(설정) "카테고리" 항목을 누르면 그 카테고리로 미리 필터링된 이 화면을
 // 스택에 쌓아 보여준다 — 지출내역 탭(7)과 완전히 같은 화면을 재사용하되, initialCategoryFilter로
@@ -25,14 +27,39 @@ export default function ExpenseList({ initialCategoryFilter, pushed }: { initial
   const [memoQuery, setMemoQuery] = useState<string>("");
   // 2026-09-19 팀 요청: 삭제 버튼 — 바로 지우지 않고 확인 팝업을 한 번 띄운다(10a "그룹 나가기"와 같은 패턴).
   const [confirmingId, setConfirmingId] = useState<string | null>(null);
+  // 신규 기능: 실행 취소 — "삭제" 확인 후에도 UNDO_WINDOW_MS 동안은 실제로 지우지 않고 목록에서만
+  // 숨긴다. 그 안에 "되돌리기"를 누르면 타이머를 지워서 아예 지워지지 않게 한다.
+  // ponytail: 한 번에 하나만 취소 대기시킨다 — 5초 안에 두 번째 항목을 또 지우면 먼저 걸어둔 타이머는
+  // (조용히 실행은 되지만) "되돌리기" 버튼으로 더는 못 취소한다. 여러 개를 동시에 취소 대기시켜야 할
+  // 정도로 빠르게 연속 삭제하는 경우가 흔치 않아서, 큐로 만들진 않았다 — 필요해지면 Map으로 바꿀 것.
+  const [pendingDeleteId, setPendingDeleteId] = useState<string | null>(null);
+  const deleteTimerRef = useRef<number | null>(null);
 
-  async function handleDeleteConfirmed() {
+  useEffect(() => {
+    return () => {
+      if (deleteTimerRef.current !== null) window.clearTimeout(deleteTimerRef.current);
+    };
+  }, []);
+
+  function handleDeleteConfirmed() {
     if (!confirmingId) return;
-    await store.deleteExpense(confirmingId);
+    const id = confirmingId;
     setConfirmingId(null);
+    setPendingDeleteId(id);
+    deleteTimerRef.current = window.setTimeout(() => {
+      store.deleteExpense(id);
+      setPendingDeleteId(null);
+      deleteTimerRef.current = null;
+    }, UNDO_WINDOW_MS);
   }
 
-  const ownExpenses = getOwnExpenses(store.expenses, store.currentUserId);
+  function handleUndoDelete() {
+    if (deleteTimerRef.current !== null) window.clearTimeout(deleteTimerRef.current);
+    deleteTimerRef.current = null;
+    setPendingDeleteId(null);
+  }
+
+  const ownExpenses = getOwnExpenses(store.expenses, store.currentUserId).filter((e) => e.id !== pendingDeleteId);
   const categoryOptions = useMemo(() => {
     const set = new Set(ownExpenses.map((e) => e.category));
     return Array.from(set);
@@ -208,6 +235,17 @@ export default function ExpenseList({ initialCategoryFilter, pushed }: { initial
               </div>
             </div>
           </div>
+        </div>
+      )}
+
+      {/* 신규 기능: 실행 취소 토스트 — UNDO_WINDOW_MS 동안만 떠 있는다(진행바로 남은 시간을 보여준다). */}
+      {pendingDeleteId && (
+        <div style={{ position: "absolute", left: 20, right: 20, bottom: 20, background: "var(--shoot-text)", borderRadius: 16, padding: "12px 16px", display: "flex", alignItems: "center", gap: 12, boxShadow: "0 8px 20px rgba(0,0,0,0.25)", zIndex: 30, overflow: "hidden" }}>
+          <div style={{ flex: 1, fontSize: 13, fontWeight: 700, color: "var(--shoot-surface)" }}>지출을 삭제했어요</div>
+          <div onClick={handleUndoDelete} style={{ fontSize: 13, fontWeight: 800, color: "var(--shoot-accent)", cursor: "pointer", flexShrink: 0 }}>
+            되돌리기
+          </div>
+          <div style={{ position: "absolute", left: 0, bottom: 0, height: 3, background: "var(--shoot-accent)", animation: `shoot-undo-shrink ${UNDO_WINDOW_MS}ms linear forwards` }} />
         </div>
       )}
     </div>

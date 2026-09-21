@@ -34,6 +34,11 @@ const MAX_LINEAR_MONTH = TODAY_LINEAR_MONTH + 12; // 오늘과 같은 달의 내
 // 2026-09-18 사용자 요청: 과거도 무제한이 아니라 올해 기준 5년 전까지만 넘길 수 있게 제한한다.
 const MIN_LINEAR_MONTH = TODAY_LINEAR_MONTH - 5 * 12;
 
+// 신규 기능: "지난달보다 몇 % 늘었어요" 전월 대비 비교 — Date가 연/월 넘어가는 걸 알아서 처리해준다
+// (1월이면 작년 12월로).
+const PREVIOUS_MONTH_DATE = new Date(TODAY_YEAR, TODAY_MONTH_INDEX - 1, 1);
+const PREVIOUS_MONTH = `${PREVIOUS_MONTH_DATE.getFullYear()}-${String(PREVIOUS_MONTH_DATE.getMonth() + 1).padStart(2, "0")}`;
+
 export default function Home() {
   const nav = useNav();
   const store = useStore();
@@ -48,6 +53,13 @@ export default function Home() {
     if (homeGroup === "me") return getPersonalExpenseTotal(store.expenses, store.currentUserId, CURRENT_MONTH);
     return getGroupExpenseTotal(store.expenses, homeGroup, CURRENT_MONTH);
   }, [store.expenses, store.currentUserId, homeGroup]);
+
+  // 신규 기능: 전월 대비 비교 — 지난달 데이터가 없으면(0원) 비교 자체가 의미 없어서 표시 안 한다.
+  const lastMonthExpenseTotal = useMemo(() => {
+    if (homeGroup === "me") return getPersonalExpenseTotal(store.expenses, store.currentUserId, PREVIOUS_MONTH);
+    return getGroupExpenseTotal(store.expenses, homeGroup, PREVIOUS_MONTH);
+  }, [store.expenses, store.currentUserId, homeGroup]);
+  const momChangePct = lastMonthExpenseTotal > 0 ? Math.round(((expenseTotal - lastMonthExpenseTotal) / lastMonthExpenseTotal) * 100) : null;
 
   // 2026-09-23 버그 수정: "이번 달 총 지출" 카드 아래 카테고리별 % 막대가 식비 42%·생활 28%·문화 17%로
   // 고정돼 있어서 실제 지출 카테고리와 안 맞았다 — expenseTotal과 같은 필터 기준으로 실제 계산한다.
@@ -268,6 +280,11 @@ export default function Home() {
             <ChevronRightIcon size={16} color="rgba(255,255,255,0.85)" />
           </div>
           <div style={{ fontSize: 30, fontWeight: 800, color: "#fff", marginTop: 6, letterSpacing: "-0.5px" }}>{formatWon(expenseTotal)}</div>
+          {momChangePct !== null && (
+            <div style={{ fontSize: 11, fontWeight: 700, color: "rgba(255,255,255,0.8)", marginTop: 4 }}>
+              {momChangePct === 0 ? "지난달과 비슷해요" : momChangePct > 0 ? `지난달보다 ${momChangePct}% 늘었어요` : `지난달보다 ${Math.abs(momChangePct)}% 줄었어요`}
+            </div>
+          )}
           <div style={{ display: "flex", flexDirection: "column", gap: 8, marginTop: 16 }}>
             {categoryBreakdown.length === 0 ? (
               <div style={{ fontSize: 11, fontWeight: 700, color: "rgba(255,255,255,0.75)" }}>이번 달 지출이 아직 없어요</div>
