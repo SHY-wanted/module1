@@ -57,22 +57,22 @@ export default function MonthlyGoalReport() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // 2026-09-23 팀 요청(신규): 목표 카드를 지울 수 있게 — 실제로는 그 카테고리의 category_goals를 지운다
-  // (goal_rewards엔 손대지 않는다. getOrCreateGoalRewardsForMonth가 categoryGoals에 없는 카테고리는
-  // 애초에 결과에 안 넣으므로, 목표를 지운 뒤 다시 계산하면 그 카드가 자연히 빠진다).
+  // 2026-09-23 팀 요청(신규): 목표 카드를 지울 수 있게 — 실제로는 그 카테고리의 category_goals를 지운다.
+  // 버그 수정(2026-09-24): 삭제 직후 store.getOrCreateGoalRewardsForMonth()를 다시 불러 새로 계산했는데,
+  // store.deleteCategoryGoal의 setCategoryGoals는 리액트 상태 업데이트라 비동기로 반영된다 — 바로 다음 줄에서
+  // store.getOrCreateGoalRewardsForMonth를 또 부르면 아직 새 렌더가 일어나기 전이라 "방금 지운 카테고리가
+  // 여전히 포함된" 이전 categoryGoals로 계산돼서, 카드가 화면에 그대로 남아있었다(다른 화면 갔다 오면
+  // 그제야 최신 렌더로 사라짐). 서버 삭제는 이미 끝났으니, 화면에서는 그 카테고리 카드만 바로 빼면 된다
+  // — 다시 계산할 필요 자체가 없다(다른 카테고리의 보상엔 영향 없음).
   async function handleDeleteGoal(category: string) {
     if (deletingCategory) return;
     const goal = store.categoryGoals.find((g) => g.category === category && g.month === month);
     if (!goal) return;
     setDeletingCategory(category);
     const ok = await store.deleteCategoryGoal(goal.id);
-    if (!ok) {
-      setDeletingCategory(null);
-      return;
-    }
-    const result = await store.getOrCreateGoalRewardsForMonth();
     setDeletingCategory(null);
-    if (result.ok && result.data) setRewards(result.data);
+    if (!ok) return;
+    setRewards((prev) => prev?.filter((r) => r.category !== category) ?? prev);
   }
 
   const totalCoins = rewards?.reduce((sum, r) => sum + r.coins_earned, 0) ?? 0;

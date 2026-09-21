@@ -81,6 +81,15 @@ export const PET_COLOR_PARTS: { key: PetColorPart; label: string }[] = [
 // "청소년기=가방, 성년기=가계부+가방" 라벨은 채택 안 함(래스터 추출 정밀도 문제로 SVG 직접 그리기로
 // 전환하면서 원래 이미지 구성으로 되돌렸다). 없는 부위의 색은 DB엔 계속 저장돼 있지만(다음 단계로
 // 자라면 그대로 살아남게) 그 단계에서는 편집 UI를 숨긴다.
+// 015 마이그레이션 — "꾸미기"에서 고른 표시용 단계(display_stage_index)가 있으면 그걸 보여주고,
+// 없으면(null) 실제 성장 단계(stage_index)를 그대로 보여준다. display_stage_index가 실제 성장
+// 단계보다 앞서 있으면(데이터가 어긋난 경우 방어용) 실제 성장 단계로 눌러 잠긴 단계를 미리 보여주지 못하게 한다.
+export function effectiveStageIndex(pet: { stage_index: number; display_stage_index?: number | null }): number {
+  const chosen = pet.display_stage_index;
+  if (chosen == null) return pet.stage_index;
+  return Math.min(chosen, pet.stage_index);
+}
+
 export function colorPartsForStage(stageIndex: number): PetColorPart[] {
   if (stageIndex <= 1) return ["body", "leaf"]; // 알 — 눈·가계부·가방 없음
   if (stageIndex === 2) return ["body", "eyes", "leaf"]; // 유년기 — 가계부·가방 없음

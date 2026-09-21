@@ -7,7 +7,7 @@ import { useNav } from "../NavContext";
 import { useStore } from "@/lib/store";
 import type { CategoryScope } from "@/lib/categories";
 import { getGroupPet, getPersonalPet } from "@/lib/selectors";
-import { FEED_COIN_COST, GROUP_SULK_AFTER_DAYS, PERSONAL_SULK_AFTER_DAYS, PET_STAGE_LABELS, daysBetween, stageXpRequirement } from "@/lib/pets";
+import { FEED_COIN_COST, GROUP_SULK_AFTER_DAYS, PERSONAL_SULK_AFTER_DAYS, PET_STAGE_LABELS, daysBetween, effectiveStageIndex, stageXpRequirement } from "@/lib/pets";
 import { TODAY_DATE } from "@/lib/mock";
 import PetMascot, { petMascotSize } from "../PetMascot";
 import { useState } from "react";
@@ -91,7 +91,9 @@ export default function PetDetail({ scope }: { scope: CategoryScope }) {
 
       <div style={{ flex: 1, overflowY: "auto", padding: "10px 24px 28px", display: "flex", flexDirection: "column", alignItems: "center" }}>
         <div style={{ marginTop: 12 }}>
-          <PetMascot pet={pet} size={petMascotSize(pet.stage_index) + 20} sulking={sulking} />
+          {/* 크기는 "꾸미기"에서 고른 표시 단계(effectiveStageIndex) 기준 — 실제 성장 단계(pet.stage_index)는
+              아래 이름·잠금 트래커·XP 바에서 그대로 쓴다(성장 진행과 표시 단계는 서로 다른 정보). */}
+          <PetMascot pet={pet} size={petMascotSize(effectiveStageIndex(pet)) + 20} sulking={sulking} />
         </div>
         <div style={{ fontSize: 18, fontWeight: 800, color: "var(--shoot-text)", marginTop: 8 }}>{displayName}</div>
         <div style={{ fontSize: 12, color: "var(--shoot-text-muted)", fontWeight: 700, marginTop: 2 }}>

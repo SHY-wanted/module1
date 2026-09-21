@@ -19,7 +19,7 @@
 import { useMemo } from "react";
 import Image from "next/image";
 import type { Pet } from "@/lib/mock";
-import { MAX_STAGE_INDEX } from "@/lib/pets";
+import { MAX_STAGE_INDEX, effectiveStageIndex } from "@/lib/pets";
 import CharacterCanvas from "./character-demo/CharacterCanvas";
 import type { CharacterStage, ColorPart } from "@/lib/characterStages";
 
@@ -29,7 +29,10 @@ export function petMascotSize(stageIndex: number): number {
   return STAGE_SIZE[Math.min(Math.max(stageIndex, 1), MAX_STAGE_INDEX) - 1] ?? STAGE_SIZE[0];
 }
 
-type PetColorProps = Pick<Pet, "stage_index" | "body_color" | "ledger_color" | "bag_color" | "eye_color" | "leaf_color">;
+// display_stage_index는 옵셔널로 둔다 — PetCustomize의 미리보기처럼 이미 원하는 단계를 stage_index
+// 자리에 직접 넣어서 넘기는 호출부도 있어서, 없으면 effectiveStageIndex가 stage_index를 그대로 쓴다.
+type PetColorProps = Pick<Pet, "stage_index" | "body_color" | "ledger_color" | "bag_color" | "eye_color" | "leaf_color"> &
+  Partial<Pick<Pet, "display_stage_index">>;
 
 export default function PetMascot({
   pet,
@@ -40,8 +43,11 @@ export default function PetMascot({
   size?: number;
   sulking?: boolean;
 }) {
-  const px = size ?? petMascotSize(pet.stage_index);
-  const stage = (Math.min(Math.max(pet.stage_index, 1), MAX_STAGE_INDEX) - 1) as CharacterStage;
+  // 2026-09-21 버그 수정: 여기서 항상 effectiveStageIndex를 거쳐야 "꾸미기"에서 고른 표시 단계가
+  // 실제로 반영된다 — pet.stage_index를 직접 쓰면 성장 단계만 그려져서 "적용해도 안 바뀐다".
+  const shownStage = effectiveStageIndex(pet);
+  const px = size ?? petMascotSize(shownStage);
+  const stage = (Math.min(Math.max(shownStage, 1), MAX_STAGE_INDEX) - 1) as CharacterStage;
 
   const colors = useMemo<Record<ColorPart, string>>(
     () => ({
@@ -57,7 +63,7 @@ export default function PetMascot({
   // 버그 수정(2026-09-21): 알(stage_index 1) 단계는 이 시무룩 그림(다 자란 몸통에 발까지 있는 그림)을
   // 쓰면 안 된다 — 알은 원래 팔다리 없는 계란 모양이라, 시무룩 그림으로 바뀌는 순간 알인데 알처럼
   // 안 보이는 모순이 생긴다. 알 단계는 시무룩 판정이 나도 원래 알 그림(눈 감은 얼굴) 그대로 둔다.
-  if (sulking && pet.stage_index > 1) {
+  if (sulking && shownStage > 1) {
     // 원본 비율(286x376)을 그대로 유지 — 다른 단계 그림들과 폭이 아니라 "높이" 기준으로 크기를
     // 맞추므로, 세로 px 그대로 두고 폭은 원본 비율대로 계산한다.
     const width = Math.round(px * (286 / 376));
