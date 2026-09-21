@@ -130,10 +130,12 @@ export default function GroupDetail({ groupId }: { groupId: string }) {
                     <div style={{ flex: 1 }}>
                       <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
                         <div style={{ fontSize: 14, fontWeight: 800, color: "var(--shoot-text)" }}>{name}</div>
-                        {/* 신규 기능: 방장 배지 — 기존 "기타" 카테고리와 같은 금색 팔레트(lib/categories.ts)를 재사용. */}
+                        {/* 신규 기능: 그룹장 배지 — 기존 "기타" 카테고리와 같은 금색 팔레트(lib/categories.ts)를 재사용.
+                            사용자 요청(2026-09-24): "방장"이 아니라 MyGroupsManage.tsx·DelegateSelect.tsx 등
+                            나머지 화면과 같은 "그룹장" 용어로 맞춘다. */}
                         {isOwnerMember && (
                           <span style={{ fontSize: 10, fontWeight: 800, color: "#8A6A12", background: "#FFFBE8", padding: "2px 7px", borderRadius: 8, border: "1px solid rgba(245,213,133,0.6)", flexShrink: 0 }}>
-                            방장
+                            그룹장
                           </span>
                         )}
                       </div>
