@@ -13,7 +13,7 @@ export const GROUP_TYPE_VISUAL: Record<GroupType, GroupTypeVisual> = {
   FAMILY: { label: "가족", accent: "#279E88", light: "#E8F9F7", ink: "#1D7A69" },
   MARRIED_COUPLE: { label: "부부", accent: "#C24C77", light: "#FFF0F6", ink: "#A03A61" },
   COUPLE: { label: "커플", accent: "#6A5ECF", light: "#F0EEFF", ink: "#4B3F94" },
-  ROOMMATE: { label: "룸메이트", accent: "#2E7AB8", light: "#EBF5FF", ink: "#26689C" },
+  FRIEND: { label: "친구", accent: "#2E7AB8", light: "#EBF5FF", ink: "#26689C" },
   CLUB: { label: "모임·동아리", accent: "#8A6A12", light: "#FFFBE8", ink: "#6E540E" },
   OTHER: { label: "기타", accent: "#2E8B57", light: "#EDFAF3", ink: "#247146" },
   // 06-data.md E2 [?]: 3a 화면엔 "형제자매" 카드가 없어 새로 만들 수는 없지만, enum엔 있으므로

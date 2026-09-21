@@ -10,8 +10,9 @@ import type { CategoryScope } from "@/lib/categories";
 import { formatFullDateKorean, formatWon } from "@/lib/format";
 import { TODAY_DATE } from "@/lib/mock";
 import { getGroupsForUser } from "@/lib/selectors";
-import { ChevronLeftIcon, CategoryIcon } from "../icons";
+import { ChevronLeftIcon, CategoryIcon, RefreshIcon } from "../icons";
 import type { CategoryIconKey } from "../icons";
+import ImageLightbox from "../ImageLightbox";
 
 // "직접 입력" 칩은 실제 카테고리가 아니라 커스텀 입력칸을 여는 스위치라 스코프별 목록에는 안 들어있다.
 const CUSTOM_CHIP = { id: "custom", label: "직접 입력", accent: "#A9A2B8", light: "#F1EFEC", ink: "#5B5568", icon: "custom" as const };
@@ -60,8 +61,30 @@ export default function ExpenseInput({ expenseId }: { expenseId?: string }) {
     setSelectedCategoryId(nextCats[0]?.id ?? "etc");
   }
 
+  // 신규 기능: 저장 전에 미리 "이 카테고리 이번 달 목표 넘을 것 같아요" 경고. 목표는 개인 스코프에만
+  // 있어서(category_goals엔 group_id가 없다) 개인 지출·신규 입력일 때만 계산한다(수정은 기존 금액이
+  // 이미 합계에 들어가 있어 이중으로 세게 돼 범위에서 뺐다).
+  // 버그 수정(2026-09-18): TODAY_DATE(오늘) 기준으로 고정돼 있어서, 날짜를 다른 달로 바꿔 입력하면
+  // 엉뚱한 달의 목표·지출과 비교하고 있었다 — 지금 고른 date의 달을 기준으로 계산해야 한다.
+  const categoryLabel = selectedCategoryId === "custom" ? customCategory.trim() : allCats.find((c) => c.id === selectedCategoryId)?.label ?? "";
+  const entryMonth = date.slice(0, 7);
+  const categoryGoal =
+    !isEdit && !shareGroup && categoryLabel
+      ? store.categoryGoals.find((g) => g.category === categoryLabel && g.month === entryMonth)
+      : undefined;
+  const spentSoFar = categoryGoal
+    ? store.expenses
+        .filter((e) => e.user_id === store.currentUserId && e.category === categoryLabel && e.date.startsWith(entryMonth))
+        .reduce((sum, e) => sum + e.amount, 0)
+    : 0;
+  const overGoalAfterSave = categoryGoal && amount > 0 && spentSoFar + amount > categoryGoal.goal_amount;
+
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
+  // 신규 기능: 영수증 촬영으로 등록된 지출을 수정할 때 원본 사진을 다시 볼 수 있다(재확인만, 교체는 아님).
+  const [lightboxOpen, setLightboxOpen] = useState(false);
+  // 신규 기능: 정기 지출 — 신규 입력일 때만 등록 가능(수정 모드에선 안 보임). day_of_month는 고른 date의 일(day)로 정해진다.
+  const [registerRecurring, setRegisterRecurring] = useState(false);
 
   async function handleSave() {
     if (saving) return;
@@ -83,6 +106,7 @@ export default function ExpenseInput({ expenseId }: { expenseId?: string }) {
         source_type: existing.source_type,
         image_url: existing.image_url,
         is_shared: !!shareGroup,
+        recurring_expense_id: existing.recurring_expense_id,
       });
       setSaving(false);
       if (!ok) {
@@ -100,6 +124,7 @@ export default function ExpenseInput({ expenseId }: { expenseId?: string }) {
         source_type: "MANUAL",
         image_url: null,
         is_shared: !!shareGroup,
+        recurring_expense_id: null,
       });
       setSaving(false);
       if (!result.ok) {
@@ -107,20 +132,31 @@ export default function ExpenseInput({ expenseId }: { expenseId?: string }) {
         return;
       }
       // 2c "지출 기록 시 확인 알림"(2026-09-17 팀 결정 — 실제로 토스트를 띄우도록 구현) — 새로 기록할 때만,
-      // 수정할 때는 안 띄운다.
-      if (store.notificationSettings.expenseConfirm) {
-        store.showToast(`${formatWon(amount)}, ${category}가 저장됐어요`);
-      }
+      // 수정할 때는 안 띄운다. notifyExpenseSaved가 토글 여부를 직접 확인한다.
+      store.notifyExpenseSaved(`${formatWon(amount)}, ${category}가 저장됐어요`);
       // P3 "데일리 먹이주기 팝업"(docs/08-pet-feature-spec.md §3) — "지출을 하나라도 기록한 직후"만
       // 해당(수정 제외), 개인 펫이 있고 오늘 아직 안 먹였으면 store가 알아서 연다.
       store.openFeedPopupIfEligible();
+      // 신규 기능: "매달 반복 등록"을 체크했으면 정기 지출 템플릿도 함께 만든다(다음 달부터는
+      // 로그인 시 store가 자동으로 지출을 만들어준다 — 이번 달 것은 방금 위에서 이미 저장됨).
+      if (registerRecurring) {
+        await store.addRecurringExpense({
+          user_id: store.currentUserId,
+          group_id: shareGroup?.id ?? null,
+          amount,
+          category,
+          memo: memo.trim() || null,
+          day_of_month: Math.min(Number(date.slice(8, 10)), 28),
+          is_shared: !!shareGroup,
+        });
+      }
     }
     // 07-screens.md "6 '저장하기' → 7(지출 목록)로 복귀" — 2026-09-11 팀 결정.
     nav.back();
   }
 
   return (
-    <div style={{ height: "100%", width: "100%", boxSizing: "border-box", background: "var(--shoot-bg)", display: "flex", flexDirection: "column" }}>
+    <div style={{ height: "100%", width: "100%", boxSizing: "border-box", background: "var(--shoot-bg)", display: "flex", flexDirection: "column", position: "relative" }}>
       <div style={{ padding: "20px 20px 20px", textAlign: "center", background: "var(--shoot-surface-alt)", flexShrink: 0, position: "relative" }}>
         {/* 2026-09-14 팀 결정: 뒤로가기 버튼 추가 — 7(지출 목록)의 "+"·항목 탭에서만 열리므로 7로 pop. */}
         <div onClick={() => nav.back()} style={{ position: "absolute", top: 20, left: 20, cursor: "pointer", display: "flex" }}>
@@ -139,6 +175,17 @@ export default function ExpenseInput({ expenseId }: { expenseId?: string }) {
         </div>
       </div>
       <div style={{ flex: 1, overflowY: "auto", padding: "18px 20px 28px" }}>
+        {/* 신규 기능: OCR로 촬영한 영수증 지출이면 원본 사진을 다시 확인할 수 있다(재확인만, 교체는 안 됨). */}
+        {existing?.source_type === "RECEIPT" && existing.image_url && (
+          <div
+            onClick={() => setLightboxOpen(true)}
+            style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 16, padding: 10, borderRadius: 14, border: "1px solid var(--shoot-border)", background: "var(--shoot-surface)", cursor: "pointer" }}
+          >
+            {/* eslint-disable-next-line @next/next/no-img-element -- data URL은 next/image의 원격 최적화 대상이 아니다. */}
+            <img src={existing.image_url} alt="영수증 원본" style={{ width: 44, height: 44, borderRadius: 10, objectFit: "cover", flexShrink: 0 }} />
+            <div style={{ fontSize: 13, fontWeight: 700, color: "var(--shoot-text)" }}>영수증 원본 보기</div>
+          </div>
+        )}
         <div style={{ fontSize: 12, fontWeight: 700, color: "var(--shoot-text-muted)", marginBottom: 8 }}>선택한 그룹에 맞는 카테고리예요</div>
         <div style={{ fontSize: 13, fontWeight: 700, color: "var(--shoot-text)", marginBottom: 8 }}>카테고리</div>
         <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
@@ -169,6 +216,12 @@ export default function ExpenseInput({ expenseId }: { expenseId?: string }) {
             );
           })}
         </div>
+
+        {overGoalAfterSave && categoryGoal && (
+          <div style={{ fontSize: 12, fontWeight: 700, color: "#B23B3B", marginTop: 8 }}>
+            ⚠ 저장하면 이번 달 {categoryLabel} 목표({formatWon(categoryGoal.goal_amount)})를 넘어요
+          </div>
+        )}
 
         {selectedCategoryId === "custom" && (
           <input
@@ -216,6 +269,23 @@ export default function ExpenseInput({ expenseId }: { expenseId?: string }) {
             ))}
           </select>
         </div>
+
+        {/* 신규 기능: 정기 지출 — 신규 입력일 때만 보인다(수정 모드에선 이미 지난 지출이라 의미가 없음). */}
+        {!isEdit && (
+          <div
+            onClick={() => setRegisterRecurring((v) => !v)}
+            style={{ marginTop: 14, background: "var(--shoot-surface)", border: "1.5px solid var(--shoot-border)", borderRadius: 14, padding: 14, display: "flex", alignItems: "center", gap: 10, cursor: "pointer" }}
+          >
+            <RefreshIcon size={17} color="var(--shoot-text-muted)" />
+            <div style={{ flex: 1 }}>
+              <div style={{ fontSize: 13, fontWeight: 700, color: "var(--shoot-text)" }}>매달 반복 등록</div>
+              <div style={{ fontSize: 11, color: "var(--shoot-text-muted)", marginTop: 2 }}>매달 {date.slice(8, 10)}일에 같은 지출을 자동으로 기록해요</div>
+            </div>
+            <div style={{ width: 42, height: 24, borderRadius: 12, background: registerRecurring ? "var(--shoot-accent)" : "#D8D3C8", position: "relative", flexShrink: 0, transition: "background 0.15s" }}>
+              <div style={{ width: 18, height: 18, borderRadius: "50%", background: "var(--shoot-surface)", position: "absolute", top: 3, left: registerRecurring ? 21 : 3, boxShadow: "0 2px 5px rgba(0,0,0,0.2)", transition: "left 0.15s" }} />
+            </div>
+          </div>
+        )}
         {saveError && <div style={{ fontSize: 12, fontWeight: 700, color: "#B23B3B", textAlign: "center", marginTop: 10 }}>{saveError}</div>}
         <div
           onClick={handleSave}
@@ -224,6 +294,8 @@ export default function ExpenseInput({ expenseId }: { expenseId?: string }) {
           저장하기
         </div>
       </div>
+
+      {existing?.image_url && <ImageLightbox url={lightboxOpen ? existing.image_url : null} onClose={() => setLightboxOpen(false)} />}
     </div>
   );
 }

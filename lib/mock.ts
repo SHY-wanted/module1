@@ -5,7 +5,7 @@
 export type GroupType =
   | "FAMILY"
   | "SIBLING"
-  | "ROOMMATE"
+  | "FRIEND"
   | "COUPLE"
   | "MARRIED_COUPLE"
   | "CLUB"
@@ -42,10 +42,12 @@ export interface GroupMember {
   joined_at: string;
 }
 
-// E4. Expense — schema.sql: id, user_id, group_id, amount, category, memo, date, source_type, image_url, is_shared, created_at
+// E4. Expense — schema.sql: id, user_id, group_id, amount, category, memo, date, source_type, image_url, is_shared, created_at, recurring_expense_id
 // 스키마에 없는 merchant·needsReview 필드는 만들지 않는다.
 // - "가맹점명"은 memo에 넣는다.
 // - "확인 필요" 배지는 category === '확인 필요'로 판정한다(05-policy.md P7 방식).
+// - recurring_expense_id(신규, supabase/013_recurring_expenses.sql): 이 지출이 어느 정기 지출
+//   템플릿에서 자동 생성됐는지. 수동으로 만든 지출은 null.
 export interface Expense {
   id: string;
   user_id: string;
@@ -58,6 +60,7 @@ export interface Expense {
   image_url: string | null;
   is_shared: boolean;
   created_at: string; // timestamptz — 시각 표시(오늘 08:32 등)·정렬 기준
+  recurring_expense_id: string | null;
 }
 
 // E6. Saving — schema.sql: id, user_id, type, group_id, amount, title, date, created_at
@@ -98,7 +101,11 @@ export const CURRENT_USER_ID = "u-seoyeon";
 // 지출을 입력해도 저장된 date는 항상 "2026-09-09"가 돼서 7(지출 목록)의 오늘 날짜 필터에 안 걸리는
 // 문제가 있었다. 이제 진짜 오늘 날짜(한국시간 기준)로 계산한다 — 목업 시드 데이터(INITIAL_EXPENSES 등)의
 // 고정 날짜와는 무관하다(그것들은 자기 날짜를 그대로 갖고 있고, 실제 로그인하면 Supabase 데이터로 대체된다).
-function computeTodayDateKST(): string {
+// computeTodayDateKST를 export하는 이유(2026-09-18 추가): TODAY_DATE는 모듈이 로드될 때 딱 한 번만
+// 계산돼서 고정된다 — 대부분의 화면은 짧게 열고 닫으니 문제없지만, 저녁 리마인더(store.tsx)처럼 시계를
+// 계속 들여다보며 "지금이 오후 8시 넘었는지"를 매번 새로 확인하는 로직은 날짜도 그때그때 다시 재야
+// 한다(자정을 넘겨 앱을 계속 켜둔 경우 TODAY_DATE만 어제로 멈춰 있으면 안 되니까).
+export function computeTodayDateKST(): string {
   const kst = new Date(Date.now() + 9 * 60 * 60 * 1000);
   return kst.toISOString().slice(0, 10);
 }
@@ -135,7 +142,7 @@ export const INITIAL_PROFILES: Profile[] = [
 // ------------------------------------------------------------------
 export const GROUP_ID_COUPLE = "g-couple";
 export const GROUP_ID_FAMILY = "g-family";
-export const GROUP_ID_ROOMMATE = "g-roommate";
+export const GROUP_ID_FRIEND = "g-friend"; // 2026-09-20: 유형이 "룸메이트"→"친구"로 바뀌면서 id·이름도 같이 갱신
 
 export const INITIAL_GROUPS: Group[] = [
   {
@@ -153,10 +160,10 @@ export const INITIAL_GROUPS: Group[] = [
     created_at: "2026-03-15T09:00:00+09:00",
   },
   {
-    id: GROUP_ID_ROOMMATE,
-    name: "전세 405호",
-    group_type: "ROOMMATE",
-    invite_code: "RM-9T3L",
+    id: GROUP_ID_FRIEND,
+    name: "대학 동기들",
+    group_type: "FRIEND",
+    invite_code: "FR-9T3L",
     created_at: "2026-08-01T09:00:00+09:00",
   },
 ];
@@ -173,10 +180,10 @@ export const INITIAL_GROUP_MEMBERS: GroupMember[] = [
   { id: generateId("gm"), user_id: "u-doyoon", group_id: GROUP_ID_FAMILY, role: "OWNER", nickname: "아빠", joined_at: "2026-03-15T09:00:00+09:00" },
   { id: generateId("gm"), user_id: "u-sujin", group_id: GROUP_ID_FAMILY, role: "MEMBER", nickname: "엄마", joined_at: "2026-03-15T09:00:00+09:00" },
   { id: generateId("gm"), user_id: "u-haeun", group_id: GROUP_ID_FAMILY, role: "MEMBER", nickname: "동생", joined_at: "2026-03-15T09:00:00+09:00" },
-  // 룸메이트 (3명)
-  { id: generateId("gm"), user_id: "u-seoyeon", group_id: GROUP_ID_ROOMMATE, role: "MEMBER", nickname: null, joined_at: "2026-08-01T09:00:00+09:00" },
-  { id: generateId("gm"), user_id: "u-jihoon", group_id: GROUP_ID_ROOMMATE, role: "OWNER", nickname: null, joined_at: "2026-08-01T09:00:00+09:00" },
-  { id: generateId("gm"), user_id: "u-yuna", group_id: GROUP_ID_ROOMMATE, role: "MEMBER", nickname: null, joined_at: "2026-08-01T09:00:00+09:00" },
+  // 친구 (3명)
+  { id: generateId("gm"), user_id: "u-seoyeon", group_id: GROUP_ID_FRIEND, role: "MEMBER", nickname: null, joined_at: "2026-08-01T09:00:00+09:00" },
+  { id: generateId("gm"), user_id: "u-jihoon", group_id: GROUP_ID_FRIEND, role: "OWNER", nickname: null, joined_at: "2026-08-01T09:00:00+09:00" },
+  { id: generateId("gm"), user_id: "u-yuna", group_id: GROUP_ID_FRIEND, role: "MEMBER", nickname: null, joined_at: "2026-08-01T09:00:00+09:00" },
 ];
 
 // ------------------------------------------------------------------
@@ -197,11 +204,12 @@ export const INITIAL_EXPENSES: Expense[] = [
     image_url: null,
     is_shared: true,
     created_at: "2026-09-09T08:32:00+09:00",
+    recurring_expense_id: null,
   },
   {
     id: "e-2",
     user_id: "u-seoyeon",
-    group_id: GROUP_ID_ROOMMATE,
+    group_id: GROUP_ID_FRIEND,
     amount: 12300,
     category: "생활",
     memo: "GS25",
@@ -210,6 +218,7 @@ export const INITIAL_EXPENSES: Expense[] = [
     image_url: null,
     is_shared: true,
     created_at: "2026-09-08T19:00:00+09:00",
+    recurring_expense_id: null,
   },
   {
     id: "e-3",
@@ -223,6 +232,7 @@ export const INITIAL_EXPENSES: Expense[] = [
     image_url: null,
     is_shared: true,
     created_at: "2026-09-06T20:10:00+09:00",
+    recurring_expense_id: null,
   },
   {
     id: "e-4",
@@ -236,6 +246,7 @@ export const INITIAL_EXPENSES: Expense[] = [
     image_url: null,
     is_shared: false,
     created_at: "2026-09-05T17:40:00+09:00",
+    recurring_expense_id: null,
   },
   {
     id: "e-5",
@@ -249,6 +260,7 @@ export const INITIAL_EXPENSES: Expense[] = [
     image_url: null,
     is_shared: true,
     created_at: "2026-08-29T11:00:00+09:00",
+    recurring_expense_id: null,
   },
   {
     id: "e-6",
@@ -262,6 +274,7 @@ export const INITIAL_EXPENSES: Expense[] = [
     image_url: null,
     is_shared: false,
     created_at: "2026-08-27T22:15:00+09:00",
+    recurring_expense_id: null,
   },
   // 그룹 피드(5b)에서만 보이는, 파트너(이민준) 명의 공유 지출 — 06-data.md E4 "본인 지출만" 원칙상
   // 김서연의 지출내역(7)에는 나타나지 않고, 커플 그룹 피드(5b)에는 나타난다.
@@ -277,6 +290,7 @@ export const INITIAL_EXPENSES: Expense[] = [
     image_url: null,
     is_shared: true,
     created_at: "2026-09-09T19:04:00+09:00",
+    recurring_expense_id: null,
   },
 ];
 
@@ -355,6 +369,37 @@ export interface CategoryGoal {
   updated_at: string;
 }
 
+// E16. RecurringExpense(정기 지출) — schema.sql(supabase/013_recurring_expenses.sql): id, user_id,
+// group_id, amount, category, memo, day_of_month, is_shared, active, created_at. 월세·구독료처럼
+// 매달 반복되는 지출의 "템플릿"만 들고 있고, 실제 Expense 행은 store.tsx가 매달 이 템플릿을 보고
+// 자동 생성한다(day_of_month는 그 달의 지출이 생기는 날짜 — 29~31일 월 길이 문제를 피하려고 1~28로 제한).
+export interface RecurringExpense {
+  id: string;
+  user_id: string;
+  group_id: string | null;
+  amount: number;
+  category: string;
+  memo: string | null;
+  day_of_month: number; // 1~28
+  is_shared: boolean;
+  active: boolean;
+  created_at: string;
+}
+
+// E17. GroupCategoryGoal(그룹 예산) — schema.sql(supabase/014_group_category_goals.sql): id, group_id,
+// category, month, goal_amount, created_by, created_at, updated_at. CategoryGoal(개인 목표)과 같은
+// 모양이지만 user_id 대신 group_id를 쓰고, 그룹장(OWNER)만 정하고 고칠 수 있다(RLS로 강제).
+export interface GroupCategoryGoal {
+  id: string;
+  group_id: string;
+  category: string;
+  month: string; // "YYYY-MM"
+  goal_amount: number;
+  created_by: string;
+  created_at: string;
+  updated_at: string;
+}
+
 // E13. GoalReward(목표 보상) — schema.sql: id, user_id, category, month, spent_amount, goal_amount,
 // achieved, coins_earned, xp_gained, created_at. mg의 WeeklySettlement(E10)를 대체 — "퀘스트 달성"
 // 개념이라 절약 비율이 아니라 달성 여부(achieved)에 따른 고정 보상을 준다.
@@ -378,5 +423,18 @@ export interface ExpenseReaction {
   expense_id: string;
   user_id: string;
   emoji: string;
+  created_at: string;
+}
+
+// E15. AttendanceCheckin(출석체크) — schema.sql: id, user_id, checkin_date, streak_day, coins_earned,
+// created_at. 접속률을 올리기 위한 신규 기능(2026-09-20 사용자 요청) — 매일 출석하면 코인을 받고,
+// 7일 연속 출석해서 그 주기를 꽉 채우면 7일째 코인이 두 배로 지급된다(lib/pets.ts CHECKIN_* 참고).
+// GoalReward와 마찬가지로 완전히 새 기능이라 INITIAL_* 시드가 없다.
+export interface AttendanceCheckin {
+  id: string;
+  user_id: string;
+  checkin_date: string; // "YYYY-MM-DD"
+  streak_day: number; // 이번 연속 출석 주기에서 며칠째인지(1~7)
+  coins_earned: number;
   created_at: string;
 }

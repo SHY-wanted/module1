@@ -8,14 +8,17 @@ import {
   getOwnExpenses,
   getPersonalExpenseTotal,
   getGroupExpenseTotal,
+  getPersonalExpenseCategoryBreakdown,
+  getGroupExpenseCategoryBreakdown,
   getRecentOwnExpenses,
   getIncomeTotalForUser,
 } from "@/lib/selectors";
-import { formatRelativeTime, formatWon, stripSurname } from "@/lib/format";
+import type { CategoryBreakdownRow } from "@/lib/selectors";
+import { formatRelativeTime, formatWon } from "@/lib/format";
 import { getCategoryVisual } from "@/lib/categories";
 import { TODAY_DATE } from "@/lib/mock";
 import { CategoryIcon } from "../icons";
-import { ArrowUpIcon, ChevronDownIcon, ChevronLeftIcon, ChevronRightIcon, HeartIcon, PlusIcon } from "../icons";
+import { ArrowUpIcon, ChevronDownIcon, ChevronLeftIcon, ChevronRightIcon, FlagIcon, HeartIcon, PlusIcon } from "../icons";
 
 // "이번 달 총 수입·총 지출" 카드는 캘린더를 다른 달로 넘겨도 바뀌지 않는다 — 항상 실제 오늘(TODAY_DATE)
 // 기준 이번 달이다. 09-14 이전엔 9월로 하드코딩돼 있었다.
@@ -29,14 +32,58 @@ function toLinearMonth(year: number, monthIndex: number) {
 }
 const TODAY_LINEAR_MONTH = toLinearMonth(TODAY_YEAR, TODAY_MONTH_INDEX);
 const MAX_LINEAR_MONTH = TODAY_LINEAR_MONTH + 12; // 오늘과 같은 달의 내년까지
+// 2026-09-18 사용자 요청: 과거도 무제한이 아니라 올해 기준 5년 전까지만 넘길 수 있게 제한한다.
+const MIN_LINEAR_MONTH = TODAY_LINEAR_MONTH - 5 * 12;
+
+// 신규 기능: "지난달보다 몇 % 늘었어요" 전월 대비 비교 — Date가 연/월 넘어가는 걸 알아서 처리해준다
+// (1월이면 작년 12월로).
+const PREVIOUS_MONTH_DATE = new Date(TODAY_YEAR, TODAY_MONTH_INDEX - 1, 1);
+const PREVIOUS_MONTH = `${PREVIOUS_MONTH_DATE.getFullYear()}-${String(PREVIOUS_MONTH_DATE.getMonth() + 1).padStart(2, "0")}`;
+
+// 신규 기능: 카테고리 비중 도넛 차트 — 막대 3줄 나열보다 한눈에 비중을 비교하기 쉽다. 차트 라이브러리를
+// 새로 안 넣고 SVG 원 하나에 카테고리 수만큼 stroke-dasharray로 구간을 나눠 그린다(고전적인 방법).
+function CategoryDonut({ rows }: { rows: CategoryBreakdownRow[] }) {
+  const size = 72;
+  const strokeWidth = 10;
+  const radius = 16;
+  const circumference = 2 * Math.PI * radius;
+  // 각 구간이 시작하는 위치(누적 길이)를 reduce로 계산한다 — 렌더 중에 바깥 변수를 다시 대입하면
+  // (offset += dash 같은 식) React Compiler의 불변성 규칙에 걸려서, 누적값도 매번 새로 만든다.
+  const segments = rows.reduce<{ list: { category: string; dash: number; startOffset: number }[]; cumulative: number }>(
+    (acc, row) => {
+      const dash = (row.pct / 100) * circumference;
+      return { list: [...acc.list, { category: row.category, dash, startOffset: acc.cumulative }], cumulative: acc.cumulative + dash };
+    },
+    { list: [], cumulative: 0 }
+  ).list;
+  return (
+    <svg width={size} height={size} viewBox="0 0 36 36" style={{ flexShrink: 0, transform: "rotate(-90deg)" }}>
+      <circle cx="18" cy="18" r={radius} fill="none" stroke="rgba(255,255,255,0.25)" strokeWidth={strokeWidth} />
+      {segments.map((seg) => (
+        <circle
+          key={seg.category}
+          cx="18"
+          cy="18"
+          r={radius}
+          fill="none"
+          stroke={getCategoryVisual(seg.category).accent}
+          strokeWidth={strokeWidth}
+          strokeDasharray={`${seg.dash} ${circumference - seg.dash}`}
+          strokeDashoffset={-seg.startOffset}
+        />
+      ))}
+    </svg>
+  );
+}
 
 export default function Home() {
   const nav = useNav();
   const store = useStore();
   const [homeGroup, setHomeGroup] = useState<string>("me");
+  const [checkingIn, setCheckingIn] = useState(false);
 
   const me = store.profiles.find((p) => p.id === store.currentUserId);
-  const givenName = stripSurname(me?.name ?? "");
+  const givenName = me?.name ?? "";
   const myGroups = getGroupsForUser(store.groups, store.groupMembers, store.currentUserId);
 
   const expenseTotal = useMemo(() => {
@@ -44,12 +91,50 @@ export default function Home() {
     return getGroupExpenseTotal(store.expenses, homeGroup, CURRENT_MONTH);
   }, [store.expenses, store.currentUserId, homeGroup]);
 
+  // 신규 기능: 전월 대비 비교 — 지난달 데이터가 없으면(0원) 비교 자체가 의미 없어서 표시 안 한다.
+  const lastMonthExpenseTotal = useMemo(() => {
+    if (homeGroup === "me") return getPersonalExpenseTotal(store.expenses, store.currentUserId, PREVIOUS_MONTH);
+    return getGroupExpenseTotal(store.expenses, homeGroup, PREVIOUS_MONTH);
+  }, [store.expenses, store.currentUserId, homeGroup]);
+  const momChangePct = lastMonthExpenseTotal > 0 ? Math.round(((expenseTotal - lastMonthExpenseTotal) / lastMonthExpenseTotal) * 100) : null;
+
+  // 2026-09-23 버그 수정: "이번 달 총 지출" 카드 아래 카테고리별 % 막대가 식비 42%·생활 28%·문화 17%로
+  // 고정돼 있어서 실제 지출 카테고리와 안 맞았다 — expenseTotal과 같은 필터 기준으로 실제 계산한다.
+  const categoryBreakdown = useMemo(() => {
+    return homeGroup === "me"
+      ? getPersonalExpenseCategoryBreakdown(store.expenses, store.currentUserId, CURRENT_MONTH)
+      : getGroupExpenseCategoryBreakdown(store.expenses, homeGroup, CURRENT_MONTH);
+  }, [store.expenses, store.currentUserId, homeGroup]);
+  // 신규 기능: 도넛 차트는 전체 카테고리로 그려야 원이 꽉 채워진다 — 글자로 나열하는 범례는
+  // 카드 폭이 좁아 상위 3개만(기존 그대로).
+  const topCategoryRows = categoryBreakdown.slice(0, 3);
+
   // 2026-09-17 팀 결정: 3개 → 5개로 늘림. store.expenses 기준으로 매번 다시 계산되므로(위 useMemo 의존성)
   // 현재 실시간 상태를 그대로 반영한다 — 새 지출을 기록하면 바로 목록에 반영된다.
   const recentExpenses = useMemo(
     () => getRecentOwnExpenses(store.expenses, store.currentUserId, 5),
     [store.expenses, store.currentUserId]
   );
+
+  // 출석체크(2026-09-20 신규) — 접속률을 올리기 위한 기능이라 홈 진입 즉시 보이는 자리에 둔다.
+  const todayCheckin = store.attendanceCheckins.find((c) => c.user_id === store.currentUserId && c.checkin_date === TODAY_DATE);
+
+  async function handleCheckIn() {
+    if (checkingIn || todayCheckin) return;
+    setCheckingIn(true);
+    const result = await store.checkInToday();
+    setCheckingIn(false);
+    if (!result.ok || !result.data) {
+      store.showToast(result.error ?? "출석체크에 실패했어요");
+      return;
+    }
+    const isBonusDay = result.data.streak_day >= 7;
+    store.showToast(
+      isBonusDay
+        ? `7일 연속 출석! 🪙+${result.data.coins_earned} (2배 보너스)`
+        : `출석체크 완료! 🪙+${result.data.coins_earned} · ${result.data.streak_day}일째`
+    );
+  }
 
   const incomeTotal = useMemo(
     () => getIncomeTotalForUser(store.incomes, store.currentUserId, CURRENT_MONTH),
@@ -66,17 +151,46 @@ export default function Home() {
   const [calMonthIndex, setCalMonthIndex] = useState(TODAY_MONTH_INDEX); // 0=1월 ... 11=12월
   const calLinearMonth = toLinearMonth(calYear, calMonthIndex);
   const atMaxMonth = calLinearMonth >= MAX_LINEAR_MONTH;
+  const atMinMonth = calLinearMonth <= MIN_LINEAR_MONTH;
+  // 2026-09-21 팀 요청(신규): 화살표로 한 달씩 넘기는 것 말고, 아래방향 화살표 바를 눌러 원하는 월·일로
+  // 바로 이동할 수 있게 한다. 실제 달력 UI를 새로 그리는 대신 네이티브 <input type="date">를 투명하게
+  // 겹쳐서 브라우저 날짜 선택기를 그대로 쓴다(ExpenseInput의 날짜 입력과 같은 방식).
+  const [selectedDay, setSelectedDay] = useState<number | null>(null);
+  const maxPickDate = useMemo(() => {
+    const y = Math.floor(MAX_LINEAR_MONTH / 12);
+    const m = MAX_LINEAR_MONTH % 12;
+    const lastDay = new Date(y, m + 1, 0).getDate();
+    return `${y}-${String(m + 1).padStart(2, "0")}-${String(lastDay).padStart(2, "0")}`;
+  }, []);
+  // 2026-09-18 사용자 요청: 과거도 올해 기준 5년 전까지만.
+  const minPickDate = useMemo(() => {
+    const y = Math.floor(MIN_LINEAR_MONTH / 12);
+    const m = MIN_LINEAR_MONTH % 12;
+    return `${y}-${String(m + 1).padStart(2, "0")}-01`;
+  }, []);
+  const datePickerValue = `${calYear}-${String(calMonthIndex + 1).padStart(2, "0")}-${String(selectedDay ?? 1).padStart(2, "0")}`;
 
   function goPrevMonth() {
+    if (atMinMonth) return; // 5년 전보다 더 과거로는 넘어가지 않는다
     const prev = calLinearMonth - 1;
     setCalYear(Math.floor(prev / 12));
     setCalMonthIndex(((prev % 12) + 12) % 12);
+    setSelectedDay(null);
   }
   function goNextMonth() {
     if (atMaxMonth) return; // 미래 +1년을 넘어가지 않는다
     const next = calLinearMonth + 1;
     setCalYear(Math.floor(next / 12));
     setCalMonthIndex(next % 12);
+    setSelectedDay(null);
+  }
+  function handleDatePick(value: string) {
+    if (!value) return;
+    const [y, m, d] = value.split("-").map(Number);
+    const picked = Math.min(Math.max(toLinearMonth(y, m - 1), MIN_LINEAR_MONTH), MAX_LINEAR_MONTH);
+    setCalYear(Math.floor(picked / 12));
+    setCalMonthIndex(((picked % 12) + 12) % 12);
+    setSelectedDay(d);
   }
 
   const calendarDays = useMemo(() => {
@@ -101,19 +215,21 @@ export default function Home() {
     for (let i = 0; i < startWeekday; i++) days.push({ num: null });
     for (let n = 1; n <= daysInMonth; n++) days.push({ num: n });
     return days.map(({ num }) => {
-      if (num === null) return { num: "", bg: "transparent", numColor: "#fff", expenseLabel: "", incomeLabel: "" };
+      if (num === null) return { num: "", bg: "transparent", numColor: "#fff", isSelected: false, expenseLabel: "", incomeLabel: "" };
       const expenseAmount = expenseByDay.get(num);
       const incomeAmount = incomeByDay.get(num);
       const isToday = isRealCurrentMonth && num === TODAY_DAY;
+      const isSelected = selectedDay === num;
       return {
         num,
         bg: isToday ? "var(--shoot-surface-alt)" : "var(--shoot-bg)",
         numColor: isToday ? "var(--shoot-accent)" : "var(--shoot-text-muted)",
+        isSelected,
         expenseLabel: expenseAmount ? (expenseAmount / 1000).toFixed(0) + "천" : "",
         incomeLabel: incomeAmount ? (incomeAmount / 10000).toFixed(0) + "만" : "",
       };
     });
-  }, [ownExpenses, ownIncomes, calYear, calMonthIndex]);
+  }, [ownExpenses, ownIncomes, calYear, calMonthIndex, selectedDay]);
 
   return (
     <div style={{ height: "100%", width: "100%", boxSizing: "border-box", background: "var(--shoot-bg)", display: "flex", flexDirection: "column" }}>
@@ -142,6 +258,39 @@ export default function Home() {
       </div>
 
       <div style={{ flex: 1, overflowY: "auto", padding: "0 20px 20px" }}>
+        {/* 출석체크(2026-09-20 신규, 사용자 요청) — "접속률을 올리기 위함"이라 홈 맨 위, 여는 즉시 보이는
+            자리에 둔다. 매일 코인 지급, 7일 연속 출석하면 그날 코인이 2배(lib/pets.ts CHECKIN_*). */}
+        <div
+          onClick={handleCheckIn}
+          style={{
+            marginTop: 18,
+            background: todayCheckin ? "var(--shoot-surface)" : "linear-gradient(135deg,#FFD166 0%,#F2A93B 100%)",
+            border: todayCheckin ? "1.5px solid var(--shoot-border)" : "none",
+            borderRadius: 22,
+            padding: "16px 20px",
+            display: "flex",
+            alignItems: "center",
+            gap: 12,
+            cursor: todayCheckin || checkingIn ? "default" : "pointer",
+            opacity: checkingIn ? 0.7 : 1,
+          }}
+        >
+          <div style={{ fontSize: 26, flexShrink: 0 }}>🪙</div>
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <div style={{ fontSize: 14, fontWeight: 800, color: todayCheckin ? "var(--shoot-text)" : "#5A3A00" }}>
+              {todayCheckin ? "오늘 출석체크 완료!" : "출석체크하고 코인 받기"}
+            </div>
+            <div style={{ fontSize: 11, fontWeight: 700, color: todayCheckin ? "var(--shoot-text-muted)" : "rgba(90,58,0,0.75)", marginTop: 2 }}>
+              {todayCheckin ? `${todayCheckin.streak_day}일째 연속 출석 중이에요` : "7일 꼬박 채우면 코인 2배!"}
+            </div>
+          </div>
+          {!todayCheckin && (
+            <div style={{ fontSize: 13, fontWeight: 800, color: "#5A3A00", background: "rgba(255,255,255,0.55)", borderRadius: 12, padding: "8px 14px", flexShrink: 0 }}>
+              출석하기
+            </div>
+          )}
+        </div>
+
         {/* 07-screens.md "2b 수입 카드 탭 → 2b-1a" — 2026-09-11 팀 결정으로 수입 기능이 이번 범위에 포함됐다. */}
         <div
           onClick={() => nav.push({ id: "incomeList" })}
@@ -168,23 +317,27 @@ export default function Home() {
             <ChevronRightIcon size={16} color="rgba(255,255,255,0.85)" />
           </div>
           <div style={{ fontSize: 30, fontWeight: 800, color: "#fff", marginTop: 6, letterSpacing: "-0.5px" }}>{formatWon(expenseTotal)}</div>
-          <div style={{ display: "flex", flexDirection: "column", gap: 8, marginTop: 16 }}>
-            {[
-              { label: "식비", pct: 42 },
-              { label: "생활", pct: 28 },
-              { label: "문화", pct: 17 },
-            ].map((row) => (
-              <div key={row.label}>
-                <div style={{ display: "flex", justifyContent: "space-between", fontSize: 11, fontWeight: 700, color: "rgba(255,255,255,0.9)", marginBottom: 4 }}>
-                  <span>{row.label}</span>
-                  <span>{row.pct}%</span>
-                </div>
-                <div style={{ height: 5, borderRadius: 3, background: "rgba(255,255,255,0.25)" }}>
-                  <div style={{ width: `${row.pct}%`, height: "100%", borderRadius: 3, background: "var(--shoot-surface)" }} />
-                </div>
+          {momChangePct !== null && (
+            <div style={{ fontSize: 11, fontWeight: 700, color: "rgba(255,255,255,0.8)", marginTop: 4 }}>
+              {momChangePct === 0 ? "지난달과 비슷해요" : momChangePct > 0 ? `지난달보다 ${momChangePct}% 늘었어요` : `지난달보다 ${Math.abs(momChangePct)}% 줄었어요`}
+            </div>
+          )}
+          {categoryBreakdown.length === 0 ? (
+            <div style={{ fontSize: 11, fontWeight: 700, color: "rgba(255,255,255,0.75)", marginTop: 16 }}>이번 달 지출이 아직 없어요</div>
+          ) : (
+            <div style={{ display: "flex", alignItems: "center", gap: 16, marginTop: 16 }}>
+              <CategoryDonut rows={categoryBreakdown} />
+              <div style={{ flex: 1, display: "flex", flexDirection: "column", gap: 6, minWidth: 0 }}>
+                {topCategoryRows.map((row) => (
+                  <div key={row.category} style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 11, fontWeight: 700, color: "rgba(255,255,255,0.9)" }}>
+                    <div style={{ width: 8, height: 8, borderRadius: "50%", background: getCategoryVisual(row.category).accent, flexShrink: 0 }} />
+                    <span style={{ flex: 1, minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{row.category}</span>
+                    <span style={{ flexShrink: 0 }}>{row.pct}%</span>
+                  </div>
+                ))}
               </div>
-            ))}
-          </div>
+            </div>
+          )}
         </div>
 
         <div
@@ -193,6 +346,21 @@ export default function Home() {
         >
           <PlusIcon size={16} color="var(--shoot-accent)" />
           <span style={{ fontSize: 14, fontWeight: 800, color: "var(--shoot-accent)" }}>그룹 만들기</span>
+        </div>
+
+        {/* 2026-09-20 팀 요청(신규): 월별 목표 설정 진입점 — 10(마이페이지) "월별 목표 설정" 행과 같은 화면으로 push. */}
+        <div
+          onClick={() => nav.push({ id: "monthlyGoalSetting" })}
+          style={{ marginTop: 12, background: "var(--shoot-surface-alt)", border: "1.5px dashed var(--shoot-accent)", borderRadius: 22, padding: "18px 20px", display: "flex", alignItems: "center", gap: 14, cursor: "pointer" }}
+        >
+          <div style={{ width: 36, height: 36, borderRadius: 12, background: "var(--shoot-surface)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+            <FlagIcon size={17} color="var(--shoot-accent)" />
+          </div>
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <div style={{ fontSize: 14, fontWeight: 800, color: "var(--shoot-text)" }}>이번 달 목표 설정하기</div>
+            <div style={{ fontSize: 12, color: "var(--shoot-text-muted)", marginTop: 2 }}>카테고리별 목표를 정하고 지출을 관리해보세요</div>
+          </div>
+          <span style={{ fontSize: 10, fontWeight: 800, color: "#fff", background: "var(--shoot-accent)", borderRadius: 999, padding: "2px 8px", flexShrink: 0 }}>NEW</span>
         </div>
 
         {/* 2026-09-17 팀 결정: "전체보기" 삭제(이동 대상 미정 TODO였음) — 최근 지출 5개만 보여준다. */}
@@ -221,16 +389,52 @@ export default function Home() {
 
         <div style={{ marginTop: 24 }}>
           <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 10 }}>
-            <div style={{ fontSize: 15, fontWeight: 800, color: "var(--shoot-text)" }}>
-              {calYear}년 {calMonthIndex + 1}월 캘린더
+            {/* 2026-09-21 팀 요청(신규): 아래방향 화살표 바 — 눌러서 원하는 월·일로 바로 이동. 네이티브
+                <input type="date">를 투명하게 겹쳐 브라우저 날짜 선택기를 그대로 쓴다. */}
+            <div style={{ position: "relative", display: "inline-flex" }}>
+              <div
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  gap: 4,
+                  padding: "6px 10px",
+                  borderRadius: 10,
+                  background: "var(--shoot-surface-alt)",
+                  cursor: "pointer",
+                }}
+              >
+                <span style={{ fontSize: 15, fontWeight: 800, color: "var(--shoot-text)" }}>
+                  {calYear}년 {calMonthIndex + 1}월{selectedDay ? ` ${selectedDay}일` : ""} 캘린더
+                </span>
+                <ChevronDownIcon size={13} color="var(--shoot-text-muted)" strokeWidth={2.5} />
+              </div>
+              <input
+                type="date"
+                value={datePickerValue}
+                min={minPickDate}
+                max={maxPickDate}
+                onChange={(e) => handleDatePick(e.target.value)}
+                aria-label="월·일 선택"
+                style={{ position: "absolute", inset: 0, width: "100%", height: "100%", opacity: 0, cursor: "pointer", border: "none" }}
+              />
             </div>
-            {/* 2026-09-14 팀 결정: 화살표로 월(과 그에 따른 연도)을 변경한다 — 과거는 제한 없음, 미래는 오늘 기준 +1년까지. */}
+            {/* 2026-09-14 팀 결정, 2026-09-18 수정: 화살표로 월(과 그에 따른 연도)을 변경한다 — 과거는
+                올해 기준 5년 전까지, 미래는 오늘 기준 +1년까지. */}
             <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
               <div
                 onClick={goPrevMonth}
-                style={{ width: 26, height: 26, borderRadius: "50%", background: "var(--shoot-surface-alt)", display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer" }}
+                style={{
+                  width: 26,
+                  height: 26,
+                  borderRadius: "50%",
+                  background: atMinMonth ? "var(--shoot-divider)" : "var(--shoot-surface-alt)",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  cursor: atMinMonth ? "default" : "pointer",
+                }}
               >
-                <ChevronLeftIcon size={13} color="var(--shoot-accent)" />
+                <ChevronLeftIcon size={13} color={atMinMonth ? "#C9C4D6" : "var(--shoot-accent)"} />
               </div>
               <div
                 onClick={goNextMonth}
@@ -257,8 +461,20 @@ export default function Home() {
             </div>
             <div style={{ display: "grid", gridTemplateColumns: "repeat(7,1fr)", gap: 4 }}>
               {calendarDays.map((d, idx) => (
-                <div key={idx} style={{ minHeight: 52, borderRadius: 10, background: d.bg, padding: "4px 2px", display: "flex", flexDirection: "column", alignItems: "center" }}>
-                  <div style={{ fontSize: 11, fontWeight: 700, color: d.numColor }}>{d.num}</div>
+                <div
+                  key={idx}
+                  style={{
+                    minHeight: 52,
+                    borderRadius: 10,
+                    background: d.bg,
+                    border: d.isSelected ? "1.5px solid var(--shoot-accent)" : "1.5px solid transparent",
+                    padding: "4px 2px",
+                    display: "flex",
+                    flexDirection: "column",
+                    alignItems: "center",
+                  }}
+                >
+                  <div style={{ fontSize: 11, fontWeight: 700, color: d.isSelected ? "var(--shoot-accent)" : d.numColor }}>{d.num}</div>
                   {d.expenseLabel && <div style={{ fontSize: 9, fontWeight: 800, color: "#B23B3B", marginTop: 2 }}>-{d.expenseLabel}</div>}
                   {d.incomeLabel && <div style={{ fontSize: 9, fontWeight: 800, color: "#1D7A69", marginTop: 1 }}>+{d.incomeLabel}</div>}
                 </div>

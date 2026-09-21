@@ -37,9 +37,12 @@ export const stageImageSizes: Record<CharacterStage, { width: number; height: nu
   0: { width: 305, height: 630 },
   1: { width: 285, height: 630 },
   2: { width: 295, height: 640 },
-  // 성년기는 원본에서 코인이 오른쪽 끝에 잘려 있어서 캔버스를 5px 넓히고 잘린 호를 복원했다
-  // (scripts/repair-stage3-coin.js 참고). 그래서 375 → 380.
-  3: { width: 380, height: 640 },
+  // 성년기는 원본에서 코인이 오른쪽 끝에 잘려 있어서 캔버스를 넓히고 잘린 호를 복원했다
+  // (scripts/repair-stage3-coin.js 참고, 375 → 380). 그런데 그 복원은 코인을 타원(가로반지름
+  // 46.5 < 세로반지름 50.5)으로 보고 만들어서, 진짜 원보다 오른쪽이 살짝 덜 나와 "짤린 것처럼"
+  // 보였다(사용자 신고). scripts/round-stage3-coin.js가 세로 반지름 기준 정원으로 다시 만들며
+  // 캔버스를 한 번 더 넓혔다. 380 → 384.
+  3: { width: 384, height: 640 },
 };
 
 /**
@@ -55,7 +58,7 @@ export const stageImageCrop: Record<CharacterStage, { x: number; y: number; widt
   0: { x: 50, y: 225, width: 200, height: 300 },
   1: { x: 5, y: 209, width: 236, height: 316 },
   2: { x: 5, y: 137, width: 261, height: 398 },
-  3: { x: 5, y: 50, width: 375, height: 492 }, // 코인 복원으로 넓어진 만큼 함께 넓힘
+  3: { x: 5, y: 50, width: 379, height: 492 }, // 코인을 정원으로 다시 만들며 넓어진 만큼 함께 넓힘
 };
 
 // ============================================================

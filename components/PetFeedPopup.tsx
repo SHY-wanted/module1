@@ -32,7 +32,7 @@ export default function PetFeedPopup() {
     const result = await store.feedPet(pet!.id);
     setFeeding(false);
     if (!result.ok) {
-      // 이미 오늘 줬거나 실패한 경우 — 그냥 닫는다(재현하기 어려운 드문 경합 상황).
+      // 코인이 부족하거나 실패한 경우 — 그냥 닫는다.
       handleClose();
       return;
     }

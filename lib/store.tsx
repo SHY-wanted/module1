@@ -3,7 +3,7 @@
 // 2026-09-18: 로그인/회원가입/로그아웃·내 정보 변경(profiles.name 포함)에 이어, 그룹·그룹원·지출·저금도
 // 실제 Supabase 쿼리로 옮겼다 — supabase/schema.sql이 그 계약이다. 로그인하면 이 4개 테이블을 한 번에
 // 읽어와 아래 React 상태를 "캐시"로 채우고, 이후 각 액션이 실제로 Supabase에 쓴 다음 그 결과로 캐시를 갱신한다.
-// 카테고리(개인·그룹, DB 테이블 없음)·수입(schema.sql에 없는 E7)만 아직 목업 상태로 남아있다.
+// 카테고리(개인·그룹, DB 테이블 없음)만 아직 목업 상태로 남아있다.
 
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import type { Session } from "@supabase/supabase-js";
@@ -17,23 +17,31 @@ import {
   INITIAL_PROFILES,
   INITIAL_SAVINGS,
   TODAY_DATE,
-  generateId,
+  computeTodayDateKST,
   generateInviteCode,
+  type AttendanceCheckin,
   type CategoryGoal,
   type Expense,
   type ExpenseReaction,
   type GoalReward,
   type Group,
+  type GroupCategoryGoal,
   type GroupMember,
   type GroupType,
   type MockIncome,
   type Pet,
   type Profile,
+  type RecurringExpense,
   type Saving,
 } from "./mock";
 import { PERSONAL_CATS, groupToCats, makeCategory, type CategoryDef, type CategoryScope } from "./categories";
+import { sortPersonalRanking, type PersonalRankingEntry } from "./ranking";
 import {
+  CHECKIN_REWARD_COINS,
+  CHECKIN_STREAK_BONUS_MULTIPLIER,
+  CHECKIN_STREAK_LENGTH,
   DEFAULT_PET_COLORS,
+  FEED_COIN_COST,
   FEED_XP_DEFAULT,
   GOAL_ACHIEVED_REWARD_COINS,
   GOAL_ACHIEVED_REWARD_XP,
@@ -42,6 +50,7 @@ import {
   GROUP_XP_PER_SHARED_EXPENSE,
   applyXpGain,
   currentMonthString,
+  shiftDateKST,
   type PetColorPart,
 } from "./pets";
 
@@ -52,12 +61,28 @@ export interface AuthResult {
   error?: string;
 }
 
-function translateAuthError(message: string): string {
+// app/reset-password(SPA 밖 라우트)도 같은 번역을 쓰기 위해 export한다.
+export function translateAuthError(message: string): string {
   if (message.includes("Invalid login credentials")) return "이메일 또는 비밀번호가 맞지 않아요";
   if (message.includes("Email not confirmed")) return "이메일 인증 후 로그인할 수 있어요. 받으신 메일함을 확인해주세요";
   if (message.includes("User already registered")) return "이미 가입된 이메일이에요";
   if (message.includes("Password should be at least")) return "비밀번호는 6자 이상이어야 해요";
-  return message;
+  if (message.includes("missing email") || message.includes("missing password") || message.includes("Missing")) return "이메일과 비밀번호를 입력해주세요";
+  // 위에서 못 잡은 나머지(대부분 영어 원문) — 원문을 그대로 보여주지 않는다.
+  return "요청을 처리하지 못했어요. 잠시 후 다시 시도해주세요";
+}
+
+// 그룹 예산(supabase/014_group_category_goals.sql) INSERT/UPDATE 실패 원인별 안내 — 2026-09-21 버그
+// 수정. 원인을 구분 안 하면 "테이블이 아직 없음"과 "권한 없음"이 똑같이 "그룹장이 아니다"로 보여서
+// 실제로는 그룹장인데 마이그레이션을 안 돌린 경우에도 헷갈렸다(사용자 제보).
+function translateGroupGoalError(error: { code?: string; message: string }): string {
+  if (error.code === "42P01" || error.message.includes("does not exist")) {
+    return "그룹 예산 기능이 아직 준비되지 않았어요 — supabase/014_group_category_goals.sql 마이그레이션을 먼저 실행해주세요";
+  }
+  if (error.code === "42501" || error.message.toLowerCase().includes("row-level security")) {
+    return "그룹장만 예산을 정할 수 있어요";
+  }
+  return `예산을 저장하지 못했어요 (${error.message})`;
 }
 
 interface StoreState {
@@ -74,6 +99,10 @@ interface StoreState {
   // 프로필 사진은 06-data.md에 정의된 적 없는 신규 항목이라, email·password와 같은 방식으로 세션 흉내용
   // 상태로만 둔다(파일을 실제로 어디 업로드하지 않고, 브라우저에서 읽은 data URL을 그대로 들고 있는다).
   currentUserAvatarUrl: string | null;
+  // 신규 기능(2026-09-21): 온보딩 투어를 이미 봤는지(profiles.onboarding_seen, 012 마이그레이션).
+  // 아직 로딩 전(로그인은 됐는데 profiles 조회가 안 끝난 순간)엔 true로 둔다 — false가 확실할 때만
+  // 투어를 띄워야, 이미 본 사람한테 잠깐이라도 깜빡였다 사라지는 게 안 생긴다.
+  onboardingSeen: boolean;
   groups: Group[];
   groupMembers: GroupMember[];
   expenses: Expense[];
@@ -90,7 +119,9 @@ interface StoreState {
   toastMessage: string | null;
   isLoggedIn: boolean;
   notificationSettings: NotificationSettings;
+  // 실제로 적용된 값(라이트/다크). "시스템" 선택 중이면 OS 설정을 그대로 따라간다.
   darkMode: boolean;
+  darkModePreference: DarkModePreference;
   // 저금통 펫 키우기 v2(2026-09-15, mg·hybranch·shooTbranch 통합) — 내 개인 펫 + 내가 속한 그룹들의
   // 그룹 펫이 함께 들어있다(RLS가 이미 "내가 볼 수 있는 펫"만 걸러준다). 그룹 펫은 hybranch F22(반려
   // 캐릭터)와 합쳐져 참여도 기반으로 자동 성장한다(수동 밥주기는 개인 펫만).
@@ -102,6 +133,16 @@ interface StoreState {
   expenseReactions: ExpenseReaction[];
   // P3 "데일리 먹이주기 팝업" — 지출을 기록한 직후, 오늘 아직 개인 펫에게 밥을 안 줬으면 연다.
   feedPopupPetId: string | null;
+  // 8a→8b "영수증 촬영/갤러리 선택" 임시 이미지(2026-09-17 실제 OCR 연동 신규) — window.history.pushState
+  // 로 넘어가는 StackScreen 파라미터엔 절대 넣지 않는다(사진 base64는 커서 브라우저 history state
+  // 용량 제한에 걸릴 수 있다) — 대신 이 store 쪽 React 상태로만 화면 전환 중에도 들고 있는다.
+  pendingReceiptImage: File | null;
+  // 출석체크(2026-09-20 추가) — 접속률을 올리기 위한 신규 기능. 내 출석 기록만 들어있다(RLS).
+  attendanceCheckins: AttendanceCheckin[];
+  // 정기 지출 템플릿(신규) — 내 것만(RLS). 실제 Expense 생성은 로그인 시 store가 한 번만 처리한다.
+  recurringExpenses: RecurringExpense[];
+  // 그룹 예산(신규) — 내가 속한 그룹의 것만(RLS). 그룹장만 정하고 고칠 수 있다.
+  groupCategoryGoals: GroupCategoryGoal[];
 }
 
 interface JoinResult {
@@ -123,11 +164,16 @@ export interface MutationResult<T> {
   error?: string;
 }
 
+export type DarkModePreference = "light" | "dark" | "system";
+
 export interface NotificationSettings {
   expenseConfirm: boolean;
   // 2026-09-17 팀 결정: "예산 초과 시 알림"은 삭제(예산 자체가 없는 기능이라). "알림음"은
   // "그룹원 기록 확인 알림"으로 대체 — 내가 속한 그룹에 다른 그룹원이 지출을 기록하면 알려준다.
   groupMemberRecord: boolean;
+  // 2026-09-18 추가(신규 기능): 매일 저녁 8시, 오늘 지출을 하나도 안 기록했으면 리마인더를 띄운다.
+  // 새로 추가하는 "귀찮게 하는" 알림이라 기본은 꺼둔다(위 둘은 원래 켜져 있던 것과 다르다).
+  dailyReminder: boolean;
 }
 
 interface StoreValue extends StoreState {
@@ -143,10 +189,10 @@ interface StoreValue extends StoreState {
   // 7 "지출 목록" 삭제(2026-09-19 팀 요청) — P6과 같은 이유로 본인 지출만 지울 수 있다
   // (RLS expenses_delete_own_only가 실제로 막는다).
   deleteExpense: (id: string) => Promise<boolean>;
-  addIncome: (input: Omit<MockIncome, "id" | "created_at">) => MockIncome;
-  // 2b-1a "수입 내역" 삭제(2026-09-19 팀 요청) — 수입(E7)은 schema.sql에 테이블이 없어 아직
-  // 목업 상태다(store.incomes 로컬 배열만 지운다).
-  deleteIncome: (id: string) => void;
+  // 2026-09-18 수정: incomes 테이블(011 마이그레이션)에 실제로 저장한다 — addExpense와 같은 패턴.
+  addIncome: (input: Omit<MockIncome, "id" | "created_at">) => Promise<MutationResult<MockIncome>>;
+  // 2b-1a "수입 내역" 삭제(2026-09-19 팀 요청) — addExpense·deleteExpense와 같은 패턴으로 실제 삭제.
+  deleteIncome: (id: string) => Promise<boolean>;
   // 2c/6 카테고리 — scope(개인 또는 특정 그룹)의 카테고리 목록을 읽는다(없으면 그룹 프리셋으로 폴백).
   getCategoriesForScope: (scope: CategoryScope) => CategoryDef[];
   // 2c "카테고리 편집" — "..." 버튼으로 고른 카테고리의 이름만 바꾼다(그 scope 안에서만).
@@ -160,8 +206,17 @@ interface StoreValue extends StoreState {
   signUp: (name: string, email: string, password: string) => Promise<AuthResult>;
   // 2(로그인) — 실제 supabase.auth.signInWithPassword 호출.
   signIn: (email: string, password: string) => Promise<AuthResult>;
+  // 카카오 계정으로 로그인/가입(2026-09-18 신규) — 카카오 로그인 화면으로 리다이렉트한다.
+  signInWithKakao: () => Promise<AuthResult>;
+  // "비밀번호를 잊으셨나요?" — 실제 supabase.auth.resetPasswordForEmail 호출. 좋아하는 색·취미 같은
+  // 지식 기반 질문은 추측·주변인 유출에 취약해 쓰지 않기로 했다(2026-09-22 대화 중 결정) — 이메일 재설정
+  // 링크가 실제 인증 수단이다. 링크는 app/reset-password(SPA 밖 라우트)로 보낸다.
+  sendPasswordResetEmail: (email: string) => Promise<AuthResult>;
   // 10(마이페이지) 로그아웃 — 실제 supabase.auth.signOut 호출.
   signOut: () => Promise<void>;
+  // 10 "회원 탈퇴" — app/api/account(서버, Service Role Key)를 거쳐 auth.users를 실제로 지운다.
+  // 011 마이그레이션으로 profiles와 그 아래 데이터(그룹 멤버십·지출·저금·수입 등)가 cascade로 함께 지워진다.
+  deleteAccount: () => Promise<AuthResult>;
   // 10b "내 정보 변경" 닉네임 — profiles.name을 실제로 갱신한다(schema.sql profiles_update_own_only 필요).
   updateCurrentUserName: (name: string) => Promise<void>;
   // 10b "내 정보 변경" 이메일 — 실제 supabase.auth.updateUser({email}). 프로젝트 설정에 따라 새·이전
@@ -170,13 +225,20 @@ interface StoreValue extends StoreState {
   // 10b "내 정보 변경" 비밀번호 — 실제 supabase.auth.updateUser({password}). 빈 값이면 호출하지 않는다.
   updateCurrentUserPassword: (password: string) => Promise<AuthResult>;
   // 10b "내 정보 변경" — 프로필 사진을 바꾼다. null이면 사진을 지우고 이니셜로 되돌린다.
-  // [?] supabase/schema.sql의 profiles엔 avatar_url 컬럼이 없다 — 팀 확인 전까지는 세션 흉내용
-  // 로컬 상태로만 남아있고(새로고침하면 사라짐), 실제로 Storage에 올리지 않는다.
-  updateCurrentUserAvatar: (url: string | null) => void;
+  // profiles.avatar_url(011 마이그레이션)에 실제로 저장된다.
+  updateCurrentUserAvatar: (url: string | null) => Promise<void>;
+  // 온보딩 투어 마지막 슬라이드("시작하기") — profiles.onboarding_seen을 true로 남겨서 다음부터
+  // (로그아웃 후 재로그인 포함) 다시 안 뜨게 한다.
+  completeOnboarding: () => Promise<void>;
+  // 토글을 켜는 순간 브라우저 알림 권한을 요청한다(꺼져 있으면 notify()가 인앱 토스트만 띄운다).
   toggleNotification: (key: keyof NotificationSettings) => void;
-  // 2.2초 동안 화면 위에 알림 문구를 띄운다(지출 기록 확인 알림 · 그룹원 기록 확인 알림이 이걸 쓴다).
+  // 2.2초 동안 화면 위에 알림 문구를 띄운다 — 알림 설정과 무관한 일반 토스트용(내 정보 저장 등).
   showToast: (message: string) => void;
-  toggleDarkMode: () => void;
+  // "지출 기록 시 확인 알림" 토글이 꺼져 있으면 아무것도 안 띄운다. 켜져 있으면 인앱 토스트 +
+  // (권한 허용 시) 실제 브라우저 알림까지 띄운다.
+  notifyExpenseSaved: (message: string) => void;
+  // 2c "앱 외형" — 라이트/다크/시스템 설정 중 하나로 고른다.
+  setDarkModePreference: (preference: DarkModePreference) => void;
   // 10a "그룹장 위임"(F18) — 현재 OWNER인 나 대신 선택한 멤버를 새 OWNER로 바꾼다. 새 그룹장을
   // 먼저 OWNER로 올리고 나서 내 role을 MEMBER로 내리는 순서로 실제 UPDATE 2번을 보낸다(순서를
   // 바꾸면 RLS members_update_owner_transfers_role이 두 번째 요청을 막는다 — schema.sql 참고).
@@ -198,20 +260,57 @@ interface StoreValue extends StoreState {
   setPetColors: (petId: string, colors: Partial<Record<PetColorPart, string>>) => Promise<MutationResult<Pet>>;
   // 월별·카테고리별 목표(shooTbranch 통합, mg의 주간 예산 대체) — 없으면 새로 만들고 있으면 갱신(upsert).
   setCategoryGoal: (category: string, month: string, amount: number) => Promise<MutationResult<CategoryGoal>>;
+  // 2026-09-23 팀 요청(신규): 설정한 목표를 지울 수 있게 — deleteExpense와 같은 패턴(RLS로 본인 것만 지워짐).
+  deleteCategoryGoal: (id: string) => Promise<boolean>;
+  // 정기 지출(신규) — 등록하면 로그인 시(또는 다음 로그인 시) store가 매달 이 템플릿을 보고 Expense를 자동 생성한다.
+  addRecurringExpense: (input: Omit<RecurringExpense, "id" | "created_at" | "active">) => Promise<MutationResult<RecurringExpense>>;
+  deleteRecurringExpense: (id: string) => Promise<boolean>;
+  toggleRecurringExpenseActive: (id: string) => Promise<void>;
+  // 그룹 예산(신규) — setCategoryGoal과 같은 upsert 패턴이지만 RLS가 그룹장(OWNER)만 통과시킨다.
+  setGroupCategoryGoal: (groupId: string, category: string, month: string, amount: number) => Promise<MutationResult<GroupCategoryGoal>>;
+  deleteGroupCategoryGoal: (id: string) => Promise<boolean>;
   // 이번 달 설정된 목표들을 각각 달성했는지 계산해서 저장한다(배치 대신 화면을 열 때, 카테고리별로
   // 이미 보상을 줬으면 다시 안 준다). "퀘스트 달성" 개념이라 고정 보상(coins·xp)을 준다.
   getOrCreateGoalRewardsForMonth: () => Promise<MutationResult<GoalReward[]>>;
   // F23 그룹 피드 이모지 반응(hybranch) — 그룹 멤버만 남길 수 있다.
   addReaction: (expenseId: string, emoji: string) => Promise<MutationResult<ExpenseReaction>>;
   removeReaction: (expenseId: string, emoji: string) => Promise<boolean>;
+
+  // 출석체크(2026-09-20 추가) — 오늘 이미 했으면 ok:false. 전날까지 연속 출석 중이었으면 streak_day가
+  // 이어지고, 7일째(CHECKIN_STREAK_LENGTH)를 채우면 그날 코인이 2배 지급된 뒤 다음 날 1일째로 리셋된다.
+  checkInToday: () => Promise<MutationResult<AttendanceCheckin>>;
+
+  // 개인 랭킹(2026-09-17 신규) — "개인 = 경쟁/랭킹". supabase/009_personal_ranking.sql의
+  // get_personal_ranking()을 호출한다 — pets 테이블 RLS(본인/그룹 멤버 펫만 조회 가능)를 그대로 둔 채,
+  // 랭킹에 필요한 최소 컬럼(닉네임+성장 지표)만 노출하는 별도 함수라 그룹 펫 데이터는 애초에 섞이지
+  // 않는다. 전역 상태로 캐시하지 않고 화면(PersonalRanking)이 열릴 때마다 최신값을 받아온다.
+  fetchPersonalRanking: () => Promise<MutationResult<PersonalRankingEntry[]>>;
+
+  // 8a "영수증 촬영/갤러리 선택" → 8b로 넘길 임시 이미지(2026-09-17 실제 OCR 연동 신규).
+  setPendingReceiptImage: (file: File | null) => void;
 }
 
 const StoreContext = createContext<StoreValue | null>(null);
+
+// 2c "알림" 두 토글(지출 기록 확인·그룹원 기록 확인) 전용 — 권한을 이미 받아뒀으면 진짜 브라우저(OS)
+// 알림을 띄운다. 탭이 백그라운드여도 뜨지만, 탭·브라우저가 완전히 닫히면 못 받는다(그러려면 서버가
+// 보내는 진짜 Web Push가 필요한데, 이번엔 그 범위는 빼기로 했다 — 사용자 확인). 컴포넌트 상태에 의존하지
+// 않는 모듈 스코프 함수라 useEffect/useMemo 의존성 배열에 넣을 필요가 없다.
+const DAILY_REMINDER_HOUR_KST = 20;
+const DAILY_REMINDER_CHECK_INTERVAL_MS = 5 * 60 * 1000;
+const DAILY_REMINDER_STORAGE_KEY = "shoot-daily-reminder-last-date";
+
+function notifyBrowser(message: string) {
+  if (typeof window !== "undefined" && "Notification" in window && Notification.permission === "granted") {
+    new Notification("ShooT", { body: message });
+  }
+}
 
 const DEFAULT_NOTIFICATION_SETTINGS: NotificationSettings = {
   // design/shoot/Settings.dc.html 초기값 그대로 켜짐으로 시작한다(이전 "알림음"도 켜짐이었다).
   expenseConfirm: true,
   groupMemberRecord: true,
+  dailyReminder: false,
 };
 
 export function StoreProvider({ children }: { children: ReactNode }) {
@@ -226,6 +325,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
   // 아직 사진을 안 바꿨으면 null — 이때 화면들은 이니셜(글자) 아바타로 대신 보여준다.
   // [?] schema.sql profiles엔 avatar_url 컬럼이 없어 로컬 상태로만 남아있다(위 StoreValue 주석 참고).
   const [currentUserAvatarUrl, setCurrentUserAvatarUrl] = useState<string | null>(null);
+  const [onboardingSeen, setOnboardingSeen] = useState(true);
   const [groups, setGroups] = useState<Group[]>(INITIAL_GROUPS);
   const [groupMembers, setGroupMembers] = useState<GroupMember[]>(INITIAL_GROUP_MEMBERS);
   const [expenses, setExpenses] = useState<Expense[]>(INITIAL_EXPENSES);
@@ -234,13 +334,33 @@ export function StoreProvider({ children }: { children: ReactNode }) {
   const [personalCategories, setPersonalCategories] = useState<CategoryDef[]>(PERSONAL_CATS);
   const [groupCategoriesById, setGroupCategoriesById] = useState<Record<string, CategoryDef[]>>({});
   const [notificationSettings, setNotificationSettings] = useState<NotificationSettings>(DEFAULT_NOTIFICATION_SETTINGS);
-  const [darkMode, setDarkMode] = useState(false);
+  // 신규 기능(2026-09-21): 다크모드를 라이트/다크로 수동 고정하는 것 외에 "시스템 설정 따라가기"도
+  // 고를 수 있게 한다. darkModePreference가 실제 저장하는 값이고, darkMode(boolean)는 화면이 그대로
+  // 쓰던 파생값이라 계속 내보낸다 — AppShell의 data-dark 속성 등 기존 호출부를 안 바꿔도 되게.
+  const [darkModePreference, setDarkModePreference] = useState<DarkModePreference>("light");
+  const [systemPrefersDark, setSystemPrefersDark] = useState(
+    () => typeof window !== "undefined" && !!window.matchMedia?.("(prefers-color-scheme: dark)").matches
+  );
+  useEffect(() => {
+    if (typeof window === "undefined" || !window.matchMedia) return;
+    const query = window.matchMedia("(prefers-color-scheme: dark)");
+    const handleChange = (e: MediaQueryListEvent) => setSystemPrefersDark(e.matches);
+    query.addEventListener("change", handleChange);
+    return () => query.removeEventListener("change", handleChange);
+  }, []);
+  const darkMode = darkModePreference === "system" ? systemPrefersDark : darkModePreference === "dark";
   // 저금통 펫 키우기 — 완전히 새 기능이라 목업 시드가 없다(빈 배열로 시작, 로그인 후 실제로 채워짐).
   const [pets, setPets] = useState<Pet[]>([]);
   const [categoryGoals, setCategoryGoals] = useState<CategoryGoal[]>([]);
   const [goalRewards, setGoalRewards] = useState<GoalReward[]>([]);
   const [expenseReactions, setExpenseReactions] = useState<ExpenseReaction[]>([]);
   const [feedPopupPetId, setFeedPopupPetId] = useState<string | null>(null);
+  const [pendingReceiptImage, setPendingReceiptImage] = useState<File | null>(null);
+  // 출석체크 — 완전히 새 기능이라 목업 시드가 없다(다른 pets v2 테이블들과 같은 이유).
+  const [attendanceCheckins, setAttendanceCheckins] = useState<AttendanceCheckin[]>([]);
+  // 정기 지출 템플릿·그룹 예산 — 둘 다 완전히 새 기능이라 목업 시드가 없다.
+  const [recurringExpenses, setRecurringExpenses] = useState<RecurringExpense[]>([]);
+  const [groupCategoryGoals, setGroupCategoryGoals] = useState<GroupCategoryGoal[]>([]);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
   const toastTimerRef = useRef<number | null>(null);
 
@@ -261,9 +381,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     async (groupId: string, expenseUserId: string, expenseDate: string) => {
       const pet = pets.find((p) => p.group_id === groupId);
       if (!pet) return;
-      const windowStart = new Date(expenseDate + "T00:00:00");
-      windowStart.setDate(windowStart.getDate() - (GROUP_PARTICIPATION_WINDOW_DAYS - 1));
-      const windowStartStr = windowStart.toISOString().slice(0, 10);
+      const windowStartStr = shiftDateKST(expenseDate, -(GROUP_PARTICIPATION_WINDOW_DAYS - 1));
       const recentContributors = new Set(
         expenses.filter((e) => e.group_id === groupId && e.is_shared && e.date >= windowStartStr && e.date <= expenseDate).map((e) => e.user_id)
       );
@@ -307,14 +425,16 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     let active = true;
     supabase
       .from("profiles")
-      .select("id,name")
+      .select("id,name,avatar_url,onboarding_seen")
       .eq("id", session.user.id)
       .single()
       .then(({ data, error }) => {
         if (!active || error || !data) return;
         setProfiles((prev) =>
-          prev.some((p) => p.id === data.id) ? prev.map((p) => (p.id === data.id ? { ...p, name: data.name } : p)) : [...prev, data]
+          prev.some((p) => p.id === data.id) ? prev.map((p) => (p.id === data.id ? { ...p, name: data.name } : p)) : [...prev, { id: data.id, name: data.name }]
         );
+        setCurrentUserAvatarUrl(data.avatar_url);
+        setOnboardingSeen(data.onboarding_seen);
       });
     return () => {
       active = false;
@@ -332,6 +452,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       supabase.from("group_members").select("*"),
       supabase.from("expenses").select("*").order("created_at", { ascending: false }),
       supabase.from("savings").select("*").order("created_at", { ascending: false }),
+      supabase.from("incomes").select("*").order("created_at", { ascending: false }),
       // 저금통 펫(내 개인 펫 + 내가 속한 그룹의 그룹 펫) — pets_select_own_or_group_member 정책이
       // 이미 "내가 볼 수 있는 펫"만 걸러준다.
       supabase.from("pets").select("*"),
@@ -340,16 +461,59 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       supabase.from("goal_rewards").select("*"),
       // F23 이모지 반응 — 내가 볼 수 있는 지출의 반응만(RLS).
       supabase.from("expense_reactions").select("*"),
-    ]).then(([groupsRes, membersRes, expensesRes, savingsRes, petsRes, goalsRes, rewardsRes, reactionsRes]) => {
+      // 출석체크 — 본인 것만(RLS). 연속 출석 계산에 최근 기록이 필요하므로 전부 읽어온다.
+      supabase.from("attendance_checkins").select("*"),
+      // 정기 지출 템플릿(신규, supabase/013_recurring_expenses.sql) — 본인 것만(RLS).
+      supabase.from("recurring_expenses").select("*"),
+      // 그룹 예산(신규, supabase/014_group_category_goals.sql) — 내가 속한 그룹의 예산만(RLS).
+      supabase.from("group_category_goals").select("*"),
+    ]).then(async ([groupsRes, membersRes, expensesRes, savingsRes, incomesRes, petsRes, goalsRes, rewardsRes, reactionsRes, checkinsRes, recurringRes, groupGoalsRes]) => {
       if (!active) return;
       if (!groupsRes.error && groupsRes.data) setGroups(groupsRes.data);
       if (!membersRes.error && membersRes.data) setGroupMembers(membersRes.data);
-      if (!expensesRes.error && expensesRes.data) setExpenses(expensesRes.data);
       if (!savingsRes.error && savingsRes.data) setSavings(savingsRes.data);
+      if (!incomesRes.error && incomesRes.data) setIncomes(incomesRes.data);
       if (!petsRes.error && petsRes.data) setPets(petsRes.data);
       if (!goalsRes.error && goalsRes.data) setCategoryGoals(goalsRes.data);
       if (!rewardsRes.error && rewardsRes.data) setGoalRewards(rewardsRes.data);
       if (!reactionsRes.error && reactionsRes.data) setExpenseReactions(reactionsRes.data);
+      if (!checkinsRes.error && checkinsRes.data) setAttendanceCheckins(checkinsRes.data);
+      if (!recurringRes.error && recurringRes.data) setRecurringExpenses(recurringRes.data);
+      if (!groupGoalsRes.error && groupGoalsRes.data) setGroupCategoryGoals(groupGoalsRes.data);
+
+      let loadedExpenses = !expensesRes.error && expensesRes.data ? expensesRes.data : [];
+      // 신규 기능: 정기 지출 — 이번 달 아직 생성 안 된 활성 템플릿이 있으면 여기서 한 번 생성한다
+      // (goal_rewards와 같은 "화면을 열 때 계산" 패턴, 배치 없음). 알림·그룹 펫 성장 등 addExpense의
+      // 부가 효과는 여기선 의도적으로 건너뛴다 — 로그인 직후 조용히 채워 넣기만 한다.
+      if (!recurringRes.error && recurringRes.data && !expensesRes.error) {
+        const todayDay = Number(TODAY_DATE.slice(8, 10));
+        const thisMonth = TODAY_DATE.slice(0, 7);
+        const alreadyGeneratedIds = new Set(
+          loadedExpenses.filter((e) => e.recurring_expense_id && e.date.startsWith(thisMonth)).map((e) => e.recurring_expense_id)
+        );
+        const due = recurringRes.data.filter((r) => r.active && r.day_of_month <= todayDay && !alreadyGeneratedIds.has(r.id));
+        if (due.length > 0) {
+          const nowIso = new Date().toISOString();
+          const newRows: Expense[] = due.map((r) => ({
+            id: crypto.randomUUID(),
+            user_id: session.user.id,
+            group_id: r.group_id,
+            amount: r.amount,
+            category: r.category,
+            memo: r.memo ? `${r.memo} (정기 지출)` : "정기 지출",
+            date: `${thisMonth}-${String(r.day_of_month).padStart(2, "0")}`,
+            source_type: "MANUAL",
+            image_url: null,
+            is_shared: r.is_shared,
+            created_at: nowIso,
+            recurring_expense_id: r.id,
+          }));
+          const { error: insertError } = await supabase.from("expenses").insert(newRows);
+          if (!active) return;
+          if (!insertError) loadedExpenses = [...newRows, ...loadedExpenses];
+        }
+      }
+      setExpenses(loadedExpenses);
     });
     return () => {
       active = false;
@@ -374,13 +538,42 @@ export function StoreProvider({ children }: { children: ReactNode }) {
         const group = groups.find((g) => g.id === row.group_id);
         if (!group) return; // RLS를 통과해 왔다면 이론상 내 그룹이지만, 방어적으로 한 번 더 확인.
         const author = profiles.find((p) => p.id === row.user_id);
-        showToastMessage(`${group.name} · ${author?.name ?? "그룹원"}님이 ${row.category} 비용을 저장하였어요`);
+        const message = `${group.name} · ${author?.name ?? "그룹원"}님이 ${row.category} 비용을 저장하였어요`;
+        showToastMessage(message);
+        notifyBrowser(message);
       })
       .subscribe();
     return () => {
       supabase.removeChannel(channel);
     };
   }, [session, supabase, groups, profiles, notificationSettings]);
+
+  // 2026-09-18 추가(신규 기능): "저녁 리마인더" — 오후 8시(KST) 이후인데 오늘 지출을 하나도 안
+  // 기록했으면 한 번 알려준다. 서버 스케줄러 없이 앱이 열려 있는 동안만 5분마다 확인한다(탭을 닫으면
+  // 못 받는 건 알림 토글 전체와 같은 한계). 하루에 한 번만 뜨도록 localStorage에 오늘 날짜를 남긴다.
+  useEffect(() => {
+    if (!notificationSettings.dailyReminder || !session) return;
+    function checkAndRemind() {
+      const kstHour = Number(
+        new Intl.DateTimeFormat("en-US", { timeZone: "Asia/Seoul", hour: "2-digit", hour12: false }).format(new Date())
+      );
+      if (kstHour < DAILY_REMINDER_HOUR_KST) return;
+      // 버그 수정(2026-09-18): import TODAY_DATE는 모듈이 처음 로드될 때 딱 한 번 계산돼서 고정된다 —
+      // 앱을 자정 넘어서까지 계속 켜둔 세션에서는 시각(kstHour)만 다음 날로 넘어가고 날짜는 그대로
+      // "어제"에 멈춰 있어서 리마인더가 하루 늦게(또는 영영 안) 뜰 수 있었다. 매번 실제 "지금"을 다시 잰다.
+      const today = computeTodayDateKST();
+      if (window.localStorage.getItem(DAILY_REMINDER_STORAGE_KEY) === today) return;
+      const recordedToday = expenses.some((e) => e.user_id === currentUserId && e.date === today);
+      if (recordedToday) return;
+      window.localStorage.setItem(DAILY_REMINDER_STORAGE_KEY, today);
+      const message = "오늘 지출을 아직 기록하지 않았어요. 잊기 전에 남겨볼까요?";
+      showToastMessage(message);
+      notifyBrowser(message);
+    }
+    checkAndRemind();
+    const timer = window.setInterval(checkAndRemind, DAILY_REMINDER_CHECK_INTERVAL_MS);
+    return () => window.clearInterval(timer);
+  }, [notificationSettings.dailyReminder, session, expenses, currentUserId]);
 
   // 2026-09-19 버그 수정: profiles는 "내 프로필"만 읽어왔어서, 같은 그룹의 다른 사람 이름은
   // store.profiles에 없어 화면들이 전부 "알 수 없음"으로 표시했다(10a-1 위임 대상 선택, 5b 그룹
@@ -417,6 +610,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       session,
       authReady,
       currentUserAvatarUrl,
+      onboardingSeen,
       groups,
       groupMembers,
       expenses,
@@ -428,11 +622,16 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       isLoggedIn,
       notificationSettings,
       darkMode,
+      darkModePreference,
       pets,
       categoryGoals,
       goalRewards,
       expenseReactions,
       feedPopupPetId,
+      pendingReceiptImage,
+      attendanceCheckins,
+      recurringExpenses,
+      groupCategoryGoals,
       currentUserId,
 
       // P1: 그룹 이름이 비어 있으면 호출하는 쪽(화면)에서 막아야 한다 — 여기서도 방어적으로 한 번 더 막는다.
@@ -525,18 +724,20 @@ export function StoreProvider({ children }: { children: ReactNode }) {
         return true;
       },
 
-      addIncome(input: Omit<MockIncome, "id" | "created_at">): MockIncome {
-        const newIncome: MockIncome = {
-          ...input,
-          id: generateId("in"),
-          created_at: new Date().toISOString(),
-        };
-        setIncomes((prev) => [newIncome, ...prev]);
-        return newIncome;
+      async addIncome(input: Omit<MockIncome, "id" | "created_at">): Promise<MutationResult<MockIncome>> {
+        const { data, error } = await supabase.from("incomes").insert(input).select().single();
+        if (error || !data) return { ok: false, error: error?.message ?? "수입을 저장하지 못했어요" };
+        setIncomes((prev) => [data, ...prev]);
+        return { ok: true, data };
       },
 
-      deleteIncome(id: string) {
+      // incomes_delete_own on(user_id = auth.uid())이 실제로 막는다 — 남의 수입이면 0행 삭제되고
+      // error 없이 count가 0으로 온다(deleteExpense와 같은 패턴).
+      async deleteIncome(id: string): Promise<boolean> {
+        const { error, count } = await supabase.from("incomes").delete({ count: "exact" }).eq("id", id);
+        if (error || !count) return false;
         setIncomes((prev) => prev.filter((i) => i.id !== id));
+        return true;
       },
 
       // 2026-09-17 팀 결정(개인·그룹 카테고리 차별화) — scope의 카테고리 목록을 읽는다. 그룹이 아직 한
@@ -602,10 +803,56 @@ export function StoreProvider({ children }: { children: ReactNode }) {
         return { ok: true };
       },
 
+      // 카카오 계정 연동(2026-09-18 신규) — supabase.auth.signInWithOAuth은 카카오 로그인 화면으로
+      // 브라우저를 통째로 이동시킨다(팝업 아님). 로그인/동의 후 Supabase가 이 앱 주소(redirectTo)로
+      // 다시 돌려보내면, Supabase 클라이언트가 URL의 토큰을 자동으로 읽어 세션을 만든다 — 그러면
+      // 이미 있는 onAuthStateChange 구독이 session을 갱신하고, Main 화면의 effect가 자동으로
+      // enterApp()을 불러 홈으로 들어간다(신규 사용자면 Supabase가 profiles 행도 트리거로 만든다).
+      // 그래서 이 함수는 성공/실패를 굳이 안 돌려준다 — 리다이렉트 자체가 안 되는 드문 경우만 에러로 본다.
+      async signInWithKakao(): Promise<AuthResult> {
+        const { error } = await supabase.auth.signInWithOAuth({
+          provider: "kakao",
+          options: { redirectTo: window.location.origin },
+        });
+        if (error) return { ok: false, error: translateAuthError(error.message) };
+        return { ok: true };
+      },
+
+      // "비밀번호를 잊으셨나요?" — 실제 supabase.auth.resetPasswordForEmail. 성공 여부와 무관하게(가입
+      // 안 된 이메일이어도) 같은 안내를 보여주는 게 보통이지만, Supabase가 실제로 반환한 에러는 그대로
+      // 옮겨서 화면에 보여준다(다른 signXxx 액션들과 일관되게).
+      async sendPasswordResetEmail(email: string): Promise<AuthResult> {
+        const { error } = await supabase.auth.resetPasswordForEmail(email.trim(), {
+          redirectTo: `${window.location.origin}/reset-password`,
+        });
+        if (error) return { ok: false, error: translateAuthError(error.message) };
+        return { ok: true };
+      },
+
       // 10(마이페이지) 로그아웃 — 실제 supabase.auth.signOut.
       async signOut(): Promise<void> {
         await supabase.auth.signOut();
         setSession(null);
+      },
+
+      async deleteAccount(): Promise<AuthResult> {
+        if (!session) return { ok: false, error: "로그인이 필요해요" };
+        let res: Response;
+        try {
+          res = await fetch("/api/account", {
+            method: "DELETE",
+            headers: { Authorization: `Bearer ${session.access_token}` },
+          });
+        } catch {
+          return { ok: false, error: "요청을 보내지 못했어요. 잠시 후 다시 시도해주세요" };
+        }
+        if (!res.ok) {
+          const body = await res.json().catch(() => ({}));
+          return { ok: false, error: body.error ?? "탈퇴 처리에 실패했어요" };
+        }
+        await supabase.auth.signOut();
+        setSession(null);
+        return { ok: true };
       },
 
       // 10b "내 정보 변경" 닉네임 — profiles.name을 실제로 갱신한다. 로그인 전(목업 데모 계정)이면
@@ -637,20 +884,42 @@ export function StoreProvider({ children }: { children: ReactNode }) {
         return { ok: true };
       },
 
-      updateCurrentUserAvatar(url: string | null) {
+      // 2026-09-18 수정: profiles.avatar_url에 실제로 저장한다(011 마이그레이션) — data URL을 그대로
+      // 저장한다(Storage 버킷 없이 가장 짧게 가는 길, 다른 화면들도 이미지를 로컬 상태로만 다뤄왔다).
+      async updateCurrentUserAvatar(url: string | null) {
         setCurrentUserAvatarUrl(url);
+        if (!session) return;
+        await supabase.from("profiles").update({ avatar_url: url }).eq("id", session.user.id);
+      },
+
+      async completeOnboarding() {
+        setOnboardingSeen(true);
+        if (!session) return;
+        await supabase.from("profiles").update({ onboarding_seen: true }).eq("id", session.user.id);
       },
 
       toggleNotification(key: keyof NotificationSettings) {
-        setNotificationSettings((prev) => ({ ...prev, [key]: !prev[key] }));
+        setNotificationSettings((prev) => {
+          const next = !prev[key];
+          if (next && typeof window !== "undefined" && "Notification" in window && Notification.permission === "default") {
+            Notification.requestPermission();
+          }
+          return { ...prev, [key]: next };
+        });
       },
 
       showToast(message: string) {
         showToastMessage(message);
       },
 
-      toggleDarkMode() {
-        setDarkMode((prev) => !prev);
+      notifyExpenseSaved(message: string) {
+        if (!notificationSettings.expenseConfirm) return;
+        showToastMessage(message);
+        notifyBrowser(message);
+      },
+
+      setDarkModePreference(preference: DarkModePreference) {
+        setDarkModePreference(preference);
       },
 
       // F18 · P10 상태값1: 현재 OWNER(나)를 지정한 멤버로 교체한다. 새 그룹장을 먼저 OWNER로 올리고
@@ -736,17 +1005,23 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       },
 
       // P3 "밥 주기" — 개인 펫 전용, 하루 1회 제한(§3). XP 지급·단계 승급은 lib/pets.ts applyXpGain 참고.
+      // 2026-09-18 사용자 요청: "하루 한 번" 제한을 없애고, 코인이 있는 만큼 계속 먹일 수 있게
+      // 바꿨다(먹일 때마다 FEED_COIN_COST만큼 코인을 쓴다 — 코인이 부족하면 못 먹인다).
+      // last_fed_date는 여전히 갱신한다 — "며칠째 안 먹였는지"로 시무룩 여부를 판단하는 데 쓰인다.
       async feedPet(petId: string): Promise<MutationResult<{ xpGained: number; leveledUp: boolean }>> {
         const pet = pets.find((p) => p.id === petId);
         if (!pet) return { ok: false, error: "펫을 찾을 수 없어요" };
-        if (pet.last_fed_date === TODAY_DATE) return { ok: false, error: "오늘은 이미 밥을 줬어요" };
+        if (pet.total_coins < FEED_COIN_COST) return { ok: false, error: "코인이 부족해요" };
         const { stageIndex, xpProgress } = applyXpGain(pet.stage_index, pet.xp_progress, FEED_XP_DEFAULT);
+        const newTotalCoins = pet.total_coins - FEED_COIN_COST;
         const { error } = await supabase
           .from("pets")
-          .update({ stage_index: stageIndex, xp_progress: xpProgress, last_fed_date: TODAY_DATE })
+          .update({ stage_index: stageIndex, xp_progress: xpProgress, last_fed_date: TODAY_DATE, total_coins: newTotalCoins })
           .eq("id", petId);
         if (error) return { ok: false, error: error.message };
-        setPets((prev) => prev.map((p) => (p.id === petId ? { ...p, stage_index: stageIndex, xp_progress: xpProgress, last_fed_date: TODAY_DATE } : p)));
+        setPets((prev) =>
+          prev.map((p) => (p.id === petId ? { ...p, stage_index: stageIndex, xp_progress: xpProgress, last_fed_date: TODAY_DATE, total_coins: newTotalCoins } : p))
+        );
         return { ok: true, data: { xpGained: FEED_XP_DEFAULT, leveledUp: stageIndex > pet.stage_index } };
       },
 
@@ -805,6 +1080,86 @@ export function StoreProvider({ children }: { children: ReactNode }) {
         if (error) return { ok: false, error: error.message };
         setCategoryGoals((prev) => [...prev, newGoal]);
         return { ok: true, data: newGoal };
+      },
+
+      // 2026-09-23 팀 요청(신규): 목표 삭제 — deleteExpense와 같은 패턴.
+      async deleteCategoryGoal(id: string): Promise<boolean> {
+        const { error, count } = await supabase.from("category_goals").delete({ count: "exact" }).eq("id", id);
+        if (error || !count) return false;
+        setCategoryGoals((prev) => prev.filter((g) => g.id !== id));
+        return true;
+      },
+
+      // 정기 지출(신규) — 저장만 하고, 실제 Expense 생성은 다음 로그인(세션 로드) 시 store가 처리한다.
+      async addRecurringExpense(input: Omit<RecurringExpense, "id" | "created_at" | "active">): Promise<MutationResult<RecurringExpense>> {
+        if (!session) return { ok: false, error: "로그인이 필요해요" };
+        const newRecurring: RecurringExpense = { ...input, id: crypto.randomUUID(), active: true, created_at: new Date().toISOString() };
+        const { error } = await supabase.from("recurring_expenses").insert(newRecurring);
+        if (error) return { ok: false, error: error.message };
+        setRecurringExpenses((prev) => [...prev, newRecurring]);
+        return { ok: true, data: newRecurring };
+      },
+
+      async deleteRecurringExpense(id: string): Promise<boolean> {
+        const { error, count } = await supabase.from("recurring_expenses").delete({ count: "exact" }).eq("id", id);
+        if (error || !count) return false;
+        setRecurringExpenses((prev) => prev.filter((r) => r.id !== id));
+        return true;
+      },
+
+      async toggleRecurringExpenseActive(id: string): Promise<void> {
+        const target = recurringExpenses.find((r) => r.id === id);
+        if (!target) return;
+        const nextActive = !target.active;
+        const { error } = await supabase.from("recurring_expenses").update({ active: nextActive }).eq("id", id);
+        if (error) return;
+        setRecurringExpenses((prev) => prev.map((r) => (r.id === id ? { ...r, active: nextActive } : r)));
+      },
+
+      // 그룹 예산(신규) — category_goals와 같은 upsert 패턴. RLS(group_category_goals_insert_owner /
+      // _update_owner)가 그룹장이 아니면 막는다 — 2026-09-21 버그 수정: 예전엔 어떤 에러든 무조건
+      // "그룹장만 예산을 정할 수 있어요"로 뭉개버려서, 실제로는 그룹장인데도 마이그레이션
+      // (supabase/014_group_category_goals.sql)을 아직 안 돌려 테이블 자체가 없는 경우("relation
+      // ... does not exist", 42P01)에도 똑같이 "그룹장이 아니다"라고 나와 원인 파악이 안 됐다.
+      // 이제 원인별로 다른 메시지를 준다 — translateGroupGoalError 참고.
+      async setGroupCategoryGoal(groupId: string, category: string, month: string, amount: number): Promise<MutationResult<GroupCategoryGoal>> {
+        if (!session) return { ok: false, error: "로그인이 필요해요" };
+        const nowIso = new Date().toISOString();
+        const existing = groupCategoryGoals.find((g) => g.group_id === groupId && g.category === category && g.month === month);
+        if (existing) {
+          const { error, count } = await supabase
+            .from("group_category_goals")
+            .update({ goal_amount: amount, updated_at: nowIso }, { count: "exact" })
+            .eq("id", existing.id);
+          if (error) return { ok: false, error: translateGroupGoalError(error) };
+          // RLS(_update_owner)의 USING절은 조건에 안 맞는 행을 에러 없이 조용히 0건으로 걸러낸다 —
+          // count가 0이면 실제로는 "권한 없음"인데 error가 안 나는 경우라 여기서 직접 잡아준다.
+          if (!count) return { ok: false, error: "그룹장만 예산을 고칠 수 있어요" };
+          const updated: GroupCategoryGoal = { ...existing, goal_amount: amount, updated_at: nowIso };
+          setGroupCategoryGoals((prev) => prev.map((g) => (g.id === existing.id ? updated : g)));
+          return { ok: true, data: updated };
+        }
+        const newGoal: GroupCategoryGoal = {
+          id: crypto.randomUUID(),
+          group_id: groupId,
+          category,
+          month,
+          goal_amount: amount,
+          created_by: session.user.id,
+          created_at: nowIso,
+          updated_at: nowIso,
+        };
+        const { error } = await supabase.from("group_category_goals").insert(newGoal);
+        if (error) return { ok: false, error: translateGroupGoalError(error) };
+        setGroupCategoryGoals((prev) => [...prev, newGoal]);
+        return { ok: true, data: newGoal };
+      },
+
+      async deleteGroupCategoryGoal(id: string): Promise<boolean> {
+        const { error, count } = await supabase.from("group_category_goals").delete({ count: "exact" }).eq("id", id);
+        if (error || !count) return false;
+        setGroupCategoryGoals((prev) => prev.filter((g) => g.id !== id));
+        return true;
       },
 
       // "퀘스트 달성하면 보상"(shooTbranch 통합, 2026-09-15 사용자 확인) — 배치 없이 화면을 열 때
@@ -893,8 +1248,54 @@ export function StoreProvider({ children }: { children: ReactNode }) {
         setExpenseReactions((prev) => prev.filter((r) => !(r.expense_id === expenseId && r.user_id === session.user.id && r.emoji === emoji)));
         return true;
       },
+
+      // 출석체크 — 접속률을 올리기 위한 신규 기능(2026-09-20 사용자 요청). 하루 한 번, 전날도 출석했으면
+      // streak_day가 이어지고 7일째면 코인이 2배(CHECKIN_STREAK_BONUS_MULTIPLIER) 지급된 뒤 리셋된다.
+      async checkInToday(): Promise<MutationResult<AttendanceCheckin>> {
+        if (!session) return { ok: false, error: "로그인이 필요해요" };
+        const already = attendanceCheckins.find((c) => c.user_id === session.user.id && c.checkin_date === TODAY_DATE);
+        if (already) return { ok: false, error: "오늘은 이미 출석체크했어요" };
+
+        const yesterdayStr = shiftDateKST(TODAY_DATE, -1);
+        const prevCheckin = attendanceCheckins.find((c) => c.user_id === session.user.id && c.checkin_date === yesterdayStr);
+        // 전날 기록이 있고 아직 주기(7일)를 다 안 채웠으면 이어가고, 없거나 이미 꽉 찼으면 1일째부터 새로 시작한다.
+        const streakDay = prevCheckin && prevCheckin.streak_day < CHECKIN_STREAK_LENGTH ? prevCheckin.streak_day + 1 : 1;
+        const coinsEarned = streakDay >= CHECKIN_STREAK_LENGTH ? CHECKIN_REWARD_COINS * CHECKIN_STREAK_BONUS_MULTIPLIER : CHECKIN_REWARD_COINS;
+
+        const newCheckin: AttendanceCheckin = {
+          id: crypto.randomUUID(),
+          user_id: session.user.id,
+          checkin_date: TODAY_DATE,
+          streak_day: streakDay,
+          coins_earned: coinsEarned,
+          created_at: new Date().toISOString(),
+        };
+        const { error } = await supabase.from("attendance_checkins").insert(newCheckin);
+        if (error) return { ok: false, error: error.message };
+        setAttendanceCheckins((prev) => [...prev, newCheckin]);
+
+        const personalPet = pets.find((p) => p.user_id === currentUserId);
+        if (personalPet) {
+          const newTotalCoins = personalPet.total_coins + coinsEarned;
+          await supabase.from("pets").update({ total_coins: newTotalCoins }).eq("id", personalPet.id);
+          setPets((prev) => prev.map((p) => (p.id === personalPet.id ? { ...p, total_coins: newTotalCoins } : p)));
+        }
+        return { ok: true, data: newCheckin };
+      },
+
+      // 개인 랭킹 — 로그인 전(목업 데모 계정)엔 RPC를 부를 세션이 없으니 빈 목록을 돌려준다.
+      async fetchPersonalRanking(): Promise<MutationResult<PersonalRankingEntry[]>> {
+        if (!session) return { ok: true, data: [] };
+        const { data, error } = await supabase.rpc("get_personal_ranking");
+        if (error) return { ok: false, error: error.message };
+        return { ok: true, data: sortPersonalRanking((data ?? []) as PersonalRankingEntry[]) };
+      },
+
+      setPendingReceiptImage(file: File | null) {
+        setPendingReceiptImage(file);
+      },
     }),
-    [profiles, session, authReady, currentUserId, currentUserAvatarUrl, groups, groupMembers, expenses, savings, incomes, personalCategories, groupCategoriesById, toastMessage, isLoggedIn, notificationSettings, darkMode, pets, categoryGoals, goalRewards, expenseReactions, feedPopupPetId, supabase, growGroupPetFromSharedExpense]
+    [profiles, session, authReady, currentUserId, currentUserAvatarUrl, onboardingSeen, groups, groupMembers, expenses, savings, incomes, personalCategories, groupCategoriesById, toastMessage, isLoggedIn, notificationSettings, darkMode, darkModePreference, pets, categoryGoals, goalRewards, expenseReactions, feedPopupPetId, pendingReceiptImage, attendanceCheckins, recurringExpenses, groupCategoryGoals, supabase, growGroupPetFromSharedExpense]
   );
 
   return <StoreContext.Provider value={value}>{children}</StoreContext.Provider>;

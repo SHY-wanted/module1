@@ -8,7 +8,7 @@
 import { useRef, useState } from "react";
 import { useNav } from "../NavContext";
 import { useStore } from "@/lib/store";
-import { initialOf, stripSurname } from "@/lib/format";
+import { initialOf } from "@/lib/format";
 import { CameraIcon, ChevronLeftIcon } from "../icons";
 
 // 1(회원가입)의 이메일 형식 검증과 동일한 패턴 — "무언가@무언가.무언가" 정도의 단순 형식 체크다.
@@ -95,7 +95,7 @@ export default function MyInfoEdit() {
               />
             ) : (
               <div style={{ width: 84, height: 84, borderRadius: "50%", background: "var(--shoot-surface-alt)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 28, fontWeight: 800, color: "var(--shoot-accent)" }}>
-                {initialOf(stripSurname(me?.name ?? ""))}
+                {initialOf(me?.name ?? "")}
               </div>
             )}
             <div

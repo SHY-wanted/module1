@@ -10,7 +10,7 @@ import { useNav } from "../NavContext";
 import { useStore } from "@/lib/store";
 import type { CategoryScope } from "@/lib/categories";
 import { getGroupsForUser } from "@/lib/selectors";
-import { BellIcon, ChevronLeftIcon, ChevronRightIcon, MoonIcon, MoreHorizontalIcon, PlusIcon, ThreeLinesIcon } from "../icons";
+import { BellIcon, ChevronLeftIcon, ChevronRightIcon, MoonIcon, MoreHorizontalIcon, PlusIcon, RefreshIcon, ThreeLinesIcon } from "../icons";
 
 function Toggle({ on, onClick }: { on: boolean; onClick: () => void }) {
   return (
@@ -245,7 +245,23 @@ export default function Settings() {
             </div>
             <Toggle on={store.notificationSettings.groupMemberRecord} onClick={() => store.toggleNotification("groupMemberRecord")} />
           </div>
+          {/* 2026-09-18 추가(신규 기능): 저녁 리마인더 — 기본은 꺼둔다(귀찮게 하는 알림이라). */}
+          <div style={{ padding: 14, display: "flex", alignItems: "center", gap: 10, borderTop: "1px solid var(--shoot-divider)" }}>
+            <BellIcon size={17} color="var(--shoot-text-muted)" />
+            <div style={{ flex: 1 }}>
+              <div style={{ fontSize: 14, fontWeight: 700, color: "var(--shoot-text)" }}>저녁 리마인더</div>
+              <div style={{ fontSize: 11, color: "var(--shoot-text-muted)", marginTop: 2 }}>매일 저녁 8시, 오늘 지출을 안 기록했으면 알려드려요</div>
+            </div>
+            <Toggle on={store.notificationSettings.dailyReminder} onClick={() => store.toggleNotification("dailyReminder")} />
+          </div>
         </div>
+        {/* 2026-09-18 추가: 브라우저 알림 권한을 거부한 경우 — 토글은 켜져 있어도 실제 알림은 안 뜬다는
+            걸 알려준다(권한은 브라우저 설정에서 직접 풀어야 하고, 코드로 다시 물어볼 수 없다). */}
+        {typeof window !== "undefined" && "Notification" in window && Notification.permission === "denied" && (
+          <div style={{ marginTop: 8, fontSize: 11, color: "var(--shoot-text-muted)", fontWeight: 600 }}>
+            브라우저 알림 권한이 차단돼 있어요. 토스트는 뜨지만 실제 알림은 브라우저 설정에서 허용해야 받을 수 있어요.
+          </div>
+        )}
 
         {/* 목표(예산 대체, shooTbranch 통합, 2026-09-15) — 저금통 펫의 이번 달 목표 리포트가
             쓰는 카테고리별 목표를 여기서 정한다. */}
@@ -258,12 +274,55 @@ export default function Settings() {
           </div>
         </div>
 
+        {/* 신규 기능: 정기 지출(월세·구독료처럼 매달 반복되는 지출) 관리. */}
+        <div style={{ fontSize: 12, fontWeight: 800, color: "var(--shoot-text-muted)", margin: "22px 0 8px" }}>정기 지출</div>
+        <div style={{ background: "var(--shoot-surface)", borderRadius: 16, border: "1px solid var(--shoot-border)", overflow: "hidden" }}>
+          <div onClick={() => nav.push({ id: "recurringExpenseManage" })} style={{ padding: "14px 14px", display: "flex", alignItems: "center", gap: 10, cursor: "pointer" }}>
+            <RefreshIcon size={17} color="var(--shoot-text-muted)" />
+            <div style={{ flex: 1, fontSize: 14, fontWeight: 700, color: "var(--shoot-text)" }}>정기 지출 관리</div>
+            <ChevronRightIcon size={16} color="#A9A2B8" />
+          </div>
+        </div>
+
         <div style={{ fontSize: 12, fontWeight: 800, color: "var(--shoot-text-muted)", margin: "22px 0 8px" }}>앱 외형</div>
         <div style={{ background: "var(--shoot-surface)", borderRadius: 16, border: "1px solid var(--shoot-border)", padding: 14 }}>
-          <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 10 }}>
             <MoonIcon size={17} color="var(--shoot-text-muted)" />
             <div style={{ flex: 1, fontSize: 14, fontWeight: 700, color: "var(--shoot-text)" }}>다크 모드</div>
-            <Toggle on={store.darkMode} onClick={() => store.toggleDarkMode()} />
+          </div>
+          {/* 신규 기능(2026-09-21): 켜기/끄기 토글만 있던 걸 라이트/다크/시스템 3택으로 바꿨다 —
+              "시스템"이면 OS의 다크모드 설정을 그대로 따라간다(store의 matchMedia 구독). */}
+          <div style={{ display: "flex", gap: 6 }}>
+            {(
+              [
+                { value: "light", label: "라이트" },
+                { value: "dark", label: "다크" },
+                { value: "system", label: "시스템 설정" },
+              ] as const
+            ).map((opt) => {
+              const selected = store.darkModePreference === opt.value;
+              return (
+                <div
+                  key={opt.value}
+                  onClick={() => store.setDarkModePreference(opt.value)}
+                  style={{
+                    flex: 1,
+                    height: 38,
+                    borderRadius: 12,
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    fontSize: 12,
+                    fontWeight: 800,
+                    cursor: "pointer",
+                    background: selected ? "var(--shoot-accent)" : "var(--shoot-surface-alt)",
+                    color: selected ? "#fff" : "var(--shoot-text-muted)",
+                  }}
+                >
+                  {opt.label}
+                </div>
+              );
+            })}
           </div>
         </div>
       </div>

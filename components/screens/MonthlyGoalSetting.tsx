@@ -6,7 +6,7 @@
 import { useMemo, useState } from "react";
 import { useNav } from "../NavContext";
 import { useStore } from "@/lib/store";
-import { PERSONAL_CATS, type CategoryDef } from "@/lib/categories";
+import type { CategoryDef } from "@/lib/categories";
 import { formatWon } from "@/lib/format";
 import { TODAY_DATE } from "@/lib/mock";
 import { currentMonthString } from "@/lib/pets";
@@ -17,10 +17,14 @@ function roundTo1000(n: number): number {
   return Math.round(n / 1000) * 1000;
 }
 
-function pastMonthString(monthsAgo: number): string {
-  const [y, m] = TODAY_DATE.slice(0, 7).split("-").map(Number);
-  const d = new Date(y, m - 1 - monthsAgo, 1);
-  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
+// 지난 90일치 실제 지출 합계를 3으로 나눠 "최근 3개월 평균"을 구한다. 달력상 딱 떨어지는
+// 3개 달(저번 달·저저번 달·저저저번 달)로 나누면, 그중 한두 달에 기록이 아예 없을 때(앱을 최근에야
+// 쓰기 시작했거나 특정 달에 그 카테고리 지출이 없었을 때) 평균이 실제 소비와 상관없이 0에 가깝게
+// 깎여서 추천 금액이 항상 0원 근처로 나오는 문제가 있었다(2026-09-24 버그 수정, 사용자 확인).
+function daysAgoDateString(days: number): string {
+  const d = new Date(TODAY_DATE + "T00:00:00+09:00");
+  d.setDate(d.getDate() - days);
+  return d.toISOString().slice(0, 10);
 }
 
 function encouragementMessage(category: CategoryDef, amount: number, recommended: number, avg3: number): string {
@@ -34,20 +38,35 @@ function encouragementMessage(category: CategoryDef, amount: number, recommended
 export default function MonthlyGoalSetting() {
   const nav = useNav();
   const store = useStore();
-  const categories = PERSONAL_CATS;
+  // 2026-09-18 버그 수정: 고정된 기본 카테고리 목록(PERSONAL_CATS)을 직접 썼었다 — 설정(2c)에서
+  // 카테고리 이름을 바꾸거나 새로 추가해도 이 화면엔 반영이 안 됐고, category.label로 저장하다 보니
+  // 실제 지출 기록의 카테고리명과 어긋나 "목표를 설정해도 지출에 안 잡히는"(평균·달성 계산이 항상 0)
+  // 문제로 이어질 수 있었다. store.getCategoriesForScope로 실제 사용 중인 개인 카테고리를 쓴다.
+  // useMemo로 감싸는 이유: store.getCategoriesForScope()는 매 렌더 호출되는 메서드라, 아래
+  // avg3 useMemo가 category.label에 의존하면 리액트 컴파일러가 그 메모이제이션을 신뢰하지 못한다
+  // (호출 결과가 렌더마다 같다는 걸 정적으로 증명할 수 없어서 "Compilation Skipped" 경고가 났다).
+  const categories = useMemo(() => store.getCategoriesForScope({ kind: "personal" }), [store]);
   const month = currentMonthString(TODAY_DATE);
   const [selectedCategoryId, setSelectedCategoryId] = useState(categories[0].id);
-  const category = categories.find((c) => c.id === selectedCategoryId) ?? categories[0];
+  const category = useMemo(() => categories.find((c) => c.id === selectedCategoryId) ?? categories[0], [categories, selectedCategoryId]);
 
   // 실제 지난 3개월 지출(shooTbranch 원본은 하드코딩 샘플이었다 — 이제 진짜 store.expenses로 계산).
-  const avg3 = useMemo(() => {
-    const months = [pastMonthString(1), pastMonthString(2), pastMonthString(3)];
-    const totals = months.map((m) =>
-      store.expenses.filter((e) => e.user_id === store.currentUserId && e.category === category.label && e.date.startsWith(m)).reduce((sum, e) => sum + e.amount, 0)
-    );
-    return Math.round(totals.reduce((sum, n) => sum + n, 0) / 3);
-  }, [store.expenses, store.currentUserId, category.label]);
+  // 함수로 뽑아둔 이유: handleSelectCategory에서 "새로 고른 카테고리"의 평균을 바로 계산해야 하는데,
+  // 렌더 스코프의 avg3/recommended는 그 시점엔 아직 이전(방금까지 선택돼 있던) 카테고리 값이라
+  // 그대로 읽으면 한 박자 늦은 값이 들어간다(2026-09-24 버그 수정 — 카테고리를 바꿔도 목표 금액 칸이
+  // 새 카테고리의 추천 금액이 아니라 이전 카테고리의 추천 금액으로 채워지고 있었다).
+  function computeAvg3(categoryLabel: string): number {
+    const since = daysAgoDateString(90);
+    const total = store.expenses
+      .filter((e) => e.user_id === store.currentUserId && e.category === categoryLabel && e.date >= since && e.date <= TODAY_DATE)
+      .reduce((sum, e) => sum + e.amount, 0);
+    return Math.round(total / 3);
+  }
+  function computeRecommended(categoryLabel: string): number {
+    return roundTo1000(computeAvg3(categoryLabel) * 0.9);
+  }
 
+  const avg3 = computeAvg3(category.label);
   const recommended = roundTo1000(avg3 * 0.9);
   const sliderMax = Math.max(recommended * 3, 300000);
 
@@ -60,7 +79,7 @@ export default function MonthlyGoalSetting() {
   function handleSelectCategory(next: CategoryDef) {
     setSelectedCategoryId(next.id);
     const nextExisting = store.categoryGoals.find((g) => g.category === next.label && g.month === month);
-    const nextAmount = nextExisting?.goal_amount ?? recommended;
+    const nextAmount = nextExisting?.goal_amount ?? computeRecommended(next.label);
     setAmount(nextAmount);
     setAmountText(String(nextAmount));
     setSaved(null);
@@ -153,14 +172,17 @@ export default function MonthlyGoalSetting() {
 
         <div style={{ marginTop: 20 }}>
           <div style={{ fontSize: 13, fontWeight: 700, color: "var(--shoot-text)", marginBottom: 8 }}>목표 금액</div>
-          <div style={{ display: "flex", alignItems: "baseline", gap: 4 }}>
-            <span style={{ fontSize: 18, fontWeight: 800, color: "var(--shoot-text-muted)" }}>₩</span>
+          {/* 2026-09-24 팀 요청(신규): 입력 칸이 테두리·배경 없이 텍스트만 있어서 입력 가능한 칸인지
+              티가 안 났다 — 다른 화면 입력칸(로그인 이메일·비밀번호 등)과 같은 방식으로 카드 테두리를 줘서
+              눈에 띄게 했다. */}
+          <div style={{ display: "flex", alignItems: "center", gap: 6, padding: "12px 16px", borderRadius: 14, border: `2px solid ${category.accent}`, background: "var(--shoot-surface)" }}>
+            <span style={{ fontSize: 20, fontWeight: 800, color: "var(--shoot-text-muted)" }}>₩</span>
             <input
               value={amountText}
               onChange={(e) => handleAmountText(e.target.value)}
               inputMode="numeric"
               placeholder="0"
-              style={{ fontSize: 30, fontWeight: 800, color: "var(--shoot-text)", letterSpacing: "-1px", border: "none", background: "transparent", width: "100%" }}
+              style={{ fontSize: 30, fontWeight: 800, color: "var(--shoot-text)", letterSpacing: "-1px", border: "none", outline: "none", background: "transparent", width: "100%" }}
             />
           </div>
           <input
