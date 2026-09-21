@@ -33,9 +33,14 @@ export default function RecurringExpenseManage() {
 
       <div style={{ flex: 1, overflowY: "auto", padding: "6px 20px 20px" }}>
         {store.recurringExpenses.length === 0 ? (
-          <div style={{ marginTop: 40, textAlign: "center" }}>
-            <RepeatIcon size={28} color="var(--shoot-text-muted)" />
-            <div style={{ fontSize: 13, fontWeight: 700, color: "var(--shoot-text-muted)", marginTop: 10 }}>등록된 정기 지출이 없어요</div>
+          // 버그 수정(2026-09-21 사용자 신고): 아이콘이 배경 없이 혼자 떠 있어서 "따로 노는" 느낌이
+          // 났다 — 이 앱의 다른 빈 상태(예: ExpenseListEmpty.tsx)와 같은 패턴으로, 원형 배경 안에
+          // 아이콘을 넣고 flex column으로 정렬해 텍스트와 한 덩어리로 보이게 맞췄다.
+          <div style={{ marginTop: 40, display: "flex", flexDirection: "column", alignItems: "center", textAlign: "center" }}>
+            <div style={{ width: 64, height: 64, borderRadius: "50%", background: "var(--shoot-surface-alt)", display: "flex", alignItems: "center", justifyContent: "center" }}>
+              <RepeatIcon size={26} color="var(--shoot-accent)" />
+            </div>
+            <div style={{ fontSize: 13, fontWeight: 700, color: "var(--shoot-text-muted)", marginTop: 16 }}>등록된 정기 지출이 없어요</div>
             <div style={{ fontSize: 12, color: "var(--shoot-text-muted)", marginTop: 4 }}>지출을 새로 기록할 때 &quot;매달 반복 등록&quot;을 켜면 여기에 나타나요</div>
           </div>
         ) : (
