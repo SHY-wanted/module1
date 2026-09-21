@@ -88,6 +88,8 @@
 
 ## 2. 디자인 시스템
 
+![디자인 시스템](docs/images/design-system.png)
+
 ### 사용 도구와 역할
 
 | 도구 | 어느 단계에 썼나 | 원본 여부 |
@@ -119,11 +121,21 @@
 
 ### 디자인 vs 구현
 
-| Claude Design | 실제 화면 |
-|---|---|
-| `ShooT 하윤.dc.html` (위 링크) | <https://module1-two.vercel.app/> |
+피그마를 쓰지 않았으므로 **Claude Design 원본 ↔ 실제 배포 화면** 2단 비교다.
 
-> 스크린샷 파일은 아직 저장소에 없습니다 — `docs/images/` 폴더를 만들어 `cdesign-home.png`, `real-home.png`를 넣으면 이 표에 바로 붙습니다.
+| Claude Design (`ShooT 하윤.dc.html`) | 실제 배포 화면 |
+|---|---|
+| ![Claude Design 로그인](docs/images/cdesign-login.png) | ![실제 로그인 화면](docs/images/real-login.png) |
+
+왼쪽이 원본, 오른쪽이 <https://module1-two.vercel.app/> 의 같은 화면이다. 아이콘 타일·제목·입력칸 radius·"로그인 상태 유지" 토글까지 그대로 옮겼고, 구현에서 **더해진 것**은 두 가지다 — 원본에 없던 `비밀번호를 잊으셨나요?`(비밀번호 찾기)와 `또는` 구분선 아래 **카카오로 계속하기** 버튼. 둘 다 기획 확정 뒤에 추가된 기능이라 디자인 원본에는 없다.
+
+홈 화면은 원본이 이렇다 — 실제 홈은 로그인해야 보이므로 배포본 캡처 대신 원본만 싣는다.
+
+| Claude Design — 2b. 메인 (홈) | 실제 구현 — 성장한 캐릭터(Stage 3) |
+|---|---|
+| ![Claude Design 홈](docs/images/cdesign-home.png) | ![Stage 3 성년기 캐릭터](docs/images/character-stage3.png) |
+
+오른쪽은 로그인 없이 볼 수 있는 `/character-demo` 라우트다. 원본 PNG 한 장에 **부위 마스크를 합성해 몸·눈동자·잎사귀 색을 바꾸는** 방식이 실제로 도는 모습이고, 코인은 §11 규칙대로 커스터마이즈 대상에서 빠져 **원래 금색**을 유지하고 있다.
 
 ---
 
@@ -131,10 +143,10 @@
 
 ```mermaid
 flowchart LR
-    T[팀 3인] -->|인터뷰 답변| PP[planning-partner<br/>기획 파트너]
-    PP -->|docs/ 기획 문서 초안| PC[product-planner<br/>기획 코치]
-    PC -->|빠진 것·모호한 문장 질문| T
-    T -->|확정된 PRD + Claude Design| PB[product-builder<br/>구현 에이전트]
+    T["팀 3인"] -->|"인터뷰 답변"| PP["planning-partner<br/>기획 파트너"]
+    PP -->|"docs/ 기획 문서 초안"| PC["product-planner<br/>기획 코치"]
+    PC -->|"빠진 것·모호한 문장 질문"| T
+    T -->|"확정된 PRD + Claude Design"| PB["product-builder<br/>구현 에이전트"]
     PB -->|화면 구현| T
     T -->|CLAUDE.md + 스킬 문서| PB
 ```
@@ -221,10 +233,10 @@ flowchart LR
 ```mermaid
 gitGraph
     commit id: "기획 문서"
-    branch draft-hy-planning
-    commit id: "hy 초안 01~03"
+    branch yaru
+    commit id: "기획 초안 01~03"
     checkout main
-    merge draft-hy-planning
+    merge yaru tag: "PR #1"
     branch petbranch
     commit id: "저금통 펫"
     checkout main
@@ -249,17 +261,37 @@ gitGraph
 - **이름 규칙**: 프로젝트 초반에는 **작업자 이름 기반**(`mg`, `hybranch`)으로 쓰다가, 후반에 **작업 내용 기반**(`feature/income-avatar-account-deletion`, `draft/hy-ledger-planning-01-03`)으로 옮겨갔다.
 - **합치기 규칙**: 개인 브랜치에서 작업 → `main`을 먼저 merge해 충돌을 자기 브랜치에서 해소 → PR 생성 → `main` 병합
 
-### 이슈·PR 활용
+### 이슈 활용
 
-| PR | 내용 | 브랜치 |
-|---|---|---|
-| #8 | 저금통 펫(캐릭터 렌더러·마스크 파이프라인) | `petbranch` |
-| #10 | 월별 목표 설정/삭제, 홈 카테고리 % 실제 계산 | `shooTbranch` |
-| #11 | 로그인 빈 칸 한국어 안내, 목표 금액 입력칸 강조 | `hybran2` |
-| #12 | 수입 DB 연동, 프로필 사진 저장, 회원 탈퇴 | `feature/income-avatar-account-deletion` |
+**별도 이슈를 하나도 만들지 않았다.** GitHub의 Issues 탭 숫자 3은 전부 *열려 있는 PR*이고, 순수 이슈는 0건이다. 이슈 템플릿·PR 템플릿(`.github/`)도 쓰지 않았다. 작업 단위는 브랜치명과 커밋 메시지로 나눴고, 결정 사항은 `docs/` 문서에 날짜와 함께 남기는 방식으로 대체했다. → 이 선택의 대가는 [7. 회고](#7-회고)의 "다음 프로젝트에서 다르게 할 것" 2번에 적었다.
 
-- 이슈 템플릿·PR 템플릿(`.github/`)은 **사용하지 않았다.** 작업 단위 공유는 브랜치명과 커밋 메시지로 했고, 결정 사항은 `docs/` 문서에 날짜와 함께 남기는 방식으로 대체했다.
-- 총 커밋 **102개**, 머지 커밋 **14개**, PR **4개 확인**.
+### PR 활용
+
+![PR 목록](docs/images/pr.png)
+
+총 **PR 14개** (병합 11 · 열린 채로 남음 3). 계정명은 `Lezo-Jong`=이종민, `hhy0123`=황하윤, `arim0317-dot`=신아림.
+
+| PR | 내용 | 브랜치 | 올린 사람 | 상태 |
+|---|---|---|---|---|
+| #1 | 기획 초안 01-problem·02-workflow·03-requirements | `yaru` | Lezo-Jong | 병합 |
+| #2 | 팀 planning 저장 | `teamshy` | arim0317-dot | 열림 |
+| #3 | 기획 초안(하윤) 01~03 | `draft/hy-ledger-planning-01-03` | hhy0123 | 열림 |
+| #4 · #6 | 캐릭터 에셋·마스크 파이프라인 1차 | `mg` | Lezo-Jong | 병합 |
+| #5 | 반려 캐릭터(다마고치)·이모지 반응 | `hybranch` | hhy0123 | 열림 |
+| #7 · #10 | 월별 목표 설정/삭제, 홈 카테고리 % 실제 계산 | `shooTbranch` | arim0317-dot | 병합 |
+| #8 | 성년기 코인 재작업, 눈 흰자·가방 끈 번짐 근본 수정 | `petbranch` | arim0317-dot | 병합 |
+| #9 | 출석체크 — 7일 연속 시 코인 2배 | `hybran` | hhy0123 | 병합 |
+| #11 | 로그인 빈 칸 한국어 안내, 목표 금액 입력칸 강조 | `hybran2` | hhy0123 | 병합 |
+| #12 | 수입 DB 연동, 프로필 사진 저장, 회원 탈퇴 | `feature/income-avatar-account-deletion` | hhy0123 | 병합 |
+| #13 | 지출 페이스 경고 · 저녁 리마인더 · 메모 검색 | `feature/pace-warning-reminder-search-inline-warning` | hhy0123 | 병합 |
+| #14 | 날짜/시간대 버그 3건 수정 | `fix/date-timezone-bugs` | hhy0123 | 병합 |
+
+- PR 본문에는 **무엇을 왜 바꿨는지 + 건드린 파일 목록**을 적었다. 리뷰 승인 기능(Approve)은 쓰지 않았고, 확인할 것이 있을 때 **코멘트로 주고받은 PR이 2개**(#8, #9)다.
+- 아래는 #9의 실제 대화 — 리뷰어가 "SQL 실행은 내 노트북에서 하고 main 병합 뒤 확인하겠다"고 남겨, **DB 마이그레이션 실행 담당을 코드 병합과 분리**한 기록이다.
+
+![PR #9 대화](docs/images/pr-detail.png)
+
+- 총 커밋 **102개**, 머지 커밋 **14개**.
 
 ### 역할 분담
 
@@ -295,6 +327,12 @@ gitGraph
   ```
 - 필요한 환경변수(`.env.local`): `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY`, `SUPABASE_SERVICE_ROLE_KEY`, `CLOVA_OCR_INVOKE_URL`, `CLOVA_OCR_SECRET_KEY`, `KAKAO_ADMIN_KEY`
 - Supabase: `supabase/schema.sql` → `002` ~ `011` 순서대로 SQL Editor에서 실행
+
+**로그인 전 화면** (배포본에서 계정 없이 바로 보이는 세 화면)
+
+| 0. 스플래시 | 1. 회원가입 | 2. 로그인 |
+|---|---|---|
+| ![스플래시](docs/images/real-splash.png) | ![회원가입](docs/images/real-signup.png) | ![로그인](docs/images/real-login.png) |
 
 **시연 순서**
 
