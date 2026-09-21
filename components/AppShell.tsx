@@ -72,6 +72,18 @@ export default function AppShell() {
     }
   }, []);
 
+  // 신규 기능: 스택 맨 위 화면을 새로 쌓지 않고 바꿔치기한다 — 생성/선택 화면(예: "그룹 펫 데려오기")
+  // 다음에 상세 화면을 push로 얹으면, 상세 화면에서 뒤로가기를 눌렀을 때 그 생성 화면으로 돌아가
+  // 버린다(사용자 제보: 그룹 펫 데려오기 → 펫 상세 → 뒤로가기가 다시 "데려오기" 화면으로 감). push와
+  // 달리 pushState 대신 replaceState를 써서 히스토리 길이를 늘리지 않고, 그냥 top 항목만 바꾼다.
+  const replace = useCallback((screen: StackScreen) => {
+    const key = `s${++keyCounter.current}`;
+    const current = renderItemsRef.current.filter((it) => it.phase !== "leaving");
+    const newStack = [...current.slice(0, -1).map((it) => it.screen), screen];
+    window.history.replaceState({ stack: newStack } satisfies HistoryState, "");
+    setRenderItems((items) => [...items.filter((it) => it.phase !== "leaving").slice(0, -1), { screen, key, phase: "settled" }]);
+  }, []);
+
   const removeTopWithAnimation = useCallback((toLength: number) => {
     const current = renderItemsRef.current.filter((it) => it.phase !== "leaving");
     if (current.length <= toLength) return;
@@ -149,6 +161,7 @@ export default function AppShell() {
     activeTab,
     switchTab,
     push,
+    replace,
     back,
     resetStackToHome,
     resetStackToTab,

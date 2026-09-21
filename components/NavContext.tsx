@@ -7,6 +7,10 @@ export interface NavValue {
   activeTab: TabId;
   switchTab: (tab: TabId) => void;
   push: (screen: StackScreen) => void;
+  // 신규 기능: 스택 맨 위 화면을 새로 쌓지 않고 바꿔치기한다(history도 늘지 않음) — "생성 화면 →
+  // 상세 화면"처럼, 상세 화면에서 뒤로가기를 눌렀을 때 방금 지나온 생성 화면이 아니라 그 이전 화면으로
+  // 곧장 돌아가야 하는 경우에 push 대신 쓴다(PetSelect → PetDetail이 대표 사례).
+  replace: (screen: StackScreen) => void;
   back: () => void;
   resetStackToHome: () => void;
   // 스택을 전부 비우고 임의의 탭으로 이동 — 8b(영수증 인식 완료)가 8a·8b 두 겹을 한 번에 pop하고

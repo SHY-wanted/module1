@@ -26,7 +26,10 @@ export default function PetSelect({ scope }: { scope: CategoryScope }) {
       setError(result.error ?? "펫을 만들지 못했어요");
       return;
     }
-    nav.push({ id: "petDetail", scope });
+    // 버그 수정(2026-09-24 사용자 제보): push로 얹으면 펫 상세에서 뒤로가기를 눌렀을 때 이 "데려오기"
+    // 화면으로 되돌아왔다 — 이 화면은 이미 할 일을 다 했으니(펫이 만들어짐) 다시 볼 필요가 없다.
+    // replace로 이 화면 자체를 펫 상세로 바꿔치기해서, 뒤로가기가 그 이전 화면(그룹 상세 등)으로 가게 한다.
+    nav.replace({ id: "petDetail", scope });
   }
 
   return (
