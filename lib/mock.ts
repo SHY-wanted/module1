@@ -356,6 +356,9 @@ export interface Pet {
   // 015 마이그레이션 — "꾸미기"에서 고른 표시용 단계. null이면 stage_index를 그대로 보여준다.
   // lib/pets.ts의 effectiveStageIndex()로 항상 이 값을 거쳐서 읽어야 한다(직접 읽지 말 것).
   display_stage_index: number | null;
+  // 016 마이그레이션 — 지출 기록 코인 보상을 오늘 이미 받았는지. 하루에 몇 번을 기록하든 이 보상은
+  // 딱 한 번만 받게 막는 용도라, last_fed_date와 같은 "그 날짜인지만 비교" 방식으로 쓴다.
+  last_expense_coin_date: string | null;
   created_at: string;
 }
 
