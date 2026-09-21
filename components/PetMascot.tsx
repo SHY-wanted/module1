@@ -54,7 +54,10 @@ export default function PetMascot({
     [pet.body_color, pet.eye_color, pet.leaf_color, pet.ledger_color, pet.bag_color]
   );
 
-  if (sulking) {
+  // 버그 수정(2026-09-21): 알(stage_index 1) 단계는 이 시무룩 그림(다 자란 몸통에 발까지 있는 그림)을
+  // 쓰면 안 된다 — 알은 원래 팔다리 없는 계란 모양이라, 시무룩 그림으로 바뀌는 순간 알인데 알처럼
+  // 안 보이는 모순이 생긴다. 알 단계는 시무룩 판정이 나도 원래 알 그림(눈 감은 얼굴) 그대로 둔다.
+  if (sulking && pet.stage_index > 1) {
     // 원본 비율(286x376)을 그대로 유지 — 다른 단계 그림들과 폭이 아니라 "높이" 기준으로 크기를
     // 맞추므로, 세로 px 그대로 두고 폭은 원본 비율대로 계산한다.
     const width = Math.round(px * (286 / 376));
