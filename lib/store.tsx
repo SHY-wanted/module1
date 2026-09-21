@@ -25,11 +25,13 @@ import {
   type ExpenseReaction,
   type GoalReward,
   type Group,
+  type GroupCategoryGoal,
   type GroupMember,
   type GroupType,
   type MockIncome,
   type Pet,
   type Profile,
+  type RecurringExpense,
   type Saving,
 } from "./mock";
 import { PERSONAL_CATS, groupToCats, makeCategory, type CategoryDef, type CategoryScope } from "./categories";
@@ -118,6 +120,10 @@ interface StoreState {
   pendingReceiptImage: File | null;
   // 출석체크(2026-09-20 추가) — 접속률을 올리기 위한 신규 기능. 내 출석 기록만 들어있다(RLS).
   attendanceCheckins: AttendanceCheckin[];
+  // 정기 지출 템플릿(신규) — 내 것만(RLS). 실제 Expense 생성은 로그인 시 store가 한 번만 처리한다.
+  recurringExpenses: RecurringExpense[];
+  // 그룹 예산(신규) — 내가 속한 그룹의 것만(RLS). 그룹장만 정하고 고칠 수 있다.
+  groupCategoryGoals: GroupCategoryGoal[];
 }
 
 interface JoinResult {
@@ -231,6 +237,13 @@ interface StoreValue extends StoreState {
   setCategoryGoal: (category: string, month: string, amount: number) => Promise<MutationResult<CategoryGoal>>;
   // 2026-09-23 팀 요청(신규): 설정한 목표를 지울 수 있게 — deleteExpense와 같은 패턴(RLS로 본인 것만 지워짐).
   deleteCategoryGoal: (id: string) => Promise<boolean>;
+  // 정기 지출(신규) — 등록하면 로그인 시(또는 다음 로그인 시) store가 매달 이 템플릿을 보고 Expense를 자동 생성한다.
+  addRecurringExpense: (input: Omit<RecurringExpense, "id" | "created_at" | "active">) => Promise<MutationResult<RecurringExpense>>;
+  deleteRecurringExpense: (id: string) => Promise<boolean>;
+  toggleRecurringExpenseActive: (id: string) => Promise<void>;
+  // 그룹 예산(신규) — setCategoryGoal과 같은 upsert 패턴이지만 RLS가 그룹장(OWNER)만 통과시킨다.
+  setGroupCategoryGoal: (groupId: string, category: string, month: string, amount: number) => Promise<MutationResult<GroupCategoryGoal>>;
+  deleteGroupCategoryGoal: (id: string) => Promise<boolean>;
   // 이번 달 설정된 목표들을 각각 달성했는지 계산해서 저장한다(배치 대신 화면을 열 때, 카테고리별로
   // 이미 보상을 줬으면 다시 안 준다). "퀘스트 달성" 개념이라 고정 보상(coins·xp)을 준다.
   getOrCreateGoalRewardsForMonth: () => Promise<MutationResult<GoalReward[]>>;
@@ -305,6 +318,9 @@ export function StoreProvider({ children }: { children: ReactNode }) {
   const [pendingReceiptImage, setPendingReceiptImage] = useState<File | null>(null);
   // 출석체크 — 완전히 새 기능이라 목업 시드가 없다(다른 pets v2 테이블들과 같은 이유).
   const [attendanceCheckins, setAttendanceCheckins] = useState<AttendanceCheckin[]>([]);
+  // 정기 지출 템플릿·그룹 예산 — 둘 다 완전히 새 기능이라 목업 시드가 없다.
+  const [recurringExpenses, setRecurringExpenses] = useState<RecurringExpense[]>([]);
+  const [groupCategoryGoals, setGroupCategoryGoals] = useState<GroupCategoryGoal[]>([]);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
   const toastTimerRef = useRef<number | null>(null);
 
@@ -406,11 +422,14 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       supabase.from("expense_reactions").select("*"),
       // 출석체크 — 본인 것만(RLS). 연속 출석 계산에 최근 기록이 필요하므로 전부 읽어온다.
       supabase.from("attendance_checkins").select("*"),
-    ]).then(([groupsRes, membersRes, expensesRes, savingsRes, incomesRes, petsRes, goalsRes, rewardsRes, reactionsRes, checkinsRes]) => {
+      // 정기 지출 템플릿(신규, supabase/012_recurring_expenses.sql) — 본인 것만(RLS).
+      supabase.from("recurring_expenses").select("*"),
+      // 그룹 예산(신규, supabase/013_group_category_goals.sql) — 내가 속한 그룹의 예산만(RLS).
+      supabase.from("group_category_goals").select("*"),
+    ]).then(async ([groupsRes, membersRes, expensesRes, savingsRes, incomesRes, petsRes, goalsRes, rewardsRes, reactionsRes, checkinsRes, recurringRes, groupGoalsRes]) => {
       if (!active) return;
       if (!groupsRes.error && groupsRes.data) setGroups(groupsRes.data);
       if (!membersRes.error && membersRes.data) setGroupMembers(membersRes.data);
-      if (!expensesRes.error && expensesRes.data) setExpenses(expensesRes.data);
       if (!savingsRes.error && savingsRes.data) setSavings(savingsRes.data);
       if (!incomesRes.error && incomesRes.data) setIncomes(incomesRes.data);
       if (!petsRes.error && petsRes.data) setPets(petsRes.data);
@@ -418,6 +437,42 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       if (!rewardsRes.error && rewardsRes.data) setGoalRewards(rewardsRes.data);
       if (!reactionsRes.error && reactionsRes.data) setExpenseReactions(reactionsRes.data);
       if (!checkinsRes.error && checkinsRes.data) setAttendanceCheckins(checkinsRes.data);
+      if (!recurringRes.error && recurringRes.data) setRecurringExpenses(recurringRes.data);
+      if (!groupGoalsRes.error && groupGoalsRes.data) setGroupCategoryGoals(groupGoalsRes.data);
+
+      let loadedExpenses = !expensesRes.error && expensesRes.data ? expensesRes.data : [];
+      // 신규 기능: 정기 지출 — 이번 달 아직 생성 안 된 활성 템플릿이 있으면 여기서 한 번 생성한다
+      // (goal_rewards와 같은 "화면을 열 때 계산" 패턴, 배치 없음). 알림·그룹 펫 성장 등 addExpense의
+      // 부가 효과는 여기선 의도적으로 건너뛴다 — 로그인 직후 조용히 채워 넣기만 한다.
+      if (!recurringRes.error && recurringRes.data && !expensesRes.error) {
+        const todayDay = Number(TODAY_DATE.slice(8, 10));
+        const thisMonth = TODAY_DATE.slice(0, 7);
+        const alreadyGeneratedIds = new Set(
+          loadedExpenses.filter((e) => e.recurring_expense_id && e.date.startsWith(thisMonth)).map((e) => e.recurring_expense_id)
+        );
+        const due = recurringRes.data.filter((r) => r.active && r.day_of_month <= todayDay && !alreadyGeneratedIds.has(r.id));
+        if (due.length > 0) {
+          const nowIso = new Date().toISOString();
+          const newRows: Expense[] = due.map((r) => ({
+            id: crypto.randomUUID(),
+            user_id: session.user.id,
+            group_id: r.group_id,
+            amount: r.amount,
+            category: r.category,
+            memo: r.memo ? `${r.memo} (정기 지출)` : "정기 지출",
+            date: `${thisMonth}-${String(r.day_of_month).padStart(2, "0")}`,
+            source_type: "MANUAL",
+            image_url: null,
+            is_shared: r.is_shared,
+            created_at: nowIso,
+            recurring_expense_id: r.id,
+          }));
+          const { error: insertError } = await supabase.from("expenses").insert(newRows);
+          if (!active) return;
+          if (!insertError) loadedExpenses = [...newRows, ...loadedExpenses];
+        }
+      }
+      setExpenses(loadedExpenses);
     });
     return () => {
       active = false;
@@ -532,6 +587,8 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       feedPopupPetId,
       pendingReceiptImage,
       attendanceCheckins,
+      recurringExpenses,
+      groupCategoryGoals,
       currentUserId,
 
       // P1: 그룹 이름이 비어 있으면 호출하는 쪽(화면)에서 막아야 한다 — 여기서도 방어적으로 한 번 더 막는다.
@@ -984,6 +1041,68 @@ export function StoreProvider({ children }: { children: ReactNode }) {
         return true;
       },
 
+      // 정기 지출(신규) — 저장만 하고, 실제 Expense 생성은 다음 로그인(세션 로드) 시 store가 처리한다.
+      async addRecurringExpense(input: Omit<RecurringExpense, "id" | "created_at" | "active">): Promise<MutationResult<RecurringExpense>> {
+        if (!session) return { ok: false, error: "로그인이 필요해요" };
+        const newRecurring: RecurringExpense = { ...input, id: crypto.randomUUID(), active: true, created_at: new Date().toISOString() };
+        const { error } = await supabase.from("recurring_expenses").insert(newRecurring);
+        if (error) return { ok: false, error: error.message };
+        setRecurringExpenses((prev) => [...prev, newRecurring]);
+        return { ok: true, data: newRecurring };
+      },
+
+      async deleteRecurringExpense(id: string): Promise<boolean> {
+        const { error, count } = await supabase.from("recurring_expenses").delete({ count: "exact" }).eq("id", id);
+        if (error || !count) return false;
+        setRecurringExpenses((prev) => prev.filter((r) => r.id !== id));
+        return true;
+      },
+
+      async toggleRecurringExpenseActive(id: string): Promise<void> {
+        const target = recurringExpenses.find((r) => r.id === id);
+        if (!target) return;
+        const nextActive = !target.active;
+        const { error } = await supabase.from("recurring_expenses").update({ active: nextActive }).eq("id", id);
+        if (error) return;
+        setRecurringExpenses((prev) => prev.map((r) => (r.id === id ? { ...r, active: nextActive } : r)));
+      },
+
+      // 그룹 예산(신규) — category_goals와 같은 upsert 패턴. RLS(group_category_goals_insert_owner /
+      // _update_owner)가 그룹장이 아니면 막으므로, 실패를 "그룹장만 예산을 정할 수 있어요"로 매핑한다.
+      async setGroupCategoryGoal(groupId: string, category: string, month: string, amount: number): Promise<MutationResult<GroupCategoryGoal>> {
+        if (!session) return { ok: false, error: "로그인이 필요해요" };
+        const nowIso = new Date().toISOString();
+        const existing = groupCategoryGoals.find((g) => g.group_id === groupId && g.category === category && g.month === month);
+        if (existing) {
+          const { error } = await supabase.from("group_category_goals").update({ goal_amount: amount, updated_at: nowIso }).eq("id", existing.id);
+          if (error) return { ok: false, error: "그룹장만 예산을 정할 수 있어요" };
+          const updated: GroupCategoryGoal = { ...existing, goal_amount: amount, updated_at: nowIso };
+          setGroupCategoryGoals((prev) => prev.map((g) => (g.id === existing.id ? updated : g)));
+          return { ok: true, data: updated };
+        }
+        const newGoal: GroupCategoryGoal = {
+          id: crypto.randomUUID(),
+          group_id: groupId,
+          category,
+          month,
+          goal_amount: amount,
+          created_by: session.user.id,
+          created_at: nowIso,
+          updated_at: nowIso,
+        };
+        const { error } = await supabase.from("group_category_goals").insert(newGoal);
+        if (error) return { ok: false, error: "그룹장만 예산을 정할 수 있어요" };
+        setGroupCategoryGoals((prev) => [...prev, newGoal]);
+        return { ok: true, data: newGoal };
+      },
+
+      async deleteGroupCategoryGoal(id: string): Promise<boolean> {
+        const { error, count } = await supabase.from("group_category_goals").delete({ count: "exact" }).eq("id", id);
+        if (error || !count) return false;
+        setGroupCategoryGoals((prev) => prev.filter((g) => g.id !== id));
+        return true;
+      },
+
       // "퀘스트 달성하면 보상"(shooTbranch 통합, 2026-09-15 사용자 확인) — 배치 없이 화면을 열 때
       // 이번 달 설정된 목표들을 전부 계산한다. 카테고리·달마다 한 번만 보상(unique 제약 + 로컬 캐시로 방지).
       async getOrCreateGoalRewardsForMonth(): Promise<MutationResult<GoalReward[]>> {
@@ -1117,7 +1236,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
         setPendingReceiptImage(file);
       },
     }),
-    [profiles, session, authReady, currentUserId, currentUserAvatarUrl, groups, groupMembers, expenses, savings, incomes, personalCategories, groupCategoriesById, toastMessage, isLoggedIn, notificationSettings, darkMode, pets, categoryGoals, goalRewards, expenseReactions, feedPopupPetId, pendingReceiptImage, attendanceCheckins, supabase, growGroupPetFromSharedExpense]
+    [profiles, session, authReady, currentUserId, currentUserAvatarUrl, groups, groupMembers, expenses, savings, incomes, personalCategories, groupCategoriesById, toastMessage, isLoggedIn, notificationSettings, darkMode, pets, categoryGoals, goalRewards, expenseReactions, feedPopupPetId, pendingReceiptImage, attendanceCheckins, recurringExpenses, groupCategoryGoals, supabase, growGroupPetFromSharedExpense]
   );
 
   return <StoreContext.Provider value={value}>{children}</StoreContext.Provider>;

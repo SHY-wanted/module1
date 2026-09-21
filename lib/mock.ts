@@ -42,10 +42,12 @@ export interface GroupMember {
   joined_at: string;
 }
 
-// E4. Expense — schema.sql: id, user_id, group_id, amount, category, memo, date, source_type, image_url, is_shared, created_at
+// E4. Expense — schema.sql: id, user_id, group_id, amount, category, memo, date, source_type, image_url, is_shared, created_at, recurring_expense_id
 // 스키마에 없는 merchant·needsReview 필드는 만들지 않는다.
 // - "가맹점명"은 memo에 넣는다.
 // - "확인 필요" 배지는 category === '확인 필요'로 판정한다(05-policy.md P7 방식).
+// - recurring_expense_id(신규, supabase/012_recurring_expenses.sql): 이 지출이 어느 정기 지출
+//   템플릿에서 자동 생성됐는지. 수동으로 만든 지출은 null.
 export interface Expense {
   id: string;
   user_id: string;
@@ -58,6 +60,7 @@ export interface Expense {
   image_url: string | null;
   is_shared: boolean;
   created_at: string; // timestamptz — 시각 표시(오늘 08:32 등)·정렬 기준
+  recurring_expense_id: string | null;
 }
 
 // E6. Saving — schema.sql: id, user_id, type, group_id, amount, title, date, created_at
@@ -201,6 +204,7 @@ export const INITIAL_EXPENSES: Expense[] = [
     image_url: null,
     is_shared: true,
     created_at: "2026-09-09T08:32:00+09:00",
+    recurring_expense_id: null,
   },
   {
     id: "e-2",
@@ -214,6 +218,7 @@ export const INITIAL_EXPENSES: Expense[] = [
     image_url: null,
     is_shared: true,
     created_at: "2026-09-08T19:00:00+09:00",
+    recurring_expense_id: null,
   },
   {
     id: "e-3",
@@ -227,6 +232,7 @@ export const INITIAL_EXPENSES: Expense[] = [
     image_url: null,
     is_shared: true,
     created_at: "2026-09-06T20:10:00+09:00",
+    recurring_expense_id: null,
   },
   {
     id: "e-4",
@@ -240,6 +246,7 @@ export const INITIAL_EXPENSES: Expense[] = [
     image_url: null,
     is_shared: false,
     created_at: "2026-09-05T17:40:00+09:00",
+    recurring_expense_id: null,
   },
   {
     id: "e-5",
@@ -253,6 +260,7 @@ export const INITIAL_EXPENSES: Expense[] = [
     image_url: null,
     is_shared: true,
     created_at: "2026-08-29T11:00:00+09:00",
+    recurring_expense_id: null,
   },
   {
     id: "e-6",
@@ -266,6 +274,7 @@ export const INITIAL_EXPENSES: Expense[] = [
     image_url: null,
     is_shared: false,
     created_at: "2026-08-27T22:15:00+09:00",
+    recurring_expense_id: null,
   },
   // 그룹 피드(5b)에서만 보이는, 파트너(이민준) 명의 공유 지출 — 06-data.md E4 "본인 지출만" 원칙상
   // 김서연의 지출내역(7)에는 나타나지 않고, 커플 그룹 피드(5b)에는 나타난다.
@@ -281,6 +290,7 @@ export const INITIAL_EXPENSES: Expense[] = [
     image_url: null,
     is_shared: true,
     created_at: "2026-09-09T19:04:00+09:00",
+    recurring_expense_id: null,
   },
 ];
 
@@ -355,6 +365,37 @@ export interface CategoryGoal {
   category: string;
   month: string; // "YYYY-MM"
   goal_amount: number;
+  created_at: string;
+  updated_at: string;
+}
+
+// E16. RecurringExpense(정기 지출) — schema.sql(supabase/012_recurring_expenses.sql): id, user_id,
+// group_id, amount, category, memo, day_of_month, is_shared, active, created_at. 월세·구독료처럼
+// 매달 반복되는 지출의 "템플릿"만 들고 있고, 실제 Expense 행은 store.tsx가 매달 이 템플릿을 보고
+// 자동 생성한다(day_of_month는 그 달의 지출이 생기는 날짜 — 29~31일 월 길이 문제를 피하려고 1~28로 제한).
+export interface RecurringExpense {
+  id: string;
+  user_id: string;
+  group_id: string | null;
+  amount: number;
+  category: string;
+  memo: string | null;
+  day_of_month: number; // 1~28
+  is_shared: boolean;
+  active: boolean;
+  created_at: string;
+}
+
+// E17. GroupCategoryGoal(그룹 예산) — schema.sql(supabase/013_group_category_goals.sql): id, group_id,
+// category, month, goal_amount, created_by, created_at, updated_at. CategoryGoal(개인 목표)과 같은
+// 모양이지만 user_id 대신 group_id를 쓰고, 그룹장(OWNER)만 정하고 고칠 수 있다(RLS로 강제).
+export interface GroupCategoryGoal {
+  id: string;
+  group_id: string;
+  category: string;
+  month: string; // "YYYY-MM"
+  goal_amount: number;
+  created_by: string;
   created_at: string;
   updated_at: string;
 }

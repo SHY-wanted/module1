@@ -9,6 +9,7 @@ import { getCategoryVisual } from "@/lib/categories";
 import { formatRelativeTime, formatWon } from "@/lib/format";
 import { CategoryIcon, ChevronLeftIcon, PlusIcon, TrashIcon } from "../icons";
 import type { CategoryIconKey } from "../icons";
+import ImageLightbox from "../ImageLightbox";
 
 // 2026-09-19 팀 요청: 2c(설정) "카테고리" 항목을 누르면 그 카테고리로 미리 필터링된 이 화면을
 // 스택에 쌓아 보여준다 — 지출내역 탭(7)과 완전히 같은 화면을 재사용하되, initialCategoryFilter로
@@ -25,6 +26,8 @@ export default function ExpenseList({ initialCategoryFilter, pushed }: { initial
   const [memoQuery, setMemoQuery] = useState<string>("");
   // 2026-09-19 팀 요청: 삭제 버튼 — 바로 지우지 않고 확인 팝업을 한 번 띄운다(10a "그룹 나가기"와 같은 패턴).
   const [confirmingId, setConfirmingId] = useState<string | null>(null);
+  // 신규 기능: 영수증 촬영으로 등록된 지출만(source_type === "RECEIPT") 원본 사진을 다시 볼 수 있다.
+  const [lightboxUrl, setLightboxUrl] = useState<string | null>(null);
 
   async function handleDeleteConfirmed() {
     if (!confirmingId) return;
@@ -166,6 +169,19 @@ export default function ExpenseList({ initialCategoryFilter, pushed }: { initial
                       </div>
                     </div>
                     <div style={{ fontSize: 15, fontWeight: 800, color: "var(--shoot-text)", whiteSpace: "nowrap" }}>{formatWon(it.amount)}</div>
+                    {/* 신규 기능: 영수증 촬영 지출이면 원본 사진 썸네일 — 탭하면 확대(ImageLightbox), 행 클릭(수정 모드)과 안 겹치게 stopPropagation. */}
+                    {it.source_type === "RECEIPT" && it.image_url && (
+                      <div
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setLightboxUrl(it.image_url);
+                        }}
+                        style={{ flexShrink: 0, width: 30, height: 30, borderRadius: 8, overflow: "hidden", border: "1px solid var(--shoot-border)", cursor: "pointer" }}
+                      >
+                        {/* eslint-disable-next-line @next/next/no-img-element -- data URL은 next/image의 원격 최적화 대상이 아니다. */}
+                        <img src={it.image_url} alt="영수증 썸네일" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+                      </div>
+                    )}
                     {/* 2026-09-19 팀 요청: 삭제 버튼 — 행 클릭(수정 모드 진입)과 안 겹치게 stopPropagation. */}
                     <div
                       onClick={(e) => {
@@ -210,6 +226,8 @@ export default function ExpenseList({ initialCategoryFilter, pushed }: { initial
           </div>
         </div>
       )}
+
+      <ImageLightbox url={lightboxUrl} onClose={() => setLightboxUrl(null)} />
     </div>
   );
 }
