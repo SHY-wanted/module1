@@ -257,11 +257,24 @@ export function ArrowUpIcon({ size, color, strokeWidth, style }: IconProps) {
   );
 }
 
-// design/shoot/IncomeEdit.dc.html "매달 자동으로 반복" 토글 아이콘 그대로.
 export function RefreshIcon({ size, color, strokeWidth, style }: IconProps) {
   return (
     <svg {...base(size, color, strokeWidth)} style={style}>
       <path d="M21 12a9 9 0 1 1-6.219-8.56" />
+    </svg>
+  );
+}
+
+// 버그 수정(2026-09-21): "매달 자동으로 반복"·"매달 반복 등록" 옆에 RefreshIcon(새로고침 화살표
+// 하나짜리 원)을 써서 "반복"이 아니라 "새로고침"처럼 보였다 — 양방향 화살표 두 개가 도는 표준
+// "반복(repeat)" 아이콘으로 바꾼다.
+export function RepeatIcon({ size, color, strokeWidth, style }: IconProps) {
+  return (
+    <svg {...base(size, color, strokeWidth)} style={style}>
+      <path d="m17 2 4 4-4 4" />
+      <path d="M3 11v-1a4 4 0 0 1 4-4h14" />
+      <path d="m7 22-4-4 4-4" />
+      <path d="M21 13v1a4 4 0 0 1-4 4H3" />
     </svg>
   );
 }

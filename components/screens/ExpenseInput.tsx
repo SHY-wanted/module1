@@ -10,7 +10,7 @@ import type { CategoryScope } from "@/lib/categories";
 import { formatFullDateKorean, formatWon } from "@/lib/format";
 import { TODAY_DATE } from "@/lib/mock";
 import { getGroupsForUser } from "@/lib/selectors";
-import { ChevronLeftIcon, CategoryIcon, RefreshIcon } from "../icons";
+import { ChevronLeftIcon, CategoryIcon, RepeatIcon } from "../icons";
 import type { CategoryIconKey } from "../icons";
 import ImageLightbox from "../ImageLightbox";
 
@@ -276,7 +276,7 @@ export default function ExpenseInput({ expenseId }: { expenseId?: string }) {
             onClick={() => setRegisterRecurring((v) => !v)}
             style={{ marginTop: 14, background: "var(--shoot-surface)", border: "1.5px solid var(--shoot-border)", borderRadius: 14, padding: 14, display: "flex", alignItems: "center", gap: 10, cursor: "pointer" }}
           >
-            <RefreshIcon size={17} color="var(--shoot-text-muted)" />
+            <RepeatIcon size={17} color="var(--shoot-text-muted)" />
             <div style={{ flex: 1 }}>
               <div style={{ fontSize: 13, fontWeight: 700, color: "var(--shoot-text)" }}>매달 반복 등록</div>
               <div style={{ fontSize: 11, color: "var(--shoot-text-muted)", marginTop: 2 }}>매달 {date.slice(8, 10)}일에 같은 지출을 자동으로 기록해요</div>

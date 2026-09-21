@@ -1069,10 +1069,12 @@ export function StoreProvider({ children }: { children: ReactNode }) {
         return { ok: true, data: { xpGained, leveledUp: stageIndex > pet.stage_index } };
       },
 
-      // 지출 기록(신규) 성공 직후 호출 — 개인 펫이 있고 오늘 아직 안 먹였을 때만 P3 팝업을 연다.
+      // 지출 기록(신규) 성공 직후 호출 — 개인 펫이 있고, 오늘 아직 안 먹였고, 실제로 먹일 코인이
+      // 있을 때만 P3 팝업을 연다. 버그 수정(2026-09-21): 코인이 모자란데도 팝업이 떠서 "밥 주기"를
+      // 누르면 "코인이 부족해요"만 보고 닫아야 했다 — 애초에 먹일 수 없으면 뜨지 않게 한다.
       openFeedPopupIfEligible() {
         const personalPet = pets.find((p) => p.user_id === currentUserId);
-        if (personalPet && personalPet.last_fed_date !== TODAY_DATE) {
+        if (personalPet && personalPet.last_fed_date !== TODAY_DATE && personalPet.total_coins >= FEED_COIN_COST) {
           setFeedPopupPetId(personalPet.id);
         }
       },
@@ -1323,11 +1325,19 @@ export function StoreProvider({ children }: { children: ReactNode }) {
         if (error) return { ok: false, error: error.message };
         setAttendanceCheckins((prev) => [...prev, newCheckin]);
 
-        const personalPet = pets.find((p) => p.user_id === currentUserId);
-        if (personalPet) {
-          const newTotalCoins = personalPet.total_coins + coinsEarned;
-          await supabase.from("pets").update({ total_coins: newTotalCoins }).eq("id", personalPet.id);
-          setPets((prev) => prev.map((p) => (p.id === personalPet.id ? { ...p, total_coins: newTotalCoins } : p)));
+        // 버그 수정(2026-09-21): 로그인 직후 pets가 아직 로딩되기 전에 출석체크부터 누르면(가장
+        // 먼저 하는 동작이라 흔하다), 여기서 쓰던 로컬 pets 배열이 아직 비어 있어서 personalPet을
+        // 못 찾고 코인 지급을 조용히 건너뛰었다 — 그 출석체크는 이미 저장돼서 다시 할 수도 없으니
+        // 그날 코인을 영영 못 받았다. 로컬 상태를 믿는 대신 DB에서 직접 최신 펫을 다시 읽어온다.
+        const { data: freshPet } = await supabase.from("pets").select("*").eq("user_id", currentUserId).maybeSingle();
+        if (freshPet) {
+          const newTotalCoins = freshPet.total_coins + coinsEarned;
+          await supabase.from("pets").update({ total_coins: newTotalCoins }).eq("id", freshPet.id);
+          setPets((prev) =>
+            prev.some((p) => p.id === freshPet.id)
+              ? prev.map((p) => (p.id === freshPet.id ? { ...p, total_coins: newTotalCoins } : p))
+              : [...prev, { ...freshPet, total_coins: newTotalCoins }]
+          );
         }
         return { ok: true, data: newCheckin };
       },

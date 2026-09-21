@@ -8,7 +8,7 @@ import { useNav } from "../NavContext";
 import { useStore } from "@/lib/store";
 import { getCategoryVisual } from "@/lib/categories";
 import { formatWon } from "@/lib/format";
-import { ChevronLeftIcon, CategoryIcon, TrashIcon, RefreshIcon } from "../icons";
+import { ChevronLeftIcon, CategoryIcon, TrashIcon, RepeatIcon } from "../icons";
 import type { CategoryIconKey } from "../icons";
 
 export default function RecurringExpenseManage() {
@@ -34,7 +34,7 @@ export default function RecurringExpenseManage() {
       <div style={{ flex: 1, overflowY: "auto", padding: "6px 20px 20px" }}>
         {store.recurringExpenses.length === 0 ? (
           <div style={{ marginTop: 40, textAlign: "center" }}>
-            <RefreshIcon size={28} color="var(--shoot-text-muted)" />
+            <RepeatIcon size={28} color="var(--shoot-text-muted)" />
             <div style={{ fontSize: 13, fontWeight: 700, color: "var(--shoot-text-muted)", marginTop: 10 }}>등록된 정기 지출이 없어요</div>
             <div style={{ fontSize: 12, color: "var(--shoot-text-muted)", marginTop: 4 }}>지출을 새로 기록할 때 &quot;매달 반복 등록&quot;을 켜면 여기에 나타나요</div>
           </div>
