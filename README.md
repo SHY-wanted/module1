@@ -1,36 +1,341 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# ShooT
 
-## Getting Started
+> 가족·부부·커플·룸메이트 등 **원하는 단위로 그룹을 만들어 지출을 함께 관리하는 공유 가계부** — 영수증을 사진 한 장으로 기록하고, 아낀 만큼 저금통 펫이 자라는 앱.
 
-First, run the development server:
+| 항목 | 내용 |
+|---|---|
+| 팀명 | ShooT |
+| 팀원 | 이종민(형상관리자), 황하윤(리서쳐), 신아림(PM) |
+| 기간 | 2026.08.26 ~ 2026.09.22 |
+| 배포 링크 | <https://module1-two.vercel.app/> |
+| 피그마 | 사용하지 않음 (디자인은 Claude Design으로 대체) |
+| Claude Design | <https://claude.ai/design/p/d96d3213-5f1e-437d-aeee-2a78011034a2?file=ShooT+%ED%95%98%EC%9C%A4.dc.html&via=share> |
+| 저장소 | <https://github.com/SHY-wanted/module1> |
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+---
+
+## 1. 프로젝트 소개
+
+### 문제 정의
+
+- **타깃 사용자**: 대학생, 부부, 커플
+- **겪는 문제**
+  1. 지출 출처를 알 수 없는 지출이 나온다 (예: 토스로 결제하면 "토스페이 지출"로만 뜸)
+  2. 카카오톡·메시지로 오는 전자 영수증을 캡쳐해서 등록하는 것이 번거롭다
+  3. 내 돈이 어느 순간 사라진 것처럼 느낀다
+  4. 그룹원끼리 쓴 내역을 직접 다 더해서 정산해야 한다
+  5. 그룹원끼리 각자 다른 방식(수기·단톡방·개별 앱)으로 기록해 한곳에서 보기 어렵다
+  6. 그룹 성격이 "가족"으로 고정돼 있어 커플·룸메이트 등 다른 관계에는 맞지 않는다
+- **우리의 해결**: 그룹의 성격을 앱이 정해주지 않고 **사용자가 만들 때 직접 고르게** 하고(가족/부부/커플/친구/모임·동아리/기타), 영수증은 **촬영 한 번으로 OCR 자동 입력**, 기록은 **그룹 피드 한곳**에 모은다. 목적은 세 가지 — **투명성 · 신뢰성 · 정산 편의**.
+
+> 팀이 직접 확인한 유사 서비스: 카카오페이·토스·뱅크샐러드 — 셋 다 자동 기록은 되지만 **실물 영수증 촬영 등록과 "가족 외 그룹" 단위 공유**가 없다는 점을 차별점으로 잡았다.
+
+### MVP 기능
+
+| 우선순위 | 기능 | 상태 |
+|---|---|---|
+| 최상 | F1~F3 그룹 생성·초대코드 발급·참여 | 완료 |
+| 최상 | F5·F6 지출 기록·목록 조회 | 완료 |
+| 최상 | F8·F10·F11 영수증 촬영 OCR 자동 입력 + 인식 실패 항목 후수정 | 완료 |
+| 최상 | F12·F13 그룹 공유 토글 · 그룹 피드 | 완료 |
+| 최상 | F14 본인 지출만 수정·삭제(권한 제약) | 완료 |
+| 상 | F7 메모 · F19·F20 저금 등록 · F21 캘린더 | 완료 |
+| 중 | F18 그룹장 위임 | 완료 (v2 범위였으나 구현) |
+| — | F22 그룹 반려 캐릭터 · F23 피드 이모지 반응 (v2 통합) | 완료 |
+| — | 저금통 펫(P1·P2·P3·P5·P8), 월별 목표(P7'·P4), 출석체크, 개인 랭킹, 카카오 로그인, 회원 탈퇴 | 완료 |
+| 하 | F17 월별 리포트 | 일부 (월별 목표 리포트로 대체) |
+
+### 범위에서 제외한 것
+
+- **F9 간편결제 캡쳐 OCR** — 무료 OCR(커스텀 템플릿) 방식은 캡쳐 화면 레이아웃이 조금만 달라도 매칭이 실패했고, 안정적으로 하려면 유료 특화 모델이 필요해 이번 범위에서 뺐다.
+- **F15 정산/더치페이 자동계산**, **F16 그룹 유형별 카테고리 프리셋**, **F4 연락처 초대** — 우선순위 "중·하"(v2)로 두고 코어 데모(촬영→기록→공유→피드)를 먼저 끝냈다.
+- **은행 자동연동 · 다국어 · 다중 그룹 동시 대시보드** — 정책 SP4에서 이번 범위 밖으로 명시.
+- **P6 그룹 저금통 랭킹** — 그룹 펫의 XP 산정 방식을 팀이 정하지 못해 만들지 않았다. (개인 펫끼리 비교하는 **개인 랭킹**만 구현)
+- **P7 예산 설정(BudgetSetting)** — v2에서 폐기하고 **월별 목표(퀘스트형 고정 보상)** 로 대체.
+
+### 정상 흐름
+
+1. **0 스플래시** → "시작하기" → **1 회원가입** → **1b 성공**(토스트 1.3초) → **2 로그인**(또는 카카오로 계속하기) → **2a 성공** → **2b 홈**
+2. **2b 홈** "그룹 만들기" → **3a 모임 유형 선택** → **3b 이름 입력** → **3c 완료(초대 코드 발급)** → 홈 복귀
+3. 하단 탭 **중앙 카메라** → **8a 영수증 촬영** → **8b 인식 중(OCR)** → **7 지출 목록** 맨 위에 새 항목
+4. **5a 그룹 목록** → **5b 그룹 상세(피드)** 에서 그룹원 지출·저금을 시간순으로 확인, 이모지 반응
+5. **10 마이페이지** → 저금통 펫 · 나의 배지 · 개인 랭킹 · 월별 목표 확인
+
+### 예외 흐름
+
+| 상황 | 사용자에게 보이는 것 | 다음 행동 | 구현 여부 |
+|---|---|---|---|
+| 필수 입력이 비어 있음 (P1) | "이메일과 비밀번호를 입력해주세요" / "그룹 이름을 입력해주세요" | 입력 후 재시도 | ✅ |
+| 데이터가 하나도 없음(빈 상태) | "아직 지출 내역이 없어요" · "아직 속한 그룹이 없어요" · "이번 달 설정한 목표가 아직 없어요" + 첫 행동 유도 버튼 | 추가하기 | ✅ |
+| **OCR 인식 실패 (P7·F11)** | 저장은 **항상 성공**하고 `category="확인 필요"` 배지로 표시 | 항목을 눌러 수정(F10) | ✅ |
+| 본인 지출이 아닌 것을 수정 시도 (P6) | "본인 지출만 수정할 수 있어요" (RLS가 서버에서도 차단) | 조회만 가능 | ✅ |
+| 그룹 멤버가 아닌 그룹 피드 조회 (P5) | "그룹 멤버만 볼 수 있어요" | 초대 코드로 참여 | ✅ |
+| 이미 참여한 그룹에 다시 참여 (P3) | "이미 참여한 그룹입니다" | 그룹 목록으로 | ✅ |
+| 그룹장이 위임 없이 나가기 (P10) | "새 그룹장을 먼저 지정해주세요" (혼자면 그룹·지출 함께 삭제) | 10a-1에서 위임 | ✅ |
+| 그룹에 속하지 않아 공유 대상이 없음 (P8) | 공유 select가 **아예 표시되지 않음** (오류 아님) | 개인 지출로 저장 | ✅ |
+| 저장·불러오기 실패(네트워크·권한) | "지출을 저장하지 못했어요" 등 원인별 한국어 문구 | 다시 시도 | ✅ |
+| 카메라를 쓸 수 없음 | "카메라를 사용할 수 없어요. 갤러리에서 사진을 선택해주세요" | 갤러리 선택 | ✅ |
+
+### 기획 문서
+
+- [문제 정의](docs/01-problem.md) · [업무 분석](docs/02-workflow.md) · [요구사항](docs/03-requirements.md) · [기능](docs/04-features.md) · [정책](docs/05-policy.md) · [데이터](docs/06-data.md) · [화면](docs/07-screens.md)
+- [PRD (종합)](docs/PRD.md) · [저금통 펫 명세](docs/08-pet-feature-spec.md)
+- 3인 개인 초안: [docs/drafts/](docs/drafts/) (01~03 각 3벌) · [초안 비교 정리본](docs/논의-아티팩트-정리본.md)
+
+문서 공통 표기 규약 — `[?]` = 팀이 아직 모르는 것, `[제안]` = 에이전트가 보탠 후보(채택하면 태그 삭제). 거절한 후보는 각 문서 끝 **「검토했으나 제외」** 표에 이유와 함께 남긴다.
+
+---
+
+## 2. 디자인 시스템
+
+### 사용 도구와 역할
+
+| 도구 | 어느 단계에 썼나 | 원본 여부 |
+|---|---|---|
+| 피그마 | 사용하지 않음 | — |
+| Claude Design | 색·타이포·컴포넌트 정의부터 화면 23종 생성까지 (`ShooT 하윤.dc.html`) | **원본** |
+| `app/globals.css` | Claude Design의 값을 CSS 변수(디자인 토큰)로 옮겨 코드의 단일 기준으로 삼음 | 구현 기준 |
+
+### 정의
+
+| 구분 | 정의 | 피그마 | Claude Design |
+|---|---|---|---|
+| 색상(라이트) | Accent `#6a5ecf`, Background `#f6f5fc`, Surface `#ffffff`, Surface-alt `#f0eeff`, Border `#e8e4f4`, Text `#2d2a3e`, Muted `#6b6980` | ✗ | ✅ |
+| 색상(다크) | Accent `#9b8cff`, Background `#15131f`, Surface `#201d2e`, Text `#f1eefa` | ✗ | ✅ |
+| 타이포 | 본문·제목 모두 Geist Sans (`next/font`), 코드 Geist Mono · 강조는 크기(11~30px)와 두께(600/700/800)로만 구분 | ✗ | ✅ |
+| 아이콘 | Lucide (stroke 2px, round cap/join, 24×24 viewBox) — `components/icons.tsx`에 직접 이식해 외부 의존성 0 | ✗ | ✅ |
+
+> 색은 전부 `var(--shoot-*)` 토큰으로만 쓴다. 다크모드는 `.shoot-app-root[data-dark="true"]`에서 **토큰 값만 바꾸면** 앱 전체가 따라 바뀌도록 설계했다.
+
+### 컴포넌트 목록
+
+- **Button** — Primary(보라 그라데이션 + 그림자) / Secondary(테두리만) / Disabled(회색, `cursor: default`) / Kakao(브랜드 고정색 `#FEE500`)
+- **Card** — `borderRadius: 20`, `1px solid var(--shoot-border)`, 항목 간 간격 10·16px 두 단계
+- **Header** — 스택 화면용(‹ 뒤로가기 + 제목) / 탭 루트용(큰 제목 + 우측 액션)
+- **Input** — 높이 48, `borderRadius: 14`, `2px` 테두리(오류 시 `#E8B4B4`, 포커스 시 accent)
+- **TabBar** — 4탭 + 중앙 카메라 버튼(스택이 비었을 때만 노출)
+- **PetMascot** — 원본 PNG + 부위별 픽셀 마스크로 색을 입히는 캐릭터 렌더러
+- **Toast / FeedPopup / EmptyState**
+
+### 디자인 vs 구현
+
+| Claude Design | 실제 화면 |
+|---|---|
+| `ShooT 하윤.dc.html` (위 링크) | <https://module1-two.vercel.app/> |
+
+> 스크린샷 파일은 아직 저장소에 없습니다 — `docs/images/` 폴더를 만들어 `cdesign-home.png`, `real-home.png`를 넣으면 이 표에 바로 붙습니다.
+
+---
+
+## 3. Agent 구성
+
+```mermaid
+flowchart LR
+    T[팀 3인] -->|인터뷰 답변| PP[planning-partner<br/>기획 파트너]
+    PP -->|docs/ 기획 문서 초안| PC[product-planner<br/>기획 코치]
+    PC -->|빠진 것·모호한 문장 질문| T
+    T -->|확정된 PRD + Claude Design| PB[product-builder<br/>구현 에이전트]
+    PB -->|화면 구현| T
+    T -->|CLAUDE.md + 스킬 문서| PB
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+### 역할별 Agent
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+| Agent | 역할 | 입력 | 출력 | 제약 |
+|---|---|---|---|---|
+| **planning-partner** | 기획 인터뷰를 한 번에 한 질문씩 진행하고 답을 문서 양식에 받아 적음. 발산 질문으로 후보를 `[제안]`으로 보탬 | 팀의 구두 답변, 앞 문서(01→05) | `docs/0N-*.md` 초안·종합 문서 | 팀 대신 결정하지 않음 · 모르면 `[?]` · `docs/` 아래만 수정 (Read/Write/Edit) |
+| **product-planner** | 기획 문서를 읽고 **빈칸과 모호한 문장을 질문으로 되돌려줌**. F↔R↔P ID 참조 검사(고아 ID 탐지) | `docs/` 기획 문서 | 질문 목록·참조 검사 결과 | 문서를 대신 쓰지 않음 · 답을 정해주지 않음 (**Read 전용**) |
+| **product-builder** | PRD와 Claude Design 화면을 입력으로 실제 화면 구현 | `docs/PRD.md`, 디자인 파일 | 화면 코드 | 첨부에 없는 화면을 지어내지 않음 · 서버/새 폴더가 필요하면 만들지 말고 되물음 |
+| **스킬 문서 5종** | `UI` / `CHARACTER` / `ANIMATION` / `ASSET_PIPELINE` / `DESIGN_SYSTEM` — 작업 종류별로 반드시 먼저 읽는 규칙집 | — | — | CLAUDE.md가 "작업 시작 전 확인 필수"로 지정 |
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+### 지시문 핵심 발췌
 
-## Learn More
+```
+[planning-partner]
+팀이 말한 것은 그대로 적는다. 말을 매끄럽게 고치지 않는다. 팀의 단어를 쓴다.
+네가 보탠 것에는 반드시 [제안]을 붙인다. [제안]마다 근거 한 줄.
+대신 정하지 않는다. "이걸로 하자"고 쓰지 않는다.
+모르면 [?]. 짐작해서 채우지 않는다.
+질문은 한 번에 하나만 한다.
 
-To learn more about Next.js, take a look at the following resources:
+[product-planner]
+기획 문서를 대신 써 주지 않는다. 빈칸을 찾아 질문으로 돌려준다.
+"편리하다·좋다·귀찮다"처럼 확인할 수 없는 문장은 원문을 인용하고 왜 확인할 수 없는지 적는다.
+기능 문장의 주어가 앱이거나, 정책에 기술 단어(DB·API)가 들어 있으면 지적한다.
+```
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+### 지시문 수정 이력
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+- **v1 → v2 (기획)**: 처음엔 에이전트가 빈칸을 알아서 채웠더니 팀이 말하지 않은 내용이 문서에 섞였다 → `[제안]` 태그와 `[?]` 규칙을 넣어 **출처가 팀인지 에이전트인지 항상 구분**되게 바꿨다.
+- **v2 → v3 (기획 검토 분리)**: 쓰는 에이전트가 검토까지 하니 자기 문장을 통과시켰다 → **Read 전용 `product-planner`** 를 따로 만들어 질문만 하게 분리했다.
+- **v3 → v4 (구현)**: 캐릭터 에셋 작업에서 에이전트가 원본 PNG를 덮어쓰거나 마스크를 다시 만들어 그림이 깨지는 일이 반복됐다 → `CLAUDE.md`에 **Golden Asset 보호 · 최소 변경 · 원인 확인 전 수정 금지** 조항을 넣고, 작업 종류별 스킬 문서 5종을 추가했다.
 
-## Deploy on Vercel
+---
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+## 4. 프로젝트 규칙 (하네스)
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+### CLAUDE.md 핵심
+
+`CLAUDE.md`는 44개 조항의 최상위 작업 규칙이다. 특히 중요한 것:
+
+- **코드 컨벤션**: 주석은 한글(왜 그렇게 했는지 + 팀 결정 날짜를 남김), 변수·함수명은 영어
+- **폴더 구조**: `app/`(라우트·API) · `components/screens/`(화면 컴포넌트 39개) · `lib/`(store·selectors·순수 로직) · `docs/`(기획) · `supabase/`(SQL 12개) · `scripts/`(마스크 생성·검증) · `.claude/agents/`(에이전트·스킬 문서)
+- **Golden Asset 규칙**: `public/stage_*.png` 원본 캐릭터 이미지는 덮어쓰기·재생성·크롭 금지. 색 변경은 런타임 마스크 합성으로만
+- **최소 변경 원칙**: "가방 경계 수정" 요청에 성장 로직을 건드리지 않는다. 기능 하나 고쳐달라는 요청에 전체 리팩터링 금지
+- **원인 확인 전 수정 금지**: 현상만 보고 고치지 않고 Asset / Mask / Alpha / CSS / State 중 어디인지 먼저 분류
+- **시각 우선 원칙**: 코드가 동작해도 경계선·누끼·정렬이 어색하면 완료로 보지 않는다 (100% / 200% / 풀스크린 / 애니메이션 프레임별 확인)
+
+### 만들어 둔 Skill / 재사용 문서
+
+| 이름 | 하는 일 | 사용 |
+|---|---|---|
+| `DESIGN_SYSTEM.md` | 임의 색·폰트·radius·그림자 추가 금지, 화면마다 새 버튼 스타일 금지 | UI 작업 전 상시 |
+| `UI.md` | 화면 구조·간격·상태 표시 규칙 | UI 작업 전 상시 |
+| `CHARACTER.md` | 부위 마스크·고정 색(코인 금색, 입) 보호 규칙 | 캐릭터 작업 12회+ |
+| `ASSET_PIPELINE.md` | 마스크 생성·검증 스크립트 규약 | 마스크 재생성 시 |
+| `ANIMATION.md` | 둥둥 뜨기·깜빡임·그림자 등 모션 원칙 | 애니메이션 작업 시 |
+| `planning-partner` / `product-planner` / `product-builder` | 위 3절 참고 | 기획 전 구간 |
+
+### 검증 절차
+
+1. `npx tsc --noEmit` → `npx eslint <변경 파일>` → `npx next build --webpack` 3단계를 **매 변경마다** 통과시킨다.
+2. 캐릭터·마스크 작업은 `node scripts/verify-character-masks.js`로 13개 항목 자동 검증 + 실제 렌더 이미지를 눈으로 확인한다.
+3. 화면 동작은 로컬 HTTPS 서버(`npm run dev:https`)를 띄우고 실제 계정으로 로그인해 확인한다. 서버 로그(`[account]`, `[receipt-ocr]` 등)에 원인 진단용 로그를 남겨 실패 지점을 특정한다.
+4. 잘못되면 **덧붙여 고치지 않고** `git status` / `git log`로 마지막 정상 커밋을 확인해 되돌린다 (CLAUDE.md 29조).
+
+**실제 사례 1 — 캐릭터 부위 경계의 보라색 윤곽선**
+에이전트가 마스크를 "색 범위(밝기·색조 임계값)"로 나눴더니, 부위 경계마다 어느 마스크에도 속하지 않는 픽셀이 남아 색을 바꿀 때 보라색 테두리로 드러났다. 200% 확대 QA에서 발견 → 판정 기준을 **"실제 오브젝트 경계(연결된 덩어리)"로 전면 재작성**하고, 검증 스크립트로 "임자 없는 픽셀 0개"를 자동 확인하게 했다.
+
+**실제 사례 2 — 출석체크 연속일수가 매번 1일차**
+"어제 날짜"를 `new Date(...).setDate(-1)` 후 `toISOString()`으로 구했는데, 한국(UTC+9)에서는 이 변환이 날짜를 하루 더 밀어 어제 기록을 못 찾았다. 사용자 제보 → 로그로 재현 → 타임존 안전한 `shiftDateKST()`로 교체하고 순수 함수 단위로 검증했다.
+
+**실제 사례 3 — 그림자 마스크가 다리를 타고 올라감**
+알파 페이드를 그림자로 판정하다 보니 다리 실루엣을 따라 3~4px 흔적이 남았다. 사용자가 다크 배경 스크린샷으로 제보 → 형태학적 opening(침식→팽창)으로 얇은 돌기만 제거하도록 고쳤다.
+
+---
+
+## 5. 협업 방식
+
+### 브랜치 전략
+
+```mermaid
+gitGraph
+    commit id: "기획 문서"
+    branch draft-hy-planning
+    commit id: "hy 초안 01~03"
+    checkout main
+    merge draft-hy-planning
+    branch petbranch
+    commit id: "저금통 펫"
+    checkout main
+    merge petbranch tag: "PR #8"
+    branch shooTbranch
+    commit id: "월별 목표"
+    checkout main
+    merge shooTbranch tag: "PR #10"
+    branch hybran2
+    commit id: "로그인 에러 한국어화"
+    checkout main
+    merge hybran2 tag: "PR #11"
+    branch feature-income-account
+    commit id: "수입·회원탈퇴"
+    checkout main
+    merge feature-income-account tag: "PR #12"
+```
+
+> 다이어그램의 브랜치 이름은 `/`를 뺀 축약형이다. 실제 이름은 `draft/hy-ledger-planning-01-03`, `feature/income-avatar-account-deletion`.
+
+- **브랜치 종류**: `main`(배포용) / 개인 작업 브랜치(`mg`, `hybran`, `hybranch`, `hybran2`, `petbranch`, `shooTbranch`, `yaru`, `teamshy`) / 기능 브랜치(`feature/<기능명>`, `draft/<문서>`)
+- **이름 규칙**: 프로젝트 초반에는 **작업자 이름 기반**(`mg`, `hybranch`)으로 쓰다가, 후반에 **작업 내용 기반**(`feature/income-avatar-account-deletion`, `draft/hy-ledger-planning-01-03`)으로 옮겨갔다.
+- **합치기 규칙**: 개인 브랜치에서 작업 → `main`을 먼저 merge해 충돌을 자기 브랜치에서 해소 → PR 생성 → `main` 병합
+
+### 이슈·PR 활용
+
+| PR | 내용 | 브랜치 |
+|---|---|---|
+| #8 | 저금통 펫(캐릭터 렌더러·마스크 파이프라인) | `petbranch` |
+| #10 | 월별 목표 설정/삭제, 홈 카테고리 % 실제 계산 | `shooTbranch` |
+| #11 | 로그인 빈 칸 한국어 안내, 목표 금액 입력칸 강조 | `hybran2` |
+| #12 | 수입 DB 연동, 프로필 사진 저장, 회원 탈퇴 | `feature/income-avatar-account-deletion` |
+
+- 이슈 템플릿·PR 템플릿(`.github/`)은 **사용하지 않았다.** 작업 단위 공유는 브랜치명과 커밋 메시지로 했고, 결정 사항은 `docs/` 문서에 날짜와 함께 남기는 방식으로 대체했다.
+- 총 커밋 **102개**, 머지 커밋 **14개**, PR **4개 확인**.
+
+### 역할 분담
+
+| 팀원 | 담당 영역 | 주요 작업 | 커밋 |
+|---|---|---|---|
+| 이종민 (형상관리자) | 캐릭터 에셋 파이프라인 · 외부 연동 · 하네스 규칙 | 마스크 생성/검증 스크립트, PNG+마스크 렌더러, 네이버 CLOVA OCR 영수증 인식, 카카오 로그인, 개인 랭킹, `CLAUDE.md`·스킬 문서 5종 | 75 |
+| 신아림 (PM) | 기획 종합 · 목표(퀘스트) 기능 | 01~03 기획 초안, 월별 목표 설정/삭제, 홈 캘린더 날짜 선택 바, 비밀번호 찾기, 홈 카테고리 비중 실제 계산 | 19 |
+| 황하윤 (리서쳐) | 리서치 · 디자인 원본 · 참여 유도 기능 | `ShooT 하윤.dc.html` 디자인 원본, 출석체크(7일 연속 보너스), 반려 캐릭터·이모지 반응, 수입 DB 연동, 프로필 사진, 회원 탈퇴 | 17 |
+
+### 병렬 작업 방법
+
+- **화면 단위로 나눴다.** 한 사람이 한 화면 파일(`components/screens/*.tsx`)을 맡아 서로 다른 파일을 건드리게 해서 충돌 면적을 줄였다.
+- 공용 파일(`lib/store.tsx`)은 **함수 단위로 나눠서** 추가만 하고 기존 함수는 건드리지 않는 규칙을 뒀다.
+- DB 변경은 기존 SQL을 고치지 않고 **번호를 올린 새 마이그레이션 파일**(`009_`, `010_`, `011_`)만 추가하는 방식으로 서로의 스키마 작업이 겹치지 않게 했다.
+
+### 충돌 해결 사례
+
+- **월별 목표 금액 입력칸을 두 사람이 동시에 수정** — 같은 시기에 한 명은 "항상 보이는 테두리"를, 다른 한 명은 "강조 테두리 + 폰트 축소"를 각자 브랜치에서 작업했다. `main` 병합 시 같은 줄이 충돌 → 나중 PR(#11)에서 **한쪽을 되돌리고 하나로 합치는 커밋**("목표 금액 입력칸 테두리 강조 되돌리기")을 따로 만들어 정리했다.
+- **저금통 펫 v2 통합(3개 브랜치)** — `mg`·`hybranch`·`shooTbranch`가 각자 다른 펫 스펙(성장 5단계 vs 4단계, 종 선택 vs 색상 커스텀, 주간 예산 vs 월별 목표)을 구현해 충돌했다. 코드로 먼저 합치지 않고 **충돌 지점 4개를 사용자에게 직접 질문해 결정한 뒤** 합쳤고, 결정 내용을 `docs/07-screens.md`·`PRD.md`에 날짜와 함께 기록했다.
+
+---
+
+## 6. 데모
+
+**실행 방법**
+
+- 배포본: <https://module1-two.vercel.app/>
+- 로컬:
+  ```bash
+  npm install
+  npm run dev          # http://localhost:3000
+  npm run dev:https    # https://localhost:3000 (카메라 기능 테스트용 — getUserMedia는 HTTPS 필수)
+  ```
+- 필요한 환경변수(`.env.local`): `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY`, `SUPABASE_SERVICE_ROLE_KEY`, `CLOVA_OCR_INVOKE_URL`, `CLOVA_OCR_SECRET_KEY`, `KAKAO_ADMIN_KEY`
+- Supabase: `supabase/schema.sql` → `002` ~ `011` 순서대로 SQL Editor에서 실행
+
+**시연 순서**
+
+1. 카카오로 로그인 → 홈에서 **출석체크**(코인 획득)
+2. 하단 중앙 카메라 → **영수증 촬영** → OCR이 상호명·날짜·금액을 자동으로 채워 저장
+3. **그룹 만들기**(유형 선택 → 이름 → 초대 코드) → 다른 계정으로 코드 참여 → **그룹 피드**에서 서로의 지출 확인 + 이모지 반응
+4. 마이페이지 → **저금통 펫**에게 코인으로 밥 주기 → XP·단계 성장 → **나의 배지**, **개인 랭킹** 확인
+5. **월별 목표** 설정 → 이번 달 목표 리포트에서 달성 여부·보상 확인
+
+---
+
+## 7. 회고
+
+### 잘 된 점
+
+- **기획 문서에 출처를 남긴 것.** `[?]`(팀이 모름)와 `[제안]`(에이전트가 보탬)을 구분해 적었더니, 나중에 "이거 누가 정한 거였지?"로 되돌아가는 일이 없었다. 거절한 후보도 「검토했으나 제외」 표에 이유와 함께 남겨서 같은 논의를 두 번 하지 않았다.
+- **에이전트에게 "정하지 말라"고 못 박은 것.** 기획 에이전트가 결정을 대신하지 못하게 하니, 문서가 팀의 언어로 남았고 구현 단계에서 해석 차이가 적었다.
+- **DB 변경을 번호 마이그레이션으로만 한 것.** 3명이 각자 스키마를 건드렸는데도 충돌이 한 번도 나지 않았다.
+- **실패해도 저장은 성공(P7)이라는 정책.** OCR 정확도가 들쭉날쭉해도 "확인 필요"로 무조건 저장되니, 인식 품질 문제가 데모를 막지 않았다.
+
+### 실패 사례와 개선
+
+| 무엇이 실패했나 | 왜 | 어떻게 고쳤나 |
+|---|---|---|
+| 캐릭터 색 변경 시 부위 경계에 보라색 선이 남음 | 마스크를 색 범위로 나눠 경계 픽셀이 어느 마스크에도 안 들어감 | 판정 기준을 실제 오브젝트 경계로 재작성 + "임자 없는 픽셀 0개" 자동 검증 |
+| Vercel 배포가 계속 실패 | `.env.local`은 git에 안 올라가는데 Vercel에 환경변수를 등록하지 않음 | 4개 변수를 Production/Preview/Development 전부 체크해 등록 후 **재배포**(기존 배포엔 소급 적용 안 됨) |
+| 카카오 로그인 후 `localhost`로 튕김 | Supabase의 **Site URL**이 `http://localhost:3000`이라, 배포 주소에서 로그인해도 거기로 돌려보냄 | Site URL을 배포 주소로 바꾸고 Redirect URLs에 `https://module1-*.vercel.app/**` 와일드카드 추가 |
+| 월별 목표 삭제 버튼이 눌러도 안 됨 | `category_goals` 테이블에 **DELETE RLS 정책만 빠져** 있었음(RLS는 정책 없으면 기본 차단) | `010_category_goals_delete_policy.sql` 추가 |
+| 영수증 OCR이 자꾸 인식 실패 | 무료 커스텀 템플릿 방식은 좌표로 판정해서, 영수증이 조금만 기울거나 잘려도 매칭 실패 | 안정적인 종이 영수증만 지원 범위로 좁히고, 간편결제 캡쳐는 범위에서 제외. 인식 실패 시 수동 수정 경로를 보장 |
+| 회원 탈퇴 후 카카오로 다시 로그인하면 동의 화면이 안 뜸 | 우리 DB의 계정만 지우고 **카카오 쪽 연결은 안 끊었음** | 탈퇴 시 카카오 unlink API도 함께 호출(실패해도 탈퇴 자체는 진행) |
+
+### 팀 안에서 공유한 Claude 활용 노하우
+
+- **기획은 "쓰는 에이전트"와 "검토하는 에이전트"를 분리한다.** 같은 에이전트에게 쓰게 하고 검토시키면 자기 문장을 통과시킨다.
+- **규칙은 대화가 아니라 파일에 적는다.** 같은 지적을 세 번 하면 `CLAUDE.md`나 스킬 문서에 조항으로 넣는다.
+- **실패하면 로그부터 남긴다.** 서버 라우트에 `console.error("[account] ...")` 같은 태그 로그를 먼저 심고 재현시키면, 추측 없이 원인을 특정할 수 있다.
+- **"고쳤다"는 말 대신 검증 명령을 붙인다.** `tsc` → `eslint` → `build` 통과 결과를 항상 같이 보고하게 했다.
+
+### 다음 프로젝트에서 다르게 할 것
+
+1. **환경변수와 외부 서비스 설정을 1일차에 체크리스트로 만든다.** 이번엔 Supabase URL 설정, Vercel 환경변수, 카카오 Redirect URI, SQL 마이그레이션 실행 누락으로 같은 유형의 디버깅을 네 번 반복했다.
+2. **이슈·PR 템플릿을 처음부터 만든다.** 브랜치명만으로는 누가 무엇을 하는지 겹치는 걸 못 막았고, 실제로 같은 입력칸을 두 사람이 동시에 고쳤다.
+3. **외부 API는 "유료/무료 경계"를 붙이기 전에 확인한다.** OCR 특화 모델이 Free 플랜 예외가 없다는 걸 연동 후반에 알아서 무료 대안으로 되돌아가는 비용이 컸다.
+4. **브랜치 이름을 처음부터 작업 내용 기준으로 통일한다.** 초반의 사람 이름 브랜치(`mg`, `hybran`, `hybran2`)는 나중에 어떤 작업인지 추적하기 어려웠다.
