@@ -9,6 +9,7 @@ import { getCategoryVisual } from "@/lib/categories";
 import { formatRelativeTime, formatWon } from "@/lib/format";
 import { CategoryIcon, ChevronLeftIcon, PlusIcon, TrashIcon } from "../icons";
 import type { CategoryIconKey } from "../icons";
+import ImageLightbox from "../ImageLightbox";
 
 const UNDO_WINDOW_MS = 5000;
 
@@ -30,6 +31,8 @@ export default function ExpenseList({ initialCategoryFilter, pushed }: { initial
   const [sortOrder, setSortOrder] = useState<"date_desc" | "amount_desc" | "amount_asc">("date_desc");
   // 2026-09-19 팀 요청: 삭제 버튼 — 바로 지우지 않고 확인 팝업을 한 번 띄운다(10a "그룹 나가기"와 같은 패턴).
   const [confirmingId, setConfirmingId] = useState<string | null>(null);
+  // 신규 기능: 영수증 촬영으로 등록된 지출만(source_type === "RECEIPT") 원본 사진을 다시 볼 수 있다.
+  const [lightboxUrl, setLightboxUrl] = useState<string | null>(null);
   // 신규 기능: 실행 취소 — "삭제" 확인 후에도 UNDO_WINDOW_MS 동안은 실제로 지우지 않고 목록에서만
   // 숨긴다. 그 안에 "되돌리기"를 누르면 타이머를 지워서 아예 지워지지 않게 한다.
   // ponytail: 한 번에 하나만 취소 대기시킨다 — 5초 안에 두 번째 항목을 또 지우면 먼저 걸어둔 타이머는
@@ -231,6 +234,19 @@ export default function ExpenseList({ initialCategoryFilter, pushed }: { initial
                       </div>
                     </div>
                     <div style={{ fontSize: 15, fontWeight: 800, color: "var(--shoot-text)", whiteSpace: "nowrap" }}>{formatWon(it.amount)}</div>
+                    {/* 신규 기능: 영수증 촬영 지출이면 원본 사진 썸네일 — 탭하면 확대(ImageLightbox), 행 클릭(수정 모드)과 안 겹치게 stopPropagation. */}
+                    {it.source_type === "RECEIPT" && it.image_url && (
+                      <div
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setLightboxUrl(it.image_url);
+                        }}
+                        style={{ flexShrink: 0, width: 30, height: 30, borderRadius: 8, overflow: "hidden", border: "1px solid var(--shoot-border)", cursor: "pointer" }}
+                      >
+                        {/* eslint-disable-next-line @next/next/no-img-element -- data URL은 next/image의 원격 최적화 대상이 아니다. */}
+                        <img src={it.image_url} alt="영수증 썸네일" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+                      </div>
+                    )}
                     {/* 2026-09-19 팀 요청: 삭제 버튼 — 행 클릭(수정 모드 진입)과 안 겹치게 stopPropagation. */}
                     <div
                       onClick={(e) => {
@@ -275,6 +291,8 @@ export default function ExpenseList({ initialCategoryFilter, pushed }: { initial
           </div>
         </div>
       )}
+
+      <ImageLightbox url={lightboxUrl} onClose={() => setLightboxUrl(null)} />
 
       {/* 신규 기능: 실행 취소 토스트 — UNDO_WINDOW_MS 동안만 떠 있는다(진행바로 남은 시간을 보여준다). */}
       {pendingDeleteId && (

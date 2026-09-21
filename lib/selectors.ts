@@ -91,6 +91,13 @@ export function getPersonalExpenseTotal(expenses: Expense[], userId: string, yea
     .reduce((sum, e) => sum + e.amount, 0);
 }
 
+// 그룹 예산(신규) — getGroupExpenseTotal과 같은 필터 기준(그 그룹 · 공유된 지출 · 해당 월)에 카테고리 조건만 더했다.
+export function getGroupCategorySpent(expenses: Expense[], groupId: string, category: string, yearMonth: string): number {
+  return expenses
+    .filter((e) => e.group_id === groupId && e.is_shared && e.category === category && e.date.startsWith(yearMonth))
+    .reduce((sum, e) => sum + e.amount, 0);
+}
+
 export interface CategoryBreakdownRow {
   category: string;
   amount: number;

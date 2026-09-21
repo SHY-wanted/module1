@@ -29,6 +29,8 @@ import MyBadges from "./screens/MyBadges";
 import MonthlyGoalSetting from "./screens/MonthlyGoalSetting";
 import MonthlyGoalReport from "./screens/MonthlyGoalReport";
 import PersonalRanking from "./screens/PersonalRanking";
+import RecurringExpenseManage from "./screens/RecurringExpenseManage";
+import GroupGoalSetting from "./screens/GroupGoalSetting";
 
 export type StackPhase = "entering" | "settled" | "leaving";
 
@@ -98,6 +100,10 @@ function renderScreen(screen: StackScreen) {
       return <MonthlyGoalReport />;
     case "personalRanking":
       return <PersonalRanking />;
+    case "recurringExpenseManage":
+      return <RecurringExpenseManage />;
+    case "groupGoalSetting":
+      return <GroupGoalSetting groupId={screen.groupId} />;
     default:
       return null;
   }

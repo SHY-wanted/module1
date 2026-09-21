@@ -4,11 +4,11 @@
 import { useMemo, useState } from "react";
 import { useNav } from "../NavContext";
 import { useStore } from "@/lib/store";
-import { getGroupMembersWithProfile, getGroupFeed, getGroupPet } from "@/lib/selectors";
+import { getGroupMembersWithProfile, getGroupFeed, getGroupPet, getGroupCategorySpent } from "@/lib/selectors";
 import { GROUP_TYPE_VISUAL } from "@/lib/groupTypeVisual";
 import { formatRelativeTime, formatSignedWon, formatWon, initialOf } from "@/lib/format";
 import { getCategoryVisual } from "@/lib/categories";
-import { REACTION_EMOJI_PALETTE } from "@/lib/pets";
+import { REACTION_EMOJI_PALETTE, currentMonthString } from "@/lib/pets";
 import { TODAY_DATE } from "@/lib/mock";
 import PetMascot from "../PetMascot";
 import { ChevronLeftIcon, ChevronRightIcon, ShareIcon, UsersIcon } from "../icons";
@@ -74,6 +74,14 @@ export default function GroupDetail({ groupId }: { groupId: string }) {
   }
 
   const visual = GROUP_TYPE_VISUAL[group.group_type];
+
+  // 신규 기능: 그룹 예산(그룹장만 정함). 이번 달에 정해둔 카테고리별 예산들의 합과, 그 카테고리들의
+  // 실제 지출 합을 카드 하나로 보여준다(요약이라 카테고리별 상세는 그룹 예산 설정 화면에서 확인).
+  const isOwner = members.some((m) => m.user_id === store.currentUserId && m.role === "OWNER");
+  const goalMonth = currentMonthString(TODAY_DATE);
+  const monthGroupGoals = store.groupCategoryGoals.filter((g) => g.group_id === groupId && g.month === goalMonth);
+  const groupGoalTotal = monthGroupGoals.reduce((sum, g) => sum + g.goal_amount, 0);
+  const groupGoalSpent = monthGroupGoals.reduce((sum, g) => sum + getGroupCategorySpent(store.expenses, groupId, g.category, goalMonth), 0);
 
   return (
     <div style={{ height: "100%", width: "100%", boxSizing: "border-box", background: "var(--shoot-bg)", display: "flex", flexDirection: "column" }}>
@@ -164,6 +172,49 @@ export default function GroupDetail({ groupId }: { groupId: string }) {
           </div>
           <ChevronRightIcon size={16} color="#A9A2B8" />
         </div>
+
+        {/* 신규 기능: 그룹 예산 요약 카드 — 그룹장은 설정 화면으로, 멤버는 확인만(읽기 전용 화면으로 이동). */}
+        {(monthGroupGoals.length > 0 || isOwner) && (
+          <div
+            onClick={() => nav.push({ id: "groupGoalSetting", groupId })}
+            style={{ background: "var(--shoot-surface)", borderRadius: 16, border: "1px solid var(--shoot-border)", padding: "14px 16px", cursor: "pointer", marginBottom: 18 }}
+          >
+            <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <div style={{ fontSize: 13, fontWeight: 800, color: "var(--shoot-text)" }}>이번 달 그룹 예산</div>
+                {monthGroupGoals.length === 0 ? (
+                  <div style={{ fontSize: 11, color: "var(--shoot-text-muted)", fontWeight: 600, marginTop: 2 }}>아직 없어요 — 그룹장이 정할 수 있어요</div>
+                ) : (
+                  <>
+                    <div style={{ fontSize: 11, color: "var(--shoot-text-muted)", fontWeight: 600, marginTop: 2 }}>
+                      {formatWon(groupGoalSpent)} / {formatWon(groupGoalTotal)}
+                    </div>
+                    {/* 사용자 요청(2026-09-21): 합계만 있으면 어느 카테고리에 얼마를 정했는지 안 보여서, 카테고리별로도 나눠 보여준다. */}
+                    <div style={{ fontSize: 10, color: "var(--shoot-text-muted)", fontWeight: 600, marginTop: 4, display: "flex", flexWrap: "wrap", gap: 6 }}>
+                      {monthGroupGoals.map((g) => (
+                        <span key={g.id}>
+                          {g.category} {formatWon(g.goal_amount)}
+                        </span>
+                      ))}
+                    </div>
+                  </>
+                )}
+              </div>
+              <ChevronRightIcon size={16} color="#A9A2B8" />
+            </div>
+            {monthGroupGoals.length > 0 && (
+              <div style={{ marginTop: 10, height: 8, borderRadius: 4, background: "var(--shoot-surface-alt)", overflow: "hidden" }}>
+                <div
+                  style={{
+                    width: `${Math.min(100, Math.round((groupGoalSpent / Math.max(groupGoalTotal, 1)) * 100))}%`,
+                    height: "100%",
+                    background: groupGoalSpent > groupGoalTotal ? "#B23B3B" : "var(--shoot-accent)",
+                  }}
+                />
+              </div>
+            )}
+          </div>
+        )}
 
         {/* 신규 기능: 정산(더치페이) 자동계산 대신 "누가 얼마나 썼는지"만 나란히 보여준다. */}
         <div style={{ fontSize: 13, fontWeight: 800, color: "var(--shoot-text-muted)", marginBottom: 10 }}>이번 달 그룹원별 지출</div>

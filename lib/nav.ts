@@ -47,7 +47,11 @@ export type StackScreen =
   | { id: "monthlyGoalSetting" }
   | { id: "monthlyGoalReport" }
   // 개인 랭킹(2026-09-17 신규, "개인 = 경쟁/랭킹") — 그룹과는 무관하게 개인 펫끼리만 비교한다.
-  | { id: "personalRanking" };
+  | { id: "personalRanking" }
+  // 정기 지출 관리(신규) — Settings(2c)에서 진입.
+  | { id: "recurringExpenseManage" }
+  // 그룹 예산 설정(신규) — GroupDetail(5b)에서 진입. 그룹장만 실제로 정하고 고칠 수 있다(RLS).
+  | { id: "groupGoalSetting"; groupId: string };
 
 // 3a 화면의 카드 id → schema.sql group_type enum 매핑
 export const GROUP_TYPE_CARD_TO_ENUM: Record<string, GroupType> = {
