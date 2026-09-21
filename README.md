@@ -123,9 +123,9 @@
 |---|---|
 | `ShooT 하윤.dc.html` (위 링크) | <https://module1-two.vercel.app/> |
 
-실제 홈 화면(로그인 후):
+실제 화면(로그인 후):
 
-<img src="docs/images/real-home.png" width="280" alt="홈 화면 — 이번 달 총 수입·지출, 카테고리 도넛 차트, 최근 지출" /> <img src="docs/images/real-home-calendar.png" width="280" alt="홈 화면 — 캘린더(날짜별 지출 표시)" />
+<img src="docs/images/real-home.png" width="220" alt="홈 화면 — 이번 달 총 수입·지출, 카테고리 도넛 차트, 최근 지출" /> <img src="docs/images/real-home-calendar.png" width="220" alt="홈 화면 — 캘린더(날짜별 지출 표시)" /> <img src="docs/images/real-receipt-capture.png" width="220" alt="영수증 촬영 화면" /> <img src="docs/images/real-group-feed.png" width="220" alt="그룹 상세 — 그룹 예산, 그룹원별 지출, 지출·저금 피드" /> <img src="docs/images/real-pet.png" width="220" alt="내 저금통 펫 — 유년기 단계, XP, 코인" /> <img src="docs/images/real-pet-sulking.png" width="220" alt="며칠째 밥을 못 먹어 시무룩해진 저금통 펫" />
 
 ---
 
