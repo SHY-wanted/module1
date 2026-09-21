@@ -1274,22 +1274,31 @@ export function StoreProvider({ children }: { children: ReactNode }) {
 
       // "퀘스트 달성하면 보상"(shooTbranch 통합, 2026-09-15 사용자 확인) — 배치 없이 화면을 열 때
       // 이번 달 설정된 목표들을 전부 계산한다. 카테고리·달마다 한 번만 보상(unique 제약 + 로컬 캐시로 방지).
+      // 버그 수정(2026-09-21 사용자 신고): "이번 달 목표"가 그 달이 끝나기도 전에, 심지어 목표를
+      // 0원으로 걸어두면 그 즉시 "달성"으로 잠기고 코인·XP가 나갔다 — 카테고리를 계속 새로 만들어
+      // 걸기만 해도 코인을 무제한으로 파밍할 수 있었다. 실제 지급은 "그 달이 진짜로 끝난 뒤"에만
+      // 하도록 바꿨다: 지난 달 이전 목표 중 아직 정산 안 된 것만 실제로 goal_rewards에 저장하고
+      // 코인·XP를 준다. 이번 달 목표는 진행 상황(달성 여부 스냅샷)만 계산해서 화면에 보여줄 뿐,
+      // DB에 저장하지도 코인을 주지도 않는다 — 달이 넘어가야 다음 방문 때 그때 비로소 정산된다.
       async getOrCreateGoalRewardsForMonth(): Promise<MutationResult<GoalReward[]>> {
         if (!session) return { ok: false, error: "로그인이 필요해요" };
-        const month = currentMonthString(TODAY_DATE);
-        const thisMonthGoals = categoryGoals.filter((g) => g.month === month);
-        const results: GoalReward[] = [];
+        const currentMonth = currentMonthString(TODAY_DATE);
+
+        function spentFor(category: string, month: string): number {
+          return expenses
+            .filter((e) => e.user_id === currentUserId && e.category === category && e.date.startsWith(month))
+            .reduce((sum, e) => sum + e.amount, 0);
+        }
+
+        // 1) 지난 달 이전 목표 중 아직 정산 안 된 것 — 여기서만 실제로 코인·XP가 나간다.
+        const pastUnsettledGoals = categoryGoals.filter(
+          (g) => g.month < currentMonth && !goalRewards.some((r) => r.category === g.category && r.month === g.month)
+        );
+        const settled: GoalReward[] = [];
         let totalCoins = 0;
         let totalXp = 0;
-        for (const goal of thisMonthGoals) {
-          const existing = goalRewards.find((r) => r.category === goal.category && r.month === month);
-          if (existing) {
-            results.push(existing);
-            continue;
-          }
-          const spentAmount = expenses
-            .filter((e) => e.user_id === currentUserId && e.category === goal.category && e.date.startsWith(month))
-            .reduce((sum, e) => sum + e.amount, 0);
+        for (const goal of pastUnsettledGoals) {
+          const spentAmount = spentFor(goal.category, goal.month);
           const achieved = spentAmount <= goal.goal_amount;
           const coinsEarned = achieved ? GOAL_ACHIEVED_REWARD_COINS : 0;
           const xpGained = achieved ? GOAL_ACHIEVED_REWARD_XP : 0;
@@ -1297,7 +1306,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
             id: crypto.randomUUID(),
             user_id: session.user.id,
             category: goal.category,
-            month,
+            month: goal.month,
             spent_amount: spentAmount,
             goal_amount: goal.goal_amount,
             achieved,
@@ -1307,15 +1316,13 @@ export function StoreProvider({ children }: { children: ReactNode }) {
           };
           const { error } = await supabase.from("goal_rewards").insert(newReward);
           if (error) continue; // 이 카테고리만 건너뛰고 나머지는 계속 계산한다.
-          results.push(newReward);
+          settled.push(newReward);
           totalCoins += coinsEarned;
           totalXp += xpGained;
         }
-        setGoalRewards((prev) => {
-          const existingIds = new Set(prev.map((r) => r.id));
-          const toAdd = results.filter((r) => !existingIds.has(r.id));
-          return toAdd.length > 0 ? [...prev, ...toAdd] : prev;
-        });
+        if (settled.length > 0) {
+          setGoalRewards((prev) => [...prev, ...settled]);
+        }
 
         // 보상 대상은 개인 펫이다(§4 "코인 지급과 동시에 펫 XP도 함께 지급"과 같은 원칙).
         const personalPet = pets.find((p) => p.user_id === currentUserId);
@@ -1327,7 +1334,28 @@ export function StoreProvider({ children }: { children: ReactNode }) {
             prev.map((p) => (p.id === personalPet.id ? { ...p, stage_index: stageIndex, xp_progress: xpProgress, total_coins: newTotalCoins } : p))
           );
         }
-        return { ok: true, data: results };
+
+        // 2) 이번 달 목표 — 화면에 진행 상황만 보여주기 위한 미리보기. DB에 저장하지 않고 매번
+        // 새로 계산한다(coins_earned·xp_gained는 항상 0 — 아직 지급된 적 없다는 뜻).
+        const liveThisMonth: GoalReward[] = categoryGoals
+          .filter((g) => g.month === currentMonth)
+          .map((goal) => {
+            const spentAmount = spentFor(goal.category, currentMonth);
+            return {
+              id: `live-${goal.id}`,
+              user_id: session.user.id,
+              category: goal.category,
+              month: currentMonth,
+              spent_amount: spentAmount,
+              goal_amount: goal.goal_amount,
+              achieved: spentAmount <= goal.goal_amount,
+              coins_earned: 0,
+              xp_gained: 0,
+              created_at: goal.created_at,
+            };
+          });
+
+        return { ok: true, data: liveThisMonth };
       },
 
       // F23 그룹 피드 이모지 반응(hybranch) — RLS가 그룹 멤버인지 확인해준다.
