@@ -118,6 +118,7 @@ export default function GroupDetail({ groupId }: { groupId: string }) {
               {members.map((m, idx) => {
                 const name = m.profile?.name ?? "알 수 없음";
                 const isMe = m.user_id === store.currentUserId;
+                const isOwnerMember = m.role === "OWNER";
                 const roleLabel = isMe ? "나" : m.nickname ?? "멤버";
                 return (
                   <div key={m.id} style={{ background: "var(--shoot-surface)", borderRadius: 16, padding: "12px 14px", display: "flex", alignItems: "center", gap: 12, boxShadow: "0 2px 8px rgba(45,42,62,0.05)" }}>
@@ -127,7 +128,15 @@ export default function GroupDetail({ groupId }: { groupId: string }) {
                       {initialOf(name)}
                     </div>
                     <div style={{ flex: 1 }}>
-                      <div style={{ fontSize: 14, fontWeight: 800, color: "var(--shoot-text)" }}>{name}</div>
+                      <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                        <div style={{ fontSize: 14, fontWeight: 800, color: "var(--shoot-text)" }}>{name}</div>
+                        {/* 신규 기능: 방장 배지 — 기존 "기타" 카테고리와 같은 금색 팔레트(lib/categories.ts)를 재사용. */}
+                        {isOwnerMember && (
+                          <span style={{ fontSize: 10, fontWeight: 800, color: "#8A6A12", background: "#FFFBE8", padding: "2px 7px", borderRadius: 8, border: "1px solid rgba(245,213,133,0.6)", flexShrink: 0 }}>
+                            👑 방장
+                          </span>
+                        )}
+                      </div>
                       <div style={{ fontSize: 12, color: "var(--shoot-text-muted)", fontWeight: 600 }}>{roleLabel}</div>
                     </div>
                   </div>
