@@ -6,7 +6,7 @@ import { useNav } from "../NavContext";
 import { useStore } from "@/lib/store";
 import { TODAY_DATE } from "@/lib/mock";
 import type { IncomeCategory } from "@/lib/mock";
-import { ChevronLeftIcon, RefreshIcon } from "../icons";
+import { ChevronLeftIcon, RepeatIcon } from "../icons";
 
 const CURRENT_MONTH = "2026-09";
 const INCOME_CATEGORIES: IncomeCategory[] = ["급여", "용돈", "부수입", "기타"];
@@ -107,7 +107,7 @@ export default function IncomeEdit() {
           onClick={() => setIsRecurring((v) => !v)}
           style={{ marginTop: 14, background: "var(--shoot-surface)", border: "1.5px solid var(--shoot-border)", borderRadius: 14, padding: 14, display: "flex", alignItems: "center", gap: 10, cursor: "pointer" }}
         >
-          <RefreshIcon size={17} color="var(--shoot-text-muted)" />
+          <RepeatIcon size={17} color="var(--shoot-text-muted)" />
           <div style={{ flex: 1, fontSize: 13, fontWeight: 700, color: "var(--shoot-text)" }}>매달 자동으로 반복</div>
           <div style={{ width: 42, height: 24, borderRadius: 12, background: isRecurring ? "var(--shoot-accent)" : "#D8D3C8", position: "relative", flexShrink: 0, transition: "background 0.15s" }}>
             <div style={{ width: 18, height: 18, borderRadius: "50%", background: "var(--shoot-surface)", position: "absolute", top: 3, left: isRecurring ? 21 : 3, boxShadow: "0 2px 5px rgba(0,0,0,0.2)", transition: "left 0.15s" }} />

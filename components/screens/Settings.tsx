@@ -10,7 +10,7 @@ import { useNav } from "../NavContext";
 import { useStore } from "@/lib/store";
 import type { CategoryScope } from "@/lib/categories";
 import { getGroupsForUser } from "@/lib/selectors";
-import { BellIcon, ChevronLeftIcon, ChevronRightIcon, MoonIcon, MoreHorizontalIcon, PlusIcon, RefreshIcon, ThreeLinesIcon } from "../icons";
+import { BellIcon, ChevronLeftIcon, ChevronRightIcon, MoonIcon, MoreHorizontalIcon, PlusIcon, RepeatIcon, ThreeLinesIcon } from "../icons";
 
 function Toggle({ on, onClick }: { on: boolean; onClick: () => void }) {
   return (
@@ -278,7 +278,7 @@ export default function Settings() {
         <div style={{ fontSize: 12, fontWeight: 800, color: "var(--shoot-text-muted)", margin: "22px 0 8px" }}>정기 지출</div>
         <div style={{ background: "var(--shoot-surface)", borderRadius: 16, border: "1px solid var(--shoot-border)", overflow: "hidden" }}>
           <div onClick={() => nav.push({ id: "recurringExpenseManage" })} style={{ padding: "14px 14px", display: "flex", alignItems: "center", gap: 10, cursor: "pointer" }}>
-            <RefreshIcon size={17} color="var(--shoot-text-muted)" />
+            <RepeatIcon size={17} color="var(--shoot-text-muted)" />
             <div style={{ flex: 1, fontSize: 14, fontWeight: 700, color: "var(--shoot-text)" }}>정기 지출 관리</div>
             <ChevronRightIcon size={16} color="#A9A2B8" />
           </div>
