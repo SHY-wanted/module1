@@ -597,18 +597,41 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     };
   }, [session, supabase, groups, profiles, notificationSettings]);
 
-  // 2026-09-21 팀 요청("진짜 실시간으로") — group_members·pets도 Realtime으로 구독한다.
-  // 그전까지 이 둘은 로그인 직후 한 번만 읽어서, ① 그룹 상세를 보고 있는 중에 누가 들어오면
-  // 나갔다 들어와야 했고 ② 다른 그룹원이 그룹 펫 색을 바꿔도 새로고침해야 보였다.
-  // expenses와 마찬가지로 RLS가 그대로 걸려 "내가 볼 수 있는 행"만 이벤트로 온다.
-  // supabase/019_realtime_members_and_pets.sql을 실행해야 켜진다 — 실행하지 않으면 이벤트가
-  // 아예 안 올 뿐이고(조용히 아무 일도 안 일어난다), 화면 진입 시 재조회가 남아 있어 앱은 그대로 돈다.
+  // 2026-09-21 팀 요청("진짜 실시간으로") — 서버 변경을 로컬 상태에 반영하는 전용 채널.
+  // expenses·group_members·pets 세 테이블을 구독한다. 그전까지 이 셋은 로그인 직후 한 번만
+  // 읽어서 ① 그룹 상세를 보고 있는 중에 누가 들어오면 나갔다 들어와야 했고 ② 다른 그룹원이
+  // 그룹 펫 색을 바꿔도 새로고침해야 했고 ③ 그룹원의 새 지출이 피드에 바로 안 떴다.
+  // 어느 테이블이든 RLS가 그대로 걸려 "내가 볼 수 있는 행"만 이벤트로 온다 — 새 정책은 없다.
+  //
+  // publication 등록 상태: expenses는 supabase/004에서 이미 들어갔고, group_members·pets는
+  // supabase/019_realtime_members_and_pets.sql을 실행해야 한다. 019를 실행하지 않으면 그 두
+  // 테이블 이벤트만 안 올 뿐이고(조용히 아무 일도 안 일어난다), 화면 진입 시 재조회가 남아
+  // 있어 앱은 그대로 돈다.
+  //
   // groups·profiles 같은 자주 바뀌는 값에 의존하지 않게 해서, 데이터가 바뀔 때마다 구독을
   // 끊었다 다시 맺는 일이 없도록 한다(setState 함수는 리렌더와 무관하게 동일하다).
   useEffect(() => {
     if (!session) return;
     const channel = supabase
-      .channel("members-and-pets")
+      .channel("live-sync")
+      // 2026-09-21 팀 요청("지출도 실시간으로") — 그룹 피드·지출 목록도 서버 변경을 바로 따라간다.
+      // 지출은 이미 supabase_realtime publication에 있어(supabase/004) SQL 추가 실행이 필요 없다.
+      // 알림용 expenses 구독(위 "expenses-inserts" 채널)은 일부러 그대로 뒀다 — 그쪽은 알림 설정·
+      // 그룹·프로필 값에 의존해 자주 다시 맺어지는 구조라, 잘 돌고 있는 알림 로직을 건드리는 대신
+      // 상태 반영만 이 안정적인 채널에서 따로 한다(역할이 다르다: 저쪽은 알림, 이쪽은 상태 동기화).
+      // 내가 직접 추가한 지출은 addExpense가 이미 상태에 넣어두므로 같은 행이 한 번 더 오는데,
+      // 아래 id 중복 검사가 걸러낸다(정기 지출 upsert로 들어온 행도 마찬가지).
+      .on("postgres_changes", { event: "*", schema: "public", table: "expenses" }, (payload) => {
+        if (payload.eventType === "DELETE") {
+          const removedId = (payload.old as { id?: string }).id;
+          if (!removedId) return;
+          setExpenses((prev) => prev.filter((e) => e.id !== removedId));
+          return;
+        }
+        const row = payload.new as Expense;
+        // 목록은 created_at 내림차순(최신이 위)이라, 새 지출은 맨 앞에 넣는다.
+        setExpenses((prev) => (prev.some((e) => e.id === row.id) ? prev.map((e) => (e.id === row.id ? row : e)) : [row, ...prev]));
+      })
       .on("postgres_changes", { event: "*", schema: "public", table: "group_members" }, (payload) => {
         if (payload.eventType === "DELETE") {
           // DELETE 이벤트는 기본 replica identity라 old에 기본키만 담겨 온다 — 그 id만 빼면 된다.
