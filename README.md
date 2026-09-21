@@ -123,7 +123,9 @@
 |---|---|
 | `ShooT 하윤.dc.html` (위 링크) | <https://module1-two.vercel.app/> |
 
-> 스크린샷 파일은 아직 저장소에 없습니다 — `docs/images/` 폴더를 만들어 `cdesign-home.png`, `real-home.png`를 넣으면 이 표에 바로 붙습니다.
+실제 홈 화면(로그인 후):
+
+<img src="docs/images/real-home.png" width="280" alt="홈 화면 — 이번 달 총 수입·지출, 카테고리 도넛 차트, 최근 지출" /> <img src="docs/images/real-home-calendar.png" width="280" alt="홈 화면 — 캘린더(날짜별 지출 표시)" />
 
 ---
 
