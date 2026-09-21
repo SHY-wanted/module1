@@ -58,9 +58,12 @@ export function groupFeedXp(memberCount: number): number {
 }
 
 // 2026-09-21 사용자 요청: 코인 수급을 출석체크 하나에만 의존하지 않게, 지출을 기록할 때도
-// 코인을 준다 — 개인 지출은 내 개인 펫에, 공유(그룹) 지출은 그 그룹 펫에 쌓인다.
-export const PERSONAL_EXPENSE_COIN_REWARD = 1;
-export const GROUP_EXPENSE_COIN_REWARD = 1;
+// 코인을 준다 — 개인 지출은 내 개인 펫에, 공유(그룹) 지출은 그 그룹 펫에 쌓인다. 처음엔 "기록할
+// 때마다 1코인"이었는데, 그러면 하루에 지출을 여러 번 기록해서 코인을 무제한으로 벌 수 있다는
+// 문제가 있어 — 하루에 딱 한 번(그 날의 첫 기록)만 3코인 주는 걸로 바꿨다(pets.last_expense_coin_date,
+// 016 마이그레이션이 실제로 막아준다).
+export const PERSONAL_EXPENSE_COIN_REWARD = 3;
+export const GROUP_EXPENSE_COIN_REWARD = 3;
 
 // ============================================================
 // 마스코트 색상 커스텀 — docs/08-pet-feature-spec.md엔 없던 신규 요청(2026-09-15, 참고 이미지 기반).

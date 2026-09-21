@@ -382,13 +382,18 @@ export function StoreProvider({ children }: { children: ReactNode }) {
   // 2026-09-21 사용자 요청: 코인 수급을 출석체크 하나에만 의존하지 않게, 지출을 기록할 때도
   // 코인을 준다(addExpense가 성공할 때마다 호출) — 개인 지출은 내 개인 펫에, 공유 지출은 그
   // 그룹 펫에 쌓인다. 펫을 아직 안 만들었으면(pet이 undefined) 조용히 건너뛴다.
+  // 2026-09-21 수정: "기록할 때마다"가 아니라 "하루에 한 번만" 받게 한다 — 그날 이미 받았으면
+  // (pets.last_expense_coin_date === 오늘) 몇 번을 더 기록해도 코인을 추가로 안 준다.
   const awardPetCoins = useCallback(
     async (pet: Pet | undefined, amount: number) => {
-      if (!pet) return;
+      if (!pet || pet.last_expense_coin_date === TODAY_DATE) return;
       const newTotalCoins = pet.total_coins + amount;
-      const { error } = await supabase.from("pets").update({ total_coins: newTotalCoins }).eq("id", pet.id);
+      const { error } = await supabase
+        .from("pets")
+        .update({ total_coins: newTotalCoins, last_expense_coin_date: TODAY_DATE })
+        .eq("id", pet.id);
       if (!error) {
-        setPets((prev) => prev.map((p) => (p.id === pet.id ? { ...p, total_coins: newTotalCoins } : p)));
+        setPets((prev) => prev.map((p) => (p.id === pet.id ? { ...p, total_coins: newTotalCoins, last_expense_coin_date: TODAY_DATE } : p)));
       }
     },
     [supabase]
@@ -1006,6 +1011,15 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       // 이유 — 막 만든 그룹 펫은 아직 RETURNING이 요구하는 select 정책을 못 만족할 수 있어서).
       async createPet(scope: CategoryScope, name: string): Promise<MutationResult<Pet>> {
         if (!session) return { ok: false, error: "로그인이 필요해요" };
+        // 버그 수정(2026-09-21): 펫을 만들기 "전"에 출석체크부터 하면, 그때는 코인을 넣을 펫이
+        // 없어서 조용히 사라졌다(그 출석체크를 다시 할 수도 없어 영영 못 받았다). 개인 펫은
+        // 유저당 하나뿐이라(pets_one_personal_per_user) 지금 이게 처음 만드는 펫이 맞으므로,
+        // 그동안 쌓인 출석체크 코인을 전부 여기로 합쳐서 시작 코인으로 넣어준다.
+        let startingCoins = 0;
+        if (scope.kind === "personal") {
+          const { data: pastCheckins } = await supabase.from("attendance_checkins").select("coins_earned").eq("user_id", session.user.id);
+          startingCoins = (pastCheckins ?? []).reduce((sum, c) => sum + c.coins_earned, 0);
+        }
         const trimmed = name.trim();
         const newPet: Pet = {
           id: crypto.randomUUID(),
@@ -1014,7 +1028,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
           pet_name: trimmed.length > 0 ? trimmed : null,
           stage_index: 1,
           xp_progress: 0,
-          total_coins: 0,
+          total_coins: startingCoins,
           last_fed_date: null,
           body_color: DEFAULT_PET_COLORS.body,
           ledger_color: DEFAULT_PET_COLORS.ledger,
@@ -1022,6 +1036,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
           eye_color: DEFAULT_PET_COLORS.eyes,
           leaf_color: DEFAULT_PET_COLORS.leaf,
           display_stage_index: null,
+          last_expense_coin_date: null,
           created_at: new Date().toISOString(),
         };
         const { error } = await supabase.from("pets").insert(newPet);
