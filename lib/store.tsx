@@ -597,6 +597,45 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     };
   }, [session, supabase, groups, profiles, notificationSettings]);
 
+  // 2026-09-21 팀 요청("진짜 실시간으로") — group_members·pets도 Realtime으로 구독한다.
+  // 그전까지 이 둘은 로그인 직후 한 번만 읽어서, ① 그룹 상세를 보고 있는 중에 누가 들어오면
+  // 나갔다 들어와야 했고 ② 다른 그룹원이 그룹 펫 색을 바꿔도 새로고침해야 보였다.
+  // expenses와 마찬가지로 RLS가 그대로 걸려 "내가 볼 수 있는 행"만 이벤트로 온다.
+  // supabase/019_realtime_members_and_pets.sql을 실행해야 켜진다 — 실행하지 않으면 이벤트가
+  // 아예 안 올 뿐이고(조용히 아무 일도 안 일어난다), 화면 진입 시 재조회가 남아 있어 앱은 그대로 돈다.
+  // groups·profiles 같은 자주 바뀌는 값에 의존하지 않게 해서, 데이터가 바뀔 때마다 구독을
+  // 끊었다 다시 맺는 일이 없도록 한다(setState 함수는 리렌더와 무관하게 동일하다).
+  useEffect(() => {
+    if (!session) return;
+    const channel = supabase
+      .channel("members-and-pets")
+      .on("postgres_changes", { event: "*", schema: "public", table: "group_members" }, (payload) => {
+        if (payload.eventType === "DELETE") {
+          // DELETE 이벤트는 기본 replica identity라 old에 기본키만 담겨 온다 — 그 id만 빼면 된다.
+          const removedId = (payload.old as { id?: string }).id;
+          if (!removedId) return;
+          setGroupMembers((prev) => prev.filter((m) => m.id !== removedId));
+          return;
+        }
+        const row = payload.new as GroupMember;
+        setGroupMembers((prev) => (prev.some((m) => m.id === row.id) ? prev.map((m) => (m.id === row.id ? row : m)) : [...prev, row]));
+      })
+      .on("postgres_changes", { event: "*", schema: "public", table: "pets" }, (payload) => {
+        if (payload.eventType === "DELETE") {
+          const removedId = (payload.old as { id?: string }).id;
+          if (!removedId) return;
+          setPets((prev) => prev.filter((p) => p.id !== removedId));
+          return;
+        }
+        const row = payload.new as Pet;
+        setPets((prev) => (prev.some((p) => p.id === row.id) ? prev.map((p) => (p.id === row.id ? row : p)) : [...prev, row]));
+      })
+      .subscribe();
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [session, supabase]);
+
   // 2026-09-18 추가(신규 기능): "저녁 리마인더" — 오후 8시(KST) 이후인데 오늘 지출을 하나도 안
   // 기록했으면 한 번 알려준다. 서버 스케줄러 없이 앱이 열려 있는 동안만 5분마다 확인한다(탭을 닫으면
   // 못 받는 건 알림 토글 전체와 같은 한계). 하루에 한 번만 뜨도록 localStorage에 오늘 날짜를 남긴다.
