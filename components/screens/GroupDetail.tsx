@@ -185,9 +185,19 @@ export default function GroupDetail({ groupId }: { groupId: string }) {
                 {monthGroupGoals.length === 0 ? (
                   <div style={{ fontSize: 11, color: "var(--shoot-text-muted)", fontWeight: 600, marginTop: 2 }}>아직 없어요 — 그룹장이 정할 수 있어요</div>
                 ) : (
-                  <div style={{ fontSize: 11, color: "var(--shoot-text-muted)", fontWeight: 600, marginTop: 2 }}>
-                    {formatWon(groupGoalSpent)} / {formatWon(groupGoalTotal)}
-                  </div>
+                  <>
+                    <div style={{ fontSize: 11, color: "var(--shoot-text-muted)", fontWeight: 600, marginTop: 2 }}>
+                      {formatWon(groupGoalSpent)} / {formatWon(groupGoalTotal)}
+                    </div>
+                    {/* 사용자 요청(2026-09-21): 합계만 있으면 어느 카테고리에 얼마를 정했는지 안 보여서, 카테고리별로도 나눠 보여준다. */}
+                    <div style={{ fontSize: 10, color: "var(--shoot-text-muted)", fontWeight: 600, marginTop: 4, display: "flex", flexWrap: "wrap", gap: 6 }}>
+                      {monthGroupGoals.map((g) => (
+                        <span key={g.id}>
+                          {g.category} {formatWon(g.goal_amount)}
+                        </span>
+                      ))}
+                    </div>
+                  </>
                 )}
               </div>
               <ChevronRightIcon size={16} color="#A9A2B8" />
