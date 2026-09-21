@@ -93,7 +93,7 @@ function renderScreen(screen: StackScreen) {
     case "myBadges":
       return <MyBadges />;
     case "petCustomize":
-      return <PetCustomize />;
+      return <PetCustomize scope={screen.scope} />;
     case "monthlyGoalSetting":
       return <MonthlyGoalSetting />;
     case "monthlyGoalReport":
