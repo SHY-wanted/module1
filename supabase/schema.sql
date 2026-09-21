@@ -365,6 +365,8 @@ create table pets (
   -- 015 마이그레이션: "꾸미기"에서 고른 표시용 단계 — null이면 실제 stage_index를 그대로 보여준다.
   -- 성장(stage_index·xp_progress)과 분리해서, 유년기까지 자란 뒤에도 알 이미지로 보여줄 수 있다.
   display_stage_index int check (display_stage_index between 1 and 4),
+  -- 016 마이그레이션: 지출 기록 코인 보상을 오늘 이미 받았는지(하루 한 번만 지급하는 기준).
+  last_expense_coin_date date,
   created_at    timestamptz not null default now(),
   constraint pets_owner_exclusive check (
     (user_id is not null and group_id is null) or (user_id is null and group_id is not null)
@@ -372,6 +374,20 @@ create table pets (
 );
 create unique index pets_one_personal_per_user on pets (user_id) where user_id is not null;
 create unique index pets_one_per_group on pets (group_id) where group_id is not null;
+
+-- 015 마이그레이션: 밥주기 하루 1회 제한을 (펫, 사람, 날짜) 유니크 제약으로 정확히 구분한다 —
+-- 개인 펫은 사람이 하나뿐이라 자동으로 하루 1회, 그룹 펫은 그룹원마다 하루 1회.
+create table pet_feedings (
+  id         uuid primary key default gen_random_uuid(),
+  pet_id     uuid not null references pets(id) on delete cascade,
+  user_id    uuid not null references profiles(id) on delete cascade,
+  fed_date   date not null,
+  created_at timestamptz not null default now(),
+  unique (pet_id, user_id, fed_date)
+);
+alter table pet_feedings enable row level security;
+create policy pet_feedings_select_own on pet_feedings for select using (user_id = auth.uid());
+create policy pet_feedings_insert_own on pet_feedings for insert with check (user_id = auth.uid());
 
 -- E12. CategoryGoal — shooTbranch "월별 목표 설정"을 실제 저장소에 연결. mg의 주간 예산을 대체한다.
 create table category_goals (
