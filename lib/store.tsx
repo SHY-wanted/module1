@@ -45,11 +45,14 @@ import {
   FEED_XP_DEFAULT,
   GOAL_ACHIEVED_REWARD_COINS,
   GOAL_ACHIEVED_REWARD_XP,
+  GROUP_EXPENSE_COIN_REWARD,
   GROUP_PARTICIPATION_WINDOW_DAYS,
   GROUP_XP_HALF_RATE_DIVISOR,
   GROUP_XP_PER_SHARED_EXPENSE,
+  PERSONAL_EXPENSE_COIN_REWARD,
   applyXpGain,
   currentMonthString,
+  groupFeedXp,
   shiftDateKST,
   type PetColorPart,
 } from "./pets";
@@ -250,8 +253,8 @@ interface StoreValue extends StoreState {
   // scope는 카테고리(lib/categories.ts CategoryScope)와 같은 모양을 그대로 재사용한다 —
   // { kind: "personal" }(개인 펫) | { kind: "group", groupId }(그룹 펫).
   createPet: (scope: CategoryScope, name: string) => Promise<MutationResult<Pet>>;
-  // P3 "밥 주기" — 개인 펫 전용(그룹 펫은 참여도로 자동 성장, 수동 밥주기 없음). 오늘 이미 줬으면
-  // ok:false를 돌려준다.
+  // P3 "밥 주기" — 개인 펫은 하루 한 번, 그룹 펫은 그룹원 각자 하루 한 번씩(pet_feedings 유니크
+  // 제약). 오늘 이미(이 사람이) 줬으면 ok:false를 돌려준다.
   feedPet: (petId: string) => Promise<MutationResult<{ xpGained: number; leveledUp: boolean }>>;
   // 지출 기록 성공 직후 호출 — 개인 펫이 있고 오늘 아직 안 먹였으면 팝업을 연다(§3 노출 조건).
   openFeedPopupIfEligible: () => void;
@@ -376,8 +379,24 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     }, 2200);
   }
 
+  // 2026-09-21 사용자 요청: 코인 수급을 출석체크 하나에만 의존하지 않게, 지출을 기록할 때도
+  // 코인을 준다(addExpense가 성공할 때마다 호출) — 개인 지출은 내 개인 펫에, 공유 지출은 그
+  // 그룹 펫에 쌓인다. 펫을 아직 안 만들었으면(pet이 undefined) 조용히 건너뛴다.
+  const awardPetCoins = useCallback(
+    async (pet: Pet | undefined, amount: number) => {
+      if (!pet) return;
+      const newTotalCoins = pet.total_coins + amount;
+      const { error } = await supabase.from("pets").update({ total_coins: newTotalCoins }).eq("id", pet.id);
+      if (!error) {
+        setPets((prev) => prev.map((p) => (p.id === pet.id ? { ...p, total_coins: newTotalCoins } : p)));
+      }
+    },
+    [supabase]
+  );
+
   // hybranch F22(반려 캐릭터) 통합 — 그룹에 공유 지출이 새로 기록될 때마다 그 그룹의 그룹 펫을
-  // 참여도 기반으로 자동 성장시킨다(수동 밥주기 없음, addExpense가 공유 지출일 때만 호출한다).
+  // 참여도 기반으로 자동 성장시킨다. 2026-09-21부터 그룹 펫도 그룹원 각자 하루 한 번씩 수동으로
+  // 먹일 수 있게 됐지만(store.feedPet), 이 자동 성장은 그것과 별개로 계속 그대로 작동한다.
   // "최근 며칠 안에 몇 명이 기록했는지"로 정상/절반 성장을 가른다 — 기준은 lib/pets.ts 참고([?] placeholder).
   const growGroupPetFromSharedExpense = useCallback(
     async (groupId: string, expenseUserId: string, expenseDate: string) => {
@@ -701,9 +720,13 @@ export function StoreProvider({ children }: { children: ReactNode }) {
         const { data, error } = await supabase.from("expenses").insert(input).select().single();
         if (error || !data) return { ok: false, error: error?.message ?? "지출을 저장하지 못했어요" };
         setExpenses((prev) => [data, ...prev]);
-        // hybranch F22 통합 — 공유 지출이면 그 그룹의 그룹 펫을 참여도 기반으로 자동 성장시킨다.
+        // hybranch F22 통합 — 공유 지출이면 그 그룹의 그룹 펫을 참여도 기반으로 자동 성장시키고,
+        // 그 그룹 펫에 코인도 준다. 개인 지출이면 내 개인 펫에 코인을 준다(2026-09-21 사용자 요청).
         if (data.is_shared && data.group_id) {
           await growGroupPetFromSharedExpense(data.group_id, data.user_id, data.date);
+          await awardPetCoins(pets.find((p) => p.group_id === data.group_id), GROUP_EXPENSE_COIN_REWARD);
+        } else {
+          await awardPetCoins(pets.find((p) => p.user_id === data.user_id), PERSONAL_EXPENSE_COIN_REWARD);
         }
         return { ok: true, data };
       },
@@ -1007,17 +1030,33 @@ export function StoreProvider({ children }: { children: ReactNode }) {
         return { ok: true, data: newPet };
       },
 
-      // P3 "밥 주기" — 개인 펫 전용, 하루 1회 제한(§3). XP 지급·단계 승급은 lib/pets.ts applyXpGain 참고.
-      // 2026-09-21 사용자 요청: 2026-09-18에 없앴던 "하루 한 번" 제한을 되살렸다 — 코인을 모아뒀다가
-      // 한 번에 다 쓰면 며칠치 성장이 한순간에 끝나서(알→성체가 최소 4일), 매일 들어와야 할 이유가
-      // 없어졌다는 문제 때문이다. 코인은 그대로 하루 5개(출석)로 제한돼 있으니, 먹이기도 다시
-      // 하루 1회로 묶으면 "쌓아뒀다 몰아쓰기"가 막혀 최소 20일로 늘어난다.
+      // P3 "밥 주기" — 개인 펫은 혼자뿐이니 하루 한 번, 그룹 펫은 그룹원 각자 하루 한 번씩 먹일 수
+      // 있다(2026-09-21 사용자 요청). pets.last_fed_date 한 칸으로는 "그룹원 중 누가 먹였는지"를
+      // 구분할 수 없어서(먹인 사람이 누구든 그 칸만 오늘 날짜로 바뀐다), pet_feedings(015 마이그레이션)
+      // 에 (펫, 사람, 날짜) 조합으로 한 행씩 남기고 그 유니크 제약이 "이 사람이 이 펫에 오늘 벌써
+      // 먹였는지"를 정확히 걸러준다 — 개인 펫은 사람이 하나뿐이라 자동으로 하루 1회가 되고, 그룹
+      // 펫은 사람마다 따로 허용된다. XP 지급·단계 승급은 lib/pets.ts applyXpGain 참고.
       async feedPet(petId: string): Promise<MutationResult<{ xpGained: number; leveledUp: boolean }>> {
+        if (!session) return { ok: false, error: "로그인이 필요해요" };
         const pet = pets.find((p) => p.id === petId);
         if (!pet) return { ok: false, error: "펫을 찾을 수 없어요" };
-        if (pet.last_fed_date === TODAY_DATE) return { ok: false, error: "오늘은 이미 밥을 줬어요" };
         if (pet.total_coins < FEED_COIN_COST) return { ok: false, error: "코인이 부족해요" };
-        const { stageIndex, xpProgress } = applyXpGain(pet.stage_index, pet.xp_progress, FEED_XP_DEFAULT);
+
+        const { error: feedingError } = await supabase
+          .from("pet_feedings")
+          .insert({ pet_id: petId, user_id: session.user.id, fed_date: TODAY_DATE });
+        if (feedingError) {
+          // 23505 = unique_violation — 오늘 이미 이 펫에 먹인 기록이 있다는 뜻(가장 흔한 실패 원인).
+          if (feedingError.code === "23505") return { ok: false, error: "오늘은 이미 밥을 줬어요" };
+          return { ok: false, error: feedingError.message };
+        }
+
+        // 그룹 펫은 인원수로 XP를 나눠서, 그룹원 전체가 하루치를 다 먹여도 개인 1회와 비슷한
+        // 총량이 되게 한다(형평성 — groupFeedXp 주석 참고).
+        const xpGained = pet.group_id
+          ? groupFeedXp(groupMembers.filter((m) => m.group_id === pet.group_id).length)
+          : FEED_XP_DEFAULT;
+        const { stageIndex, xpProgress } = applyXpGain(pet.stage_index, pet.xp_progress, xpGained);
         const newTotalCoins = pet.total_coins - FEED_COIN_COST;
         const { error } = await supabase
           .from("pets")
@@ -1027,7 +1066,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
         setPets((prev) =>
           prev.map((p) => (p.id === petId ? { ...p, stage_index: stageIndex, xp_progress: xpProgress, last_fed_date: TODAY_DATE, total_coins: newTotalCoins } : p))
         );
-        return { ok: true, data: { xpGained: FEED_XP_DEFAULT, leveledUp: stageIndex > pet.stage_index } };
+        return { ok: true, data: { xpGained, leveledUp: stageIndex > pet.stage_index } };
       },
 
       // 지출 기록(신규) 성공 직후 호출 — 개인 펫이 있고 오늘 아직 안 먹였을 때만 P3 팝업을 연다.
@@ -1305,7 +1344,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
         setPendingReceiptImage(file);
       },
     }),
-    [profiles, session, authReady, currentUserId, currentUserAvatarUrl, onboardingSeen, groups, groupMembers, expenses, savings, incomes, personalCategories, groupCategoriesById, toastMessage, isLoggedIn, notificationSettings, darkMode, darkModePreference, pets, categoryGoals, goalRewards, expenseReactions, feedPopupPetId, pendingReceiptImage, attendanceCheckins, recurringExpenses, groupCategoryGoals, supabase, growGroupPetFromSharedExpense]
+    [profiles, session, authReady, currentUserId, currentUserAvatarUrl, onboardingSeen, groups, groupMembers, expenses, savings, incomes, personalCategories, groupCategoriesById, toastMessage, isLoggedIn, notificationSettings, darkMode, darkModePreference, pets, categoryGoals, goalRewards, expenseReactions, feedPopupPetId, pendingReceiptImage, attendanceCheckins, recurringExpenses, groupCategoryGoals, supabase, growGroupPetFromSharedExpense, awardPetCoins]
   );
 
   return <StoreContext.Provider value={value}>{children}</StoreContext.Provider>;
