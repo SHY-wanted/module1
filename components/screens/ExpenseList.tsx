@@ -34,11 +34,24 @@ export default function ExpenseList({ initialCategoryFilter, pushed }: { initial
   // 정도로 빠르게 연속 삭제하는 경우가 흔치 않아서, 큐로 만들진 않았다 — 필요해지면 Map으로 바꿀 것.
   const [pendingDeleteId, setPendingDeleteId] = useState<string | null>(null);
   const deleteTimerRef = useRef<number | null>(null);
+  // pendingDeleteId를 state로만 들고 있으면, 마운트 시 한 번 등록되는 언마운트 클린업(아래 useEffect)이
+  // 그 시점의 값(항상 처음 값인 null)만 기억한 채로 굳어버린다 — 실제로 대기 중인 id를 언마운트
+  // 순간에도 읽을 수 있어야 해서 ref에도 같이 들고 있는다.
+  const pendingDeleteIdRef = useRef<string | null>(null);
 
+  // 버그 수정(2026-09-21): 삭제 확인 후 되돌리기 토스트가 떠 있는 채로 화면을 벗어나면(다른 탭으로
+  // 전환·뒤로가기 등), 기존엔 타이머만 지우고 실제 삭제는 아무것도 안 일어나서 — 다시 들어오면 "분명
+  // 지웠는데 그대로 남아있는" 유령 상태가 됐다. 화면을 뜰 때 대기 중인 삭제가 있으면 취소된 걸로 보지
+  // 말고 그 자리에서 확정한다(실행 취소 창을 그냥 못 본 채 넘어간 것과 같은 취급).
   useEffect(() => {
     return () => {
-      if (deleteTimerRef.current !== null) window.clearTimeout(deleteTimerRef.current);
+      if (deleteTimerRef.current !== null) {
+        window.clearTimeout(deleteTimerRef.current);
+        deleteTimerRef.current = null;
+        if (pendingDeleteIdRef.current) store.deleteExpense(pendingDeleteIdRef.current);
+      }
     };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   function handleDeleteConfirmed() {
@@ -46,9 +59,11 @@ export default function ExpenseList({ initialCategoryFilter, pushed }: { initial
     const id = confirmingId;
     setConfirmingId(null);
     setPendingDeleteId(id);
+    pendingDeleteIdRef.current = id;
     deleteTimerRef.current = window.setTimeout(() => {
       store.deleteExpense(id);
       setPendingDeleteId(null);
+      pendingDeleteIdRef.current = null;
       deleteTimerRef.current = null;
     }, UNDO_WINDOW_MS);
   }
@@ -56,6 +71,7 @@ export default function ExpenseList({ initialCategoryFilter, pushed }: { initial
   function handleUndoDelete() {
     if (deleteTimerRef.current !== null) window.clearTimeout(deleteTimerRef.current);
     deleteTimerRef.current = null;
+    pendingDeleteIdRef.current = null;
     setPendingDeleteId(null);
   }
 
