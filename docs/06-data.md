@@ -26,6 +26,9 @@
 | E13 | GoalReward (목표 달성 보상) | 월이 끝난 뒤(또는 화면을 열 때) 카테고리별 목표 달성 여부를 계산해 고정 코인·XP를 지급한 기록 | shooTbranch 통합("퀘스트 달성" 개념) — **2026-09-15 신규(E10 WeeklySettlement 대체)**, 절약 비율 비례가 아니라 달성 시 고정 보상 |
 | E14 | ExpenseReaction (그룹 피드 이모지 반응) | 그룹 피드의 지출 카드에 그룹원이 남기는 이모지 반응(F23) | hybranch 통합 — **2026-09-15 신규** |
 | E15 | AttendanceCheckin (출석체크) | 하루 1번 출석하면 코인 지급, 7일 연속 출석하면 7일째 코인 2배 | 접속률을 올리기 위한 신규 요청(사용자, 2026-09-20) — **2026-09-20 신규** |
+| E16 | RecurringExpense (정기 지출) | 월세·구독료처럼 매달 반복되는 지출의 템플릿 — 실제 Expense는 로그인 시 store가 자동 생성 | 사용자 요청(2026-09-21) — 01~05엔 없는 신규 |
+| E17 | GroupCategoryGoal (그룹 예산) | 그룹장이 정하는 그룹 전체의 월별·카테고리별 예산(E12 CategoryGoal의 그룹판) | 사용자 요청(2026-09-21) — 01~05엔 없는 신규 |
+| E18 | PetFeeding (그룹 밥주기 기록) | 그룹원 각자 하루 1번씩 그룹 펫에게 밥을 준 기록(형평성 있는 그룹 밥주기 추적용) | 사용자 요청(2026-09-21) — 01~05엔 없는 신규 |
 
 ## 엔티티별 필드
 
@@ -101,6 +104,7 @@
 **[?] 디자인엔 "저금 추가" 입력 화면이 없다** — `ShooT 하윤.dc.html`은 저금을 그룹 피드(5b)의 한 항목("9월 저금", 100,000원, isSaving:true)으로만 보여줄 뿐, F19/F20이 요구하는 "저금 추가" 버튼·타이틀 입력 폼 자체가 화면에 없다. 07-screens.md에도 같은 내용으로 표시해 둔다.
 
 ### E7. Income (수입) — 01~05엔 없고 디자인에만 있는 개념 · 전부 [?]
+> ~~아래 [?] 전부 팀 확인 전엔 구현 보류~~ **2026-09-18 해결**: `supabase/011_incomes_avatar_account_deletion.sql`로 실제 `incomes` 테이블·RLS(본인만 select/insert/delete)를 만들어 오래전부터 안정적으로 운영 중이다(`store.addIncome`/`store.deleteIncome`). 아래 필드는 실제 구현과 일치하고, 그룹 연결은 없다(개인 전용으로 확정) — [?] 표시는 "이 문서를 처음 쓸 당시엔 몰랐다"는 역사 기록으로 남겨둔다.
 | 필드 | 타입 | 필수(추정) | 설명 | 출처 |
 |---|---|---|---|---|
 | user_id | uuid (FK → Profile) | [?] | 개인 소유로 보이나 그룹 수입인지 여부 확정 안 됨 | 디자인 화면 "2b-1. 이번 달 수입 입력"(홈 화면 homeGroup 선택 값에 연동되는 것으로 보임) |
@@ -146,6 +150,12 @@
 **그룹 펫(F22) XP 획득 방식 — hybranch 스펙("그룹원 참여도에 따라 성장")이 알고리즘까지 정하진 않아 아래처럼 구현, [?] 표시로 남김**: 공유 지출(`is_shared=true`)이 그룹에 새로 기록될 때마다, 그 지출 날짜 기준 최근 7일 내에 그 그룹에서 공유 지출을 기록한 사람이 몇 명인지 센다(방금 지출도 포함). 2명 이상이면 정상 XP(`GROUP_XP_PER_SHARED_EXPENSE`=15), 1명뿐이면 절반(반올림)만 준다 — "여럿이 골고루 기록하면 정상 성장, 한 명만 계속 기록하면 절반 성장"이라는 hybranch 취지를 그대로 코드화한 것이며, 정확한 창(window) 길이(7일)·정상/절반 경계(2명)는 팀이 재확인 전까지는 잠정값이다. 출처: `lib/store.tsx`의 `growGroupPetFromSharedExpense`, `lib/pets.ts`.
 
 **[?] xpGained(밥주기 1회당 XP) 기본값 15는 스펙 문서 자체가 "실제 값은 서버 정책으로 결정"이라고 못박아 뒀다** — 팀이 정해야 확정값이다. 출처: docs/08-pet-feature-spec.md §3
+
+**2026-09-21 사용자 요청으로 펫 경제 개편**(`lib/pets.ts`): 밥값이 코인 1개 → **5개**로 인상됐다. 단계별로 다음 단계까지 필요한 XP가 늘어나도록 `STAGE_XP_REQUIREMENTS=[100,150,200]`(등차수열, 이전엔 단계 무관 고정값)로 바뀌었다. 개인·그룹 지출을 하루 중 처음 기록할 때마다 코인 3개를 추가로 준다(`PERSONAL_EXPENSE_COIN_REWARD`/`GROUP_EXPENSE_COIN_REWARD`). **그룹 펫도 이제 수동 밥주기가 가능하다** — 그룹원 각자 하루 1번씩(형평성을 위해 XP를 그룹원 수로 나눠 받음, `groupFeedXp()`, E18 PetFeeding 참고) — 기존엔 참여도 기반 자동 성장만 있었다.
+
+**2026-09-21 신규 컬럼 `display_stage_index`**(`supabase/015_pet_display_stage.sql`): 꾸미기(PetCustomize)에서 미리보기로 고른 성장 단계를 실제 저장하기 시작했다 — 예전엔 화면 안에서만 바뀌고 "적용하기"를 눌러도 저장이 안 돼서 다른 화면엔 항상 실제 성장 단계(`stage_index`)만 보이던 버그가 있었다. 이제 `display_stage_index`가 표시용, `stage_index`는 성장 진행용으로 분리됐고, 꾸미기에서는 이미 도달한 단계까지만 고를 수 있다.
+
+**2026-09-21 버그 수정**: 목표 달성 보상(E13 GoalReward)·출석체크(E15) 코인이 "펫을 아직 안 만든 상태"에서 지급되면 코인을 넣을 펫 자체가 없어 조용히 사라졌다 — `createPet`이 이제 그동안 쌓인 출석체크·지출기록·목표보상 코인/XP를 합쳐 시작값으로 넣어준다(개인 펫은 유저당 하나뿐이라 이중 지급 걱정 없음).
 
 참고: "나의 배지"(MyBadges)는 별도 테이블이 필요 없다 — stage_index 하나로 4단계 배지 획득 여부를 계산만 하면 된다. 출처: docs/08-pet-feature-spec.md §5 (v2에서 5단계→4단계로 조정)
 
@@ -206,6 +216,46 @@
 
 **[?] 하루 기본 코인(5)·보너스 배율(2배)·주기 길이(7일)는 스펙에 정확한 수치가 없어 팀 확인 전 placeholder다.** 자정 기준을 KST로 고정했는지, 앱을 끄고 자정을 넘긴 세션에서 날짜가 언제 갱신되는지는 `lib/mock.ts`의 `TODAY_DATE`(모듈 로드 시 1회 계산되는 KST 오늘 날짜) 그대로를 따른다 — 다른 "오늘" 판정(P3 밥 주기 등)과 동일한 한계를 그대로 물려받는다.
 
+### E16. RecurringExpense (정기 지출) — 신규(사용자 요청, 2026-09-21)
+| 필드 | 타입 | 필수 | 설명 | 출처 |
+|---|---|---|---|---|
+| id | uuid | 필수 | | [제안] 다른 엔티티와 동일한 PK 관례 |
+| user_id | uuid (FK → Profile) | 필수 | 본인 명의로만 등록 | 사용자 요청 |
+| group_id | uuid (FK → Group, nullable) | 선택 | 그룹 공유 지출로 반복 등록하는 경우 | 사용자 요청 |
+| amount | integer | 필수 | | 사용자 요청 |
+| category | text | 필수 | | 사용자 요청 |
+| memo | text | 선택 | | 사용자 요청 |
+| day_of_month | integer(1~28) | 필수 | 매달 이 날짜에 지출이 자동 생성됨 — 29~31일은 월마다 없을 수 있어 1~28로 제한 | 사용자 요청 |
+| is_shared | boolean | 필수, 기본 false | | 사용자 요청 |
+| active | boolean | 필수, 기본 true | 꺼두면 더 이상 자동 생성 안 됨(삭제와 별개로 켜고 끌 수 있음) | 사용자 요청 |
+| created_at | timestamptz | 필수(자동) | | [제안] 다른 엔티티와 동일한 감사 필드 관례 |
+
+E4 Expense에 `recurring_expense_id`(FK, nullable) 컬럼이 추가됐다 — 이 템플릿에서 자동 생성된 지출인지 추적하는 용도. 실제 생성은 배치가 아니라 로그인(세션 로드) 시 store가 "이번 달에 아직 생성 안 된 활성 템플릿"을 확인해 처리한다(E13 GoalReward와 같은 "세션을 열 때 계산" 패턴). **2026-09-21 버그 수정**: 탭 두 개를 열어두거나 빠르게 재로그인하면 같은 템플릿이 이번 달에 두 번 생성될 수 있었다 — `expenses(recurring_expense_id, date)` 유니크 인덱스(`017_recurring_expense_unique.sql`)로 막았다.
+
+### E17. GroupCategoryGoal (그룹 예산) — 신규(사용자 요청, 2026-09-21), E12 CategoryGoal의 그룹판
+| 필드 | 타입 | 필수 | 설명 | 출처 |
+|---|---|---|---|---|
+| id | uuid | 필수 | | [제안] 다른 엔티티와 동일한 PK 관례 |
+| group_id | uuid (FK → Group) | 필수 | 개인 목표(E12)와 달리 그룹 단위 | 사용자 요청 |
+| category | text | 필수 | | 사용자 요청 |
+| month | text(YYYY-MM) | 필수 | | 사용자 요청 |
+| goal_amount | integer | 필수 | | 사용자 요청 |
+| created_by | uuid (FK → Profile) | 필수 | 정한 사람(그룹장) 기록용 | 사용자 요청 |
+| created_at / updated_at | timestamptz | 필수(자동) | | [제안] 다른 엔티티와 동일한 감사 필드 관례 |
+
+유니크 제약: (group_id, category, month). **정책**: 사용자 확인 — 그룹장(OWNER)만 정하고 고칠 수 있고, RLS로 강제한다(05-policy.md 새 항목 참고). 그룹원은 조회만 가능(진행률 카드를 다 같이 볼 수 있어야 해서).
+
+### E18. PetFeeding (그룹 밥주기 기록) — 신규(사용자 요청, 2026-09-21)
+| 필드 | 타입 | 필수 | 설명 | 출처 |
+|---|---|---|---|---|
+| id | uuid | 필수 | | [제안] 다른 엔티티와 동일한 PK 관례 |
+| pet_id | uuid (FK → Pet) | 필수 | 그룹 펫만 대상(개인 펫은 Pet.last_fed_date로 충분) | 사용자 요청 |
+| user_id | uuid (FK → Profile) | 필수 | 밥을 준 그룹원 | 사용자 요청 |
+| fed_date | date | 필수 | | 사용자 요청 |
+| created_at | timestamptz | 필수(자동) | | [제안] 다른 엔티티와 동일한 감사 필드 관례 |
+
+유니크 제약: (pet_id, user_id, fed_date) — 그룹원 각자 하루 1번씩만 그룹 펫에게 밥을 줄 수 있다(예전엔 그룹 펫에 수동 밥주기 자체가 없었음). **동시성 버그 수정(2026-09-21)**: 여러 그룹원이 거의 동시에 밥을 주거나 지출을 기록하면 코인·XP 갱신이 서로 덮어써 유실되거나, 그룹을 나간 사람이 밥주기 슬롯을 날려먹을 수 있었다 — `feed_pet()`/`grow_group_pet()` DB 함수(RPC, `018_atomic_group_pet_growth.sql`)가 행을 잠그고 그 트랜잭션 안에서 권한·인원수·코인을 다시 검증해 원자적으로 처리하도록 고쳤다.
+
 ## 관계
 | 관계 | 설명 | 출처 |
 |---|---|---|
@@ -216,13 +266,17 @@
 | Expense 1 — 1 ExpenseOcrRaw | source_type이 RECEIPT·PAYMENT_CAPTURE일 때만 생성, MANUAL엔 없음 | SHY 스펙 `expense_ocr_raw` |
 | Profile 1 — N Saving | | 04-features.md F19 |
 | Group 1 — N Saving | type=GROUP인 경우만 | 04-features.md F19 |
-| Profile 1 — N Income | [?] 그룹 연결 여부 확정 안 됨 | 디자인 화면 2b-1 |
+| Profile 1 — N Income | ~~[?] 그룹 연결 여부 확정 안 됨~~ **2026-09-18 해결**: 개인 전용으로 구현됨(E7 참고) | 디자인 화면 2b-1 |
 | Profile 1 — 1 Pet(개인용) | 개인 펫 1인당 1마리 — 그룹 펫과 별개(E9 참고) | docs/08-pet-feature-spec.md §1, §9 |
 | Group 1 — 1 Pet(그룹 공유용, F22) | 그룹당 1마리, 그룹원이 함께 키움 — XP 획득 방식은 공유 지출 참여도 기반(E9 참고, [?] 잠정값) | docs/08-pet-feature-spec.md §1, §6, §9 + hybranch F22 |
 | Profile 1 — N CategoryGoal | 카테고리·달마다 하나씩(E12) | shooTbranch 통합 |
 | Profile 1 — N GoalReward | 카테고리·달마다 하나씩(E13) | shooTbranch 통합 |
 | Expense 1 — N ExpenseReaction | 지출 하나에 그룹원 여럿이 각자 이모지 반응(E14) | hybranch 통합 |
 | Profile 1 — N AttendanceCheckin | 하루에 한 건씩(E15) | 사용자 요청, 2026-09-20 |
+| Profile 1 — N RecurringExpense | 본인 명의 템플릿만(E16) | 사용자 요청, 2026-09-21 |
+| RecurringExpense 1 — N Expense | 템플릿 하나가 매달 지출 1건씩 생성(E16, `recurring_expense_id`) | 사용자 요청, 2026-09-21 |
+| Group 1 — N GroupCategoryGoal | 그룹·카테고리·달마다 하나씩(E17), 그룹장만 쓰기 가능 | 사용자 요청, 2026-09-21 |
+| Pet(그룹) 1 — N PetFeeding | 그룹원마다 하루 1건씩(E18) | 사용자 요청, 2026-09-21 |
 
 ## 상태값과 데이터 연동
 - 그룹장(Role) 상태(05-policy.md 상태값1): `group_members.role`이 OWNER↔MEMBER로 전환됨. 그룹원이 OWNER 혼자뿐이면 위임 없이 `groups` 행 자체를 삭제 — 이때 `expenses.group_id`는 null로, `group_members`는 cascade로 함께 삭제(SHY 스펙 "설계 포인트").
