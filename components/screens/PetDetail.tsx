@@ -41,8 +41,10 @@ export default function PetDetail({ scope }: { scope: CategoryScope }) {
   }
 
   const displayName = pet.pet_name?.trim() || (scope.kind === "personal" ? "저금통이" : "우리 펫");
-  // 2026-09-18 사용자 요청: "하루 한 번" 제한 대신 코인이 있는 만큼 계속 먹일 수 있게 바꿨다.
-  const canAffordFeed = pet.total_coins >= FEED_COIN_COST;
+  // 2026-09-21 사용자 요청: "하루 한 번" 제한을 되살렸다(store.feedPet이 실제로 막는다) — 여기서도
+  // 버튼을 미리 비활성화해서, 눌러보고서야 "오늘은 이미 줬어요" 에러를 보는 대신 바로 알 수 있게 한다.
+  const alreadyFedToday = pet.last_fed_date === TODAY_DATE;
+  const canAffordFeed = !alreadyFedToday && pet.total_coins >= FEED_COIN_COST;
 
   // 방치 시 "시무룩"(hybranch F22) — 단계는 안 내려가고 화면 표시만 바뀐다.
   let sulking = false;
@@ -154,7 +156,7 @@ export default function PetDetail({ scope }: { scope: CategoryScope }) {
                 opacity: feeding ? 0.6 : 1,
               }}
             >
-              {canAffordFeed ? `밥 주기 (🪙${FEED_COIN_COST})` : "코인이 부족해요"}
+              {canAffordFeed ? `밥 주기 (🪙${FEED_COIN_COST})` : alreadyFedToday ? "오늘은 이미 밥을 줬어요" : "코인이 부족해요"}
             </div>
           </>
         ) : (
