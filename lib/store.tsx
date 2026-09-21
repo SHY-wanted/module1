@@ -1011,6 +1011,15 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       // 이유 — 막 만든 그룹 펫은 아직 RETURNING이 요구하는 select 정책을 못 만족할 수 있어서).
       async createPet(scope: CategoryScope, name: string): Promise<MutationResult<Pet>> {
         if (!session) return { ok: false, error: "로그인이 필요해요" };
+        // 버그 수정(2026-09-21): 펫을 만들기 "전"에 출석체크부터 하면, 그때는 코인을 넣을 펫이
+        // 없어서 조용히 사라졌다(그 출석체크를 다시 할 수도 없어 영영 못 받았다). 개인 펫은
+        // 유저당 하나뿐이라(pets_one_personal_per_user) 지금 이게 처음 만드는 펫이 맞으므로,
+        // 그동안 쌓인 출석체크 코인을 전부 여기로 합쳐서 시작 코인으로 넣어준다.
+        let startingCoins = 0;
+        if (scope.kind === "personal") {
+          const { data: pastCheckins } = await supabase.from("attendance_checkins").select("coins_earned").eq("user_id", session.user.id);
+          startingCoins = (pastCheckins ?? []).reduce((sum, c) => sum + c.coins_earned, 0);
+        }
         const trimmed = name.trim();
         const newPet: Pet = {
           id: crypto.randomUUID(),
@@ -1019,7 +1028,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
           pet_name: trimmed.length > 0 ? trimmed : null,
           stage_index: 1,
           xp_progress: 0,
-          total_coins: 0,
+          total_coins: startingCoins,
           last_fed_date: null,
           body_color: DEFAULT_PET_COLORS.body,
           ledger_color: DEFAULT_PET_COLORS.ledger,
