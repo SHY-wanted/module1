@@ -1,0 +1,229 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<meta name="design_doc_mode" content="canvas">
+<link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800;900&display=swap" rel="stylesheet">
+<style>
+  body { margin:0; background:#EFECFB; font-family:'Nunito',system-ui,sans-serif; }
+  a { color:#6A5ECF; } a:hover { color:#544ab0; }
+  ::-webkit-scrollbar { width:0; height:0; }
+</style>
+</helmet>
+
+<div style="width:1120px;box-sizing:border-box;padding:28px;display:flex;flex-direction:column;gap:20px;font-family:'Nunito',system-ui,sans-serif;color:#2D2A3E;">
+
+  <div style="display:flex;align-items:flex-end;gap:14px;flex-wrap:wrap;">
+    <div>
+      <div style="font-size:11px;font-weight:800;letter-spacing:.14em;color:#6A5ECF;">SHOOT · PET CUSTOMIZATION</div>
+      <div style="font-size:24px;font-weight:900;margin-top:4px;">캐릭터 커스텀</div>
+    </div>
+    <div style="font-size:13px;font-weight:700;color:#6B6980;padding-bottom:3px;">스와치를 눌러 색을 바꿔보세요 — 캐릭터가 실시간으로 반영됩니다.</div>
+  </div>
+
+  <div style="display:flex;gap:20px;align-items:flex-start;flex-wrap:wrap;">
+
+    <div style="width:360px;background:#fff;border-radius:26px;padding:22px;box-shadow:0 10px 30px rgba(45,42,62,0.08);display:flex;flex-direction:column;gap:18px;flex-shrink:0;">
+      <div style="background:linear-gradient(170deg,#F4F1FE 0%,#EAE4FC 100%);border-radius:20px;padding:16px 16px 10px;display:flex;flex-direction:column;align-items:center;">
+        <div style="align-self:flex-start;font-size:11px;font-weight:800;color:#6A5ECF;background:#fff;padding:4px 10px;border-radius:9px;">미리보기</div>
+        <x-import component-from-global-scope="shoot-pet" from="./shoot-pet.js" stage="3" mood="{{ mood }}" body="{{ colors.body }}" book="{{ colors.book }}" bag="{{ colors.bag }}" eye="{{ colors.eye }}" leaf="{{ colors.leaf }}" style="width:250px;height:261px;margin-top:-4px;" hint-size="250px,261px"></x-import>
+        <div style="display:flex;gap:6px;margin:2px 0 6px;">
+          <sc-for list="{{ moodTabs }}" as="t" hint-placeholder-count="3">
+            <div onClick="{{ t.pick }}" style="font-size:11px;font-weight:800;padding:6px 12px;border-radius:10px;cursor:pointer;background:{{ t.bg }};color:{{ t.fg }};">{{ t.label }}</div>
+          </sc-for>
+        </div>
+      </div>
+
+      <div>
+        <div style="font-size:12px;font-weight:800;color:#6A5ECF;background:#F0EEFF;display:inline-block;padding:5px 11px;border-radius:9px;">성장 단계 미리보기</div>
+        <div style="display:flex;gap:8px;margin-top:12px;">
+          <sc-for list="{{ stagePreview }}" as="s" hint-placeholder-count="5">
+            <div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:6px;">
+              <div style="width:100%;aspect-ratio:1;background:#F7F5FD;border-radius:14px;display:flex;align-items:center;justify-content:center;padding:4px;box-sizing:border-box;">
+                <x-import component-from-global-scope="shoot-pet" from="./shoot-pet.js" stage="{{ s.stage }}" mood="{{ s.mood }}" animate="off" holding="{{ s.holding }}" carrying="none" body="{{ colors.body }}" book="{{ colors.book }}" bag="{{ colors.bag }}" eye="{{ colors.eye }}" leaf="{{ colors.leaf }}" style="width:100%;height:100%;" hint-size="100%,100%"></x-import>
+              </div>
+              <div style="text-align:center;">
+                <div style="font-size:9.5px;font-weight:800;color:#2D2A3E;line-height:1.2;">{{ s.label }}</div>
+                <div style="font-size:9px;font-weight:700;color:#8C89A3;margin-top:1px;">{{ s.sub }}</div>
+              </div>
+            </div>
+          </sc-for>
+        </div>
+      </div>
+    </div>
+
+    <div style="flex:1;min-width:540px;background:#fff;border-radius:26px;padding:22px;box-shadow:0 10px 30px rgba(45,42,62,0.08);display:flex;flex-direction:column;gap:14px;">
+
+      <div style="display:flex;align-items:center;gap:14px;flex-wrap:wrap;">
+        <div style="background:#6A5ECF;color:#fff;font-size:15px;font-weight:900;padding:11px 22px;border-radius:14px;">색상 커스텀</div>
+        <div style="flex:1;min-width:210px;display:flex;align-items:center;gap:10px;background:#F7F5FD;border-radius:14px;padding:9px 14px;">
+          <div style="font-size:12px;font-weight:800;color:#6B6980;white-space:nowrap;">기본 색상 프리셋</div>
+          <div style="display:flex;gap:7px;margin-left:auto;">
+            <sc-for list="{{ presets }}" as="p" hint-placeholder-count="6">
+              <div onClick="{{ p.pick }}" title="{{ p.name }}" style="width:24px;height:24px;border-radius:50%;cursor:pointer;background:{{ p.swatch }};box-shadow:{{ p.ring }};"></div>
+            </sc-for>
+          </div>
+        </div>
+      </div>
+
+      <sc-for list="{{ rows }}" as="r" hint-placeholder-count="5">
+        <div style="background:#FBFAFE;border:1.5px solid #F0EDFA;border-radius:18px;padding:14px 16px;display:flex;align-items:center;gap:14px;">
+          <div style="width:46px;height:46px;border-radius:14px;background:#F0EEFF;display:flex;align-items:center;justify-content:center;flex-shrink:0;padding:7px;box-sizing:border-box;">
+            <x-import component-from-global-scope="shoot-pet" from="./shoot-pet.js" part="{{ r.part }}" animate="off" body="{{ colors.body }}" book="{{ colors.book }}" bag="{{ colors.bag }}" eye="{{ colors.eye }}" leaf="{{ colors.leaf }}" style="width:100%;height:100%;" hint-size="100%,100%"></x-import>
+          </div>
+          <div style="width:124px;flex-shrink:0;">
+            <div style="font-size:14px;font-weight:900;">{{ r.title }}</div>
+            <div style="font-size:11px;font-weight:600;color:#8C89A3;line-height:1.4;margin-top:2px;">{{ r.desc }}</div>
+          </div>
+          <div style="display:flex;gap:8px;flex:1;justify-content:center;">
+            <sc-for list="{{ r.swatches }}" as="s" hint-placeholder-count="8">
+              <div onClick="{{ s.pick }}" style="width:25px;height:25px;border-radius:50%;cursor:pointer;flex-shrink:0;background:{{ s.color }};box-shadow:{{ s.ring }};transition:transform .12s;" style-hover="transform:scale(1.14)"></div>
+            </sc-for>
+          </div>
+          <div style="width:52px;height:52px;border-radius:14px;background:#fff;box-shadow:0 2px 8px rgba(45,42,62,0.08);display:flex;align-items:center;justify-content:center;flex-shrink:0;padding:6px;box-sizing:border-box;">
+            <x-import component-from-global-scope="shoot-pet" from="./shoot-pet.js" part="{{ r.part }}" animate="off" body="{{ colors.body }}" book="{{ colors.book }}" bag="{{ colors.bag }}" eye="{{ colors.eye }}" leaf="{{ colors.leaf }}" style="width:100%;height:100%;" hint-size="100%,100%"></x-import>
+          </div>
+        </div>
+      </sc-for>
+
+      <div style="display:flex;align-items:center;gap:16px;background:#F7F5FD;border-radius:18px;padding:14px 18px;flex-wrap:wrap;">
+        <div style="font-size:12px;font-weight:700;color:#6B6980;line-height:1.5;flex:1;min-width:180px;">원하는 색으로 나만의 캐릭터를 만들어보세요.<br>그룹 멤버 모두에게 같은 모습으로 보여요.</div>
+        <div onClick="{{ onReset }}" style="font-size:13px;font-weight:800;color:#6A5ECF;background:#fff;padding:12px 18px;border-radius:14px;cursor:pointer;">되돌리기</div>
+        <div onClick="{{ onApply }}" style="font-size:14px;font-weight:900;color:#fff;background:#6A5ECF;padding:13px 30px;border-radius:14px;cursor:pointer;box-shadow:0 6px 16px rgba(106,94,207,.35);">{{ applyLabel }}</div>
+      </div>
+    </div>
+  </div>
+
+  <div style="background:#fff;border-radius:26px;padding:22px;box-shadow:0 10px 30px rgba(45,42,62,0.08);">
+    <div style="font-size:15px;font-weight:900;">개발 핸드오프</div>
+    <div style="font-size:12px;font-weight:600;color:#6B6980;margin-top:4px;">캐릭터는 <code style="background:#F0EEFF;padding:2px 6px;border-radius:5px;">shoot-pet.js</code> 한 파일. 의존성 없음 · 셰도우 DOM 격리 · <code style="background:#F0EEFF;padding:2px 6px;border-radius:5px;">prefers-reduced-motion</code> 지원.</div>
+    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:12px;margin-top:16px;">
+      <sc-for list="{{ handoff }}" as="h" hint-placeholder-count="4">
+        <div style="background:#FBFAFE;border:1.5px solid #F0EDFA;border-radius:16px;padding:14px 16px;">
+          <div style="font-size:12px;font-weight:900;color:#6A5ECF;font-family:ui-monospace,monospace;">{{ h.key }}</div>
+          <div style="font-size:12.5px;font-weight:600;color:#2D2A3E;line-height:1.55;margin-top:5px;">{{ h.text }}</div>
+        </div>
+      </sc-for>
+    </div>
+    <div style="margin-top:16px;background:#2D2A3E;border-radius:16px;padding:18px 20px;overflow:auto;">
+      <pre style="margin:0;font-family:ui-monospace,SFMono-Regular,monospace;font-size:12px;line-height:1.75;color:#E6E3F5;">{{ snippet }}</pre>
+    </div>
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{&quot;$preview&quot;:{&quot;width&quot;:1180,&quot;height&quot;:1240}}">
+// 레퍼런스 시트의 스와치 8색을 그대로 가져옴
+const PALETTE = ['#A78BEA', '#F587B8', '#7FC4F0', '#7DDCB8', '#F5D96B', '#F5B843', '#F78D7D', '#3A3A46'];
+// 눈·잎사귀는 같은 8색을 쓰되 시작 색만 다르게 (레퍼런스 동일)
+const EYE_PALETTE = PALETTE;
+const LEAF_PALETTE = ['#8FE0A8', '#6FD9C0', '#7FC4F0', '#A78BEA', '#F587B8', '#F5B843', '#F78D7D', '#8A8A99'];
+
+const DEFAULT_COLORS = { body: '#C4B5EF', book: '#7B63C8', bag: '#9B87DC', eye: '#463571', leaf: '#A38EE4' };
+
+// 프리셋: 파트 색을 한 번에 갈아끼우는 테마. 그룹 테마로 그대로 쓸 수 있음.
+const PRESETS = [
+  { name: '라벤더', swatch: '#A78BEA', colors: DEFAULT_COLORS },
+  { name: '스카이', swatch: '#7FC4F0', colors: { body: '#A8D8F5', book: '#3D89C4', bag: '#6FB4E4', eye: '#27476B', leaf: '#8FE0A8' } },
+  { name: '피치', swatch: '#F587B8', colors: { body: '#F7B6D2', book: '#CE5490', bag: '#EE8CB9', eye: '#6B2A4E', leaf: '#F5D96B' } },
+  { name: '민트', swatch: '#7DDCB8', colors: { body: '#A6E8CE', book: '#33997A', bag: '#6FCEAE', eye: '#1F5445', leaf: '#6FD9C0' } },
+  { name: '허니', swatch: '#F5D96B', colors: { body: '#F7DF97', book: '#C4931F', bag: '#EEC15C', eye: '#5C4A14', leaf: '#B9D98A' } },
+  { name: '차콜', swatch: '#3A3A46', colors: { body: '#A8A6B6', book: '#41414F', bag: '#76748A', eye: '#23222C', leaf: '#8A8A99' } },
+];
+
+const ROWS = [
+  { key: 'body', part: 'body', title: '몸 색상', desc: '캐릭터의 전체적인 색상', palette: PALETTE },
+  { key: 'book', part: 'book', title: '가계부 색상', desc: '안고 있는 장부의 색', palette: PALETTE },
+  { key: 'bag', part: 'bag', title: '가방 색상', desc: '등에 멘 가방의 색', palette: PALETTE },
+  { key: 'eye', part: 'eye', title: '눈 색상', desc: '눈동자의 색', palette: EYE_PALETTE },
+  { key: 'leaf', part: 'leaf', title: '잎사귀 색상', desc: '머리 새싹의 색', palette: LEAF_PALETTE },
+];
+
+class Component extends DCLogic {
+  state = { colors: { ...DEFAULT_COLORS }, mood: 'happy', applied: false };
+
+  set(key, color) {
+    this.setState((s) => ({ colors: { ...s.colors, [key]: color }, applied: false }));
+  }
+
+  renderVals() {
+    const { colors, mood, applied } = this.state;
+    const ring = (on) => (on ? '0 0 0 3px #fff, 0 0 0 5.5px #6A5ECF' : '0 0 0 1.5px rgba(45,42,62,.09)');
+
+    return {
+      colors,
+      mood,
+      applyLabel: applied ? '적용 완료 ✓' : '적용하기',
+      onApply: () => this.setState({ applied: true }),
+      onReset: () => this.setState({ colors: { ...DEFAULT_COLORS }, applied: false }),
+
+      moodTabs: [
+        { key: 'happy', label: '기분 좋아요' },
+        { key: 'sulking', label: '시무룩' },
+        { key: 'sleepy', label: '졸려요' },
+      ].map((t) => ({
+        label: t.label,
+        bg: mood === t.key ? '#6A5ECF' : '#fff',
+        fg: mood === t.key ? '#fff' : '#6B6980',
+        pick: () => this.setState({ mood: t.key }),
+      })),
+
+      presets: PRESETS.map((p) => ({
+        name: p.name,
+        swatch: p.swatch,
+        ring: ring(ROWS.every((r) => colors[r.key] === p.colors[r.key])),
+        pick: () => this.setState({ colors: { ...p.colors }, applied: false }),
+      })),
+
+      rows: ROWS.map((r) => ({
+        part: r.part,
+        title: r.title,
+        desc: r.desc,
+        swatches: r.palette.map((color) => ({
+          color,
+          ring: ring(colors[r.key] === color),
+          pick: () => this.set(r.key, color),
+        })),
+      })),
+
+      stagePreview: [
+        { stage: '0', label: 'Stage 0', sub: '알', mood: 'happy', holding: 'none' },
+        { stage: '1', label: 'Stage 1', sub: '유년기', mood: 'happy', holding: 'none' },
+        { stage: '2', label: 'Stage 2', sub: '청소년기', mood: 'happy', holding: 'none' },
+        { stage: '3', label: 'Stage 3', sub: '성체', mood: 'happy', holding: 'book' },
+        { stage: '2', label: 'Sulking', sub: '특별한 상태', mood: 'sulking', holding: 'none' },
+      ],
+
+      handoff: [
+        { key: 'body / book / bag / eye / leaf', text: '파트별 hex 하나만 주면 내부에서 HSL로 밝은면·어두운면을 파생시켜 그라디언트를 만듭니다. 어떤 색을 넣어도 입체감이 유지됩니다.' },
+        { key: 'part="book"', text: '파트 하나만 단독 렌더. 커스텀 UI의 아이콘과 미리보기를 별도 에셋 없이 캐릭터 본체와 같은 아트로 채울 수 있습니다.' },
+        { key: 'mood / stage', text: 'FACES · STAGE 테이블에 키를 추가하면 표정과 성장 단계를 늘릴 수 있습니다. 알(stage 0)은 팔·소품이 자동으로 빠집니다.' },
+        { key: 'MOTION / SECONDARY', text: '몸통 키프레임과 새싹·팔·그림자의 위상차 테이블. 값만 바꿔 탄성과 속도를 조절합니다.' },
+      ],
+
+      snippet: [
+        '// 그룹 테마를 그대로 넘기면 끝',
+        '<shoot-pet',
+        '  stage="3" mood="happy"',
+        '  body="' + colors.body + '" book="' + colors.book + '"',
+        '  bag="' + colors.bag + '" eye="' + colors.eye + '" leaf="' + colors.leaf + '">',
+        '</shoot-pet>',
+        '',
+        '// 커스텀 UI의 파트 미리보기 — 같은 아트 재사용',
+        '<shoot-pet part="leaf" leaf="' + colors.leaf + '"></shoot-pet>',
+        '',
+        '// 기록 활동에 반응',
+        "pet.setAttribute('mood', daysIdle >= 3 ? 'sulking' : 'happy');",
+        "pet.setAttribute('stage', String(stageFromStreak(streak)));",
+      ].join('\n'),
+    };
+  }
+}
+</script>
+</body>
+</html>

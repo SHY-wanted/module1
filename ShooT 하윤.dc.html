@@ -59,6 +59,10 @@
           <div style="flex:1;padding:24px 24px 32px;display:flex;flex-direction:column;">
             <div style="display:flex;flex-direction:column;gap:14px;">
               <div>
+                <div style="font-size:13px;font-weight:700;color:#2D2A3E;margin-bottom:7px;">이름</div>
+                <input type="text" placeholder="이름을 입력해주세요" style="width:100%;box-sizing:border-box;height:48px;border-radius:14px;border:2px solid #E8E4F4;background:#fff;padding:0 16px;font-size:14px;font-weight:600;color:#2D2A3E;">
+              </div>
+              <div>
                 <div style="font-size:13px;font-weight:700;color:#2D2A3E;margin-bottom:7px;">이메일</div>
                 <input type="email" placeholder="you@email.com" style="width:100%;box-sizing:border-box;height:48px;border-radius:14px;border:2px solid #E8E4F4;background:#fff;padding:0 16px;font-size:14px;font-weight:600;color:#2D2A3E;">
               </div>
@@ -68,6 +72,15 @@
               </div>
             </div>
             <div style="margin-top:22px;height:50px;border-radius:16px;background:linear-gradient(135deg,#E3DFFB 0%,#BDB2F2 100%);color:#3F3480;display:flex;align-items:center;justify-content:center;font-size:15px;font-weight:800;box-shadow:0 8px 18px rgba(106,94,207,0.3);">가입하기</div>
+            <div style="display:flex;align-items:center;gap:10px;margin:20px 0;">
+              <div style="flex:1;height:1px;background:#E8E4F4;"></div>
+              <div style="font-size:12px;color:#6B6980;font-weight:600;">또는</div>
+              <div style="flex:1;height:1px;background:#E8E4F4;"></div>
+            </div>
+            <div style="height:50px;border-radius:16px;background:#FEE500;color:#191919;display:flex;align-items:center;justify-content:center;gap:8px;font-size:15px;font-weight:800;">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="#191919"><path d="M12 3C6.5 3 2 6.4 2 10.6c0 2.7 1.8 5.1 4.6 6.5-.2.7-1.2 4.1-1.2 4.4 0 0 0 .2.1.3.1.1.2.1.3.1.2 0 3.4-2.2 4.4-2.9.6.1 1.2.1 1.8.1 5.5 0 10-3.4 10-7.6C22 6.4 17.5 3 12 3Z"></path></svg>
+              카카오로 계속하기
+            </div>
             <div style="flex:1;"></div>
             <div style="text-align:center;font-size:13px;color:#6B6980;font-weight:600;">이미 계정이 있으신가요? <span style="color:#6A5ECF;font-weight:800;">로그인</span></div>
           </div>
@@ -138,6 +151,15 @@
               <div style="font-size:13px;color:#2D2A3E;font-weight:700;">로그인 상태 유지</div>
             </div>
             <div style="margin-top:20px;height:50px;border-radius:16px;background:linear-gradient(135deg,#E3DFFB 0%,#BDB2F2 100%);color:#3F3480;display:flex;align-items:center;justify-content:center;font-size:15px;font-weight:800;box-shadow:0 8px 18px rgba(106,94,207,0.3);">로그인</div>
+            <div style="display:flex;align-items:center;gap:10px;margin:20px 0;">
+              <div style="flex:1;height:1px;background:#E8E4F4;"></div>
+              <div style="font-size:12px;color:#6B6980;font-weight:600;">또는</div>
+              <div style="flex:1;height:1px;background:#E8E4F4;"></div>
+            </div>
+            <div style="height:50px;border-radius:16px;background:#FEE500;color:#191919;display:flex;align-items:center;justify-content:center;gap:8px;font-size:15px;font-weight:800;">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="#191919"><path d="M12 3C6.5 3 2 6.4 2 10.6c0 2.7 1.8 5.1 4.6 6.5-.2.7-1.2 4.1-1.2 4.4 0 0 0 .2.1.3.1.1.2.1.3.1.2 0 3.4-2.2 4.4-2.9.6.1 1.2.1 1.8.1 5.5 0 10-3.4 10-7.6C22 6.4 17.5 3 12 3Z"></path></svg>
+              카카오로 계속하기
+            </div>
             <div style="flex:1;"></div>
             <div style="text-align:center;font-size:13px;color:#6B6980;font-weight:600;">계정이 없으신가요? <span style="color:#6A5ECF;font-weight:800;">회원가입</span></div>
           </div>
@@ -186,6 +208,32 @@
     </div>
 
     <div style="display:flex;flex-direction:column;gap:14px;">
+      <div id="password-reset" style="font-size:13px;font-weight:700;color:#6A5ECF;">2a-1. 비밀번호 재설정</div>
+      <x-import component-from-global-scope="IOSDevice" from="./ios-frame.jsx" width="{{ frameW }}" height="{{ frameH }}" hint-size="340,734">
+        <div style="height:100%;box-sizing:border-box;background:#F6F5FC;display:flex;flex-direction:column;overflow:auto;">
+          <div style="padding:60px 24px 26px;text-align:center;background:#F0EEFF;">
+            <div style="width:56px;height:56px;border-radius:16px;background:#6A5ECF;display:flex;align-items:center;justify-content:center;margin:0 auto 14px;">
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4"></path><polyline points="10 17 15 12 10 7"></polyline><line x1="15" x2="3" y1="12" y2="12"></line></svg>
+            </div>
+            <div style="font-size:20px;font-weight:800;color:#2D2A3E;">비밀번호를 잊으셨나요?</div>
+            <div style="font-size:13px;color:#6B6980;margin-top:6px;font-weight:600;">가입한 이메일로 재설정 링크를 보내드려요</div>
+          </div>
+          <div style="flex:1;padding:24px 24px 32px;display:flex;flex-direction:column;">
+            <div style="display:flex;flex-direction:column;gap:14px;">
+              <div>
+                <div style="font-size:13px;font-weight:700;color:#2D2A3E;margin-bottom:7px;">이메일</div>
+                <input type="email" placeholder="you@email.com" style="width:100%;box-sizing:border-box;height:48px;border-radius:14px;border:2px solid #E8E4F4;background:#fff;padding:0 16px;font-size:14px;font-weight:600;color:#2D2A3E;">
+              </div>
+            </div>
+            <div style="margin-top:22px;height:50px;border-radius:16px;background:linear-gradient(135deg,#E3DFFB 0%,#BDB2F2 100%);color:#3F3480;display:flex;align-items:center;justify-content:center;font-size:15px;font-weight:800;box-shadow:0 8px 18px rgba(106,94,207,0.3);">재설정 링크 보내기</div>
+            <div style="flex:1;"></div>
+            <div style="text-align:center;font-size:13px;color:#6B6980;font-weight:600;">로그인으로 돌아가기</div>
+          </div>
+        </div>
+      </x-import>
+    </div>
+
+    <div style="display:flex;flex-direction:column;gap:14px;">
       <div style="font-size:13px;font-weight:700;color:#6A5ECF;">2b. 메인 (홈)</div>
       <x-import component-from-global-scope="IOSDevice" from="./ios-frame.jsx" width="{{ frameW }}" height="{{ frameH }}" hint-size="340,734">
         <div style="height:100%;box-sizing:border-box;background:#F6F5FC;display:flex;flex-direction:column;">
@@ -204,7 +252,16 @@
           </div>
 
           <div style="flex:1;overflow:auto;padding:0 20px 20px;">
-          <a href="#income-list" style="margin-top:18px;background:#fff;border:1.5px solid #E8E4F4;border-radius:22px;padding:18px 20px;display:flex;align-items:center;gap:12px;text-decoration:none;">
+          <div style="margin-top:16px;background:linear-gradient(135deg,#FFD166 0%,#F2A93B 100%);border-radius:20px;padding:16px 18px;display:flex;align-items:center;gap:12px;">
+            <div style="width:38px;height:38px;border-radius:12px;background:rgba(255,255,255,0.35);display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:18px;">🪙</div>
+            <div style="flex:1;min-width:0;">
+              <div style="font-size:14px;font-weight:800;color:#5A3A00;">출석체크하고 코인 받기</div>
+              <div style="font-size:11px;font-weight:700;color:rgba(90,58,0,0.75);margin-top:2px;">7일 꼬박 채우면 코인 2배!</div>
+            </div>
+            <div style="height:34px;padding:0 16px;border-radius:12px;background:#5A3A00;color:#FFD166;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:800;flex-shrink:0;">출석하기</div>
+          </div>
+
+          <a href="#income-list" style="margin-top:12px;background:#fff;border:1.5px solid #E8E4F4;border-radius:22px;padding:18px 20px;display:flex;align-items:center;gap:12px;text-decoration:none;">
             <div style="width:36px;height:36px;border-radius:12px;background:#E8F9F7;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
               <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="#1D7A69" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" x2="12" y1="19" y2="5"></line><polyline points="5 12 12 5 19 12"></polyline></svg>
             </div>
@@ -218,30 +275,40 @@
           <div style="margin-top:12px;background:linear-gradient(135deg,#8C81E0 0%,#6A5ECF 100%);border-radius:22px;padding:20px;box-shadow:0 10px 26px rgba(106,94,207,0.32);">
             <div style="font-size:12px;font-weight:700;color:rgba(255,255,255,0.85);">이번 달 총 지출</div>
             <div style="font-size:30px;font-weight:800;color:#fff;margin-top:6px;letter-spacing:-0.5px;">{{ homeExpenseLabel }}</div>
-            <div style="display:flex;flex-direction:column;gap:8px;margin-top:16px;">
-              <div>
-                <div style="display:flex;justify-content:space-between;font-size:11px;font-weight:700;color:rgba(255,255,255,0.9);margin-bottom:4px;"><span>식비</span><span>42%</span></div>
-                <div style="height:5px;border-radius:3px;background:rgba(255,255,255,0.25);"><div style="width:42%;height:100%;border-radius:3px;background:#fff;"></div></div>
-              </div>
-              <div>
-                <div style="display:flex;justify-content:space-between;font-size:11px;font-weight:700;color:rgba(255,255,255,0.9);margin-bottom:4px;"><span>생활</span><span>28%</span></div>
-                <div style="height:5px;border-radius:3px;background:rgba(255,255,255,0.25);"><div style="width:28%;height:100%;border-radius:3px;background:#fff;"></div></div>
-              </div>
-              <div>
-                <div style="display:flex;justify-content:space-between;font-size:11px;font-weight:700;color:rgba(255,255,255,0.9);margin-bottom:4px;"><span>문화</span><span>17%</span></div>
-                <div style="height:5px;border-radius:3px;background:rgba(255,255,255,0.25);"><div style="width:17%;height:100%;border-radius:3px;background:#fff;"></div></div>
+            <div style="font-size:11px;font-weight:700;color:rgba(255,255,255,0.8);margin-top:4px;">지난달보다 12% 늘었어요</div>
+            <div style="display:flex;align-items:center;gap:16px;margin-top:16px;">
+              <svg width="72" height="72" viewBox="0 0 36 36" style="flex-shrink:0;transform:rotate(-90deg);">
+                <circle cx="18" cy="18" r="16" fill="none" stroke="rgba(255,255,255,0.25)" stroke-width="10"></circle>
+                <circle cx="18" cy="18" r="16" fill="none" stroke="#FFD166" stroke-width="10" stroke-dasharray="42.2 58.3" stroke-dashoffset="0"></circle>
+                <circle cx="18" cy="18" r="16" fill="none" stroke="#9FE0CB" stroke-width="10" stroke-dasharray="28.1 72.4" stroke-dashoffset="-42.2"></circle>
+                <circle cx="18" cy="18" r="16" fill="none" stroke="#F5A8E0" stroke-width="10" stroke-dasharray="17.1 83.4" stroke-dashoffset="-70.3"></circle>
+              </svg>
+              <div style="flex:1;display:flex;flex-direction:column;gap:6px;min-width:0;">
+                <div style="display:flex;align-items:center;gap:6px;font-size:11px;font-weight:700;color:rgba(255,255,255,0.9);"><div style="width:8px;height:8px;border-radius:50%;background:#FFD166;flex-shrink:0;"></div><span style="flex:1;">식비</span><span>42%</span></div>
+                <div style="display:flex;align-items:center;gap:6px;font-size:11px;font-weight:700;color:rgba(255,255,255,0.9);"><div style="width:8px;height:8px;border-radius:50%;background:#9FE0CB;flex-shrink:0;"></div><span style="flex:1;">생활</span><span>28%</span></div>
+                <div style="display:flex;align-items:center;gap:6px;font-size:11px;font-weight:700;color:rgba(255,255,255,0.9);"><div style="width:8px;height:8px;border-radius:50%;background:#F5A8E0;flex-shrink:0;"></div><span style="flex:1;">문화</span><span>17%</span></div>
               </div>
             </div>
           </div>
+
+          <a href="#monthly-goal-setting-home" style="margin-top:12px;background:#F0EEFF;border:1.5px dashed #6A5ECF;border-radius:22px;padding:18px 20px;display:flex;align-items:center;gap:14px;text-decoration:none;">
+            <div style="width:36px;height:36px;border-radius:12px;background:#fff;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+              <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="#6A5ECF" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z"></path><line x1="4" x2="4" y1="22" y2="15"></line></svg>
+            </div>
+            <div style="flex:1;min-width:0;">
+              <div style="font-size:14px;font-weight:800;color:#2D2A3E;">이번 달 목표 설정하기</div>
+              <div style="font-size:12px;color:#6B6980;margin-top:2px;">카테고리별 목표를 정하고 지출을 관리해보세요</div>
+            </div>
+            <span style="font-size:10px;font-weight:800;color:#fff;background:#6A5ECF;border-radius:999px;padding:2px 8px;flex-shrink:0;">NEW</span>
+          </a>
 
           <a href="#group-create-3a" style="margin-top:16px;height:48px;border-radius:16px;background:#fff;border:1.5px dashed #6A5ECF;display:flex;align-items:center;justify-content:center;gap:8px;text-decoration:none;">
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#6A5ECF" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" x2="12" y1="5" y2="19"></line><line x1="5" x2="19" y1="12" y2="12"></line></svg>
             <span style="font-size:14px;font-weight:800;color:#6A5ECF;">그룹 만들기</span>
           </a>
 
-          <div style="display:flex;align-items:baseline;justify-content:space-between;margin-top:22px;">
+          <div style="margin-top:22px;">
             <div style="font-size:15px;font-weight:800;color:#2D2A3E;">최근 지출</div>
-            <div style="font-size:12px;font-weight:700;color:#6A5ECF;">전체보기</div>
           </div>
           <div style="display:flex;flex-direction:column;gap:8px;margin-top:10px;">
             <div style="background:#fff;border-radius:16px;padding:12px 14px;display:flex;align-items:center;gap:12px;border:1px solid #E8E4F4;">
@@ -398,13 +465,13 @@
             </div>
 
             <div style="margin-top:14px;background:#fff;border:1.5px solid #E8E4F4;border-radius:14px;padding:14px;display:flex;align-items:center;gap:10px;">
-              <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="#6B6980" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a9 9 0 1 1-6.219-8.56"/></svg>
+              <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="#6B6980" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m17 2 4 4-4 4"></path><path d="M3 11v-1a4 4 0 0 1 4-4h14"></path><path d="m7 22-4-4 4-4"></path><path d="M21 13v1a4 4 0 0 1-4 4H3"></path></svg>
               <div style="flex:1;font-size:13px;font-weight:700;color:#2D2A3E;">매달 자동으로 반복</div>
               <div style="width:42px;height:24px;border-radius:12px;background:#6A5ECF;position:relative;flex-shrink:0;"><div style="width:18px;height:18px;border-radius:50%;background:#fff;position:absolute;top:3px;left:21px;box-shadow:0 2px 5px rgba(0,0,0,0.2);"></div></div>
             </div>
 
             <div style="flex:1;"></div>
-            <div style="margin-top:22px;height:50px;border-radius:16px;background:linear-gradient(135deg,#E3DFFB 0%,#BDB2F2 100%);color:#3F3480;display:flex;align-items:center;justify-content:center;font-size:15px;font-weight:800;box-shadow:0 8px 18px rgba(106,94,207,0.3);">추가하기</div>
+            <div style="margin-top:22px;height:58px;border-radius:16px;background:linear-gradient(135deg,#E3DFFB 0%,#BDB2F2 100%);color:#3F3480;display:flex;align-items:center;justify-content:center;font-size:15px;font-weight:800;box-shadow:0 8px 18px rgba(106,94,207,0.3);">추가하기</div>
           </div>
         </div>
       </x-import>
@@ -421,36 +488,40 @@
 
           <div style="flex:1;overflow:auto;padding:6px 20px 20px;">
 
-            <div style="font-size:12px;font-weight:800;color:#8B8378;margin:14px 0 8px;">카테고리</div>
+            <div style="display:flex;align-items:center;justify-content:space-between;margin:14px 0 8px;">
+              <div style="font-size:12px;font-weight:800;color:#8B8378;">카테고리</div>
+              <div style="font-size:12px;font-weight:800;color:#6A5ECF;">카테고리 편집</div>
+            </div>
+            <select style="width:100%;box-sizing:border-box;height:40px;border-radius:12px;border:1.5px solid #E8E4F4;background:#fff;padding:0 12px;font-size:13px;font-weight:700;color:#2D2A3E;margin-bottom:8px;">
+              <option>개인 카테고리</option>
+              <option>민준 &amp; 서연 카테고리</option>
+              <option>행복한 우리집 카테고리</option>
+            </select>
             <div style="background:#fff;border-radius:16px;border:1px solid #E8E4F4;overflow:hidden;">
               <div style="padding:13px 14px;display:flex;align-items:center;gap:10px;border-bottom:1px solid #F1EEEE;">
-                <div style="width:30px;height:30px;border-radius:9px;background:#FFF2EC;display:flex;align-items:center;justify-content:center;flex-shrink:0;"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#A15A1E" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 8h1a4 4 0 1 1 0 8h-1"></path><path d="M3 8h14v9a4 4 0 0 1-4 4H7a4 4 0 0 1-4-4Z"></path></svg></div>
+                <div style="width:16px;height:16px;border-radius:50%;background:#A15A1E;flex-shrink:0;"></div>
                 <div style="font-size:14px;font-weight:700;color:#2D2A3E;">식비</div>
               </div>
               <div style="padding:13px 14px;display:flex;align-items:center;gap:10px;border-bottom:1px solid #F1EEEE;">
-                <div style="width:30px;height:30px;border-radius:9px;background:#E8F9F7;display:flex;align-items:center;justify-content:center;flex-shrink:0;"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#1D7A69" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 2 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4Z"></path><path d="M3 6h18"></path></svg></div>
+                <div style="width:16px;height:16px;border-radius:50%;background:#1D7A69;flex-shrink:0;"></div>
                 <div style="font-size:14px;font-weight:700;color:#2D2A3E;">생활용품</div>
               </div>
               <div style="padding:13px 14px;display:flex;align-items:center;gap:10px;border-bottom:1px solid #F1EEEE;">
-                <div style="width:30px;height:30px;border-radius:9px;background:#EBF5FF;display:flex;align-items:center;justify-content:center;flex-shrink:0;"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#2E7AB8" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 17h2c.6 0 1-.4 1-1v-3c0-.9-.7-1.7-1.5-1.9C18.7 10.6 16 10 16 10s-1.3-1.4-2.2-2.3c-.5-.4-1.1-.7-1.8-.7H5c-.6 0-1.1.4-1.4.9l-1.4 2.9A3.7 3.7 0 0 0 2 12v4c0 .6.4 1 1 1h2"></path><circle cx="7" cy="17" r="2"></circle><circle cx="17" cy="17" r="2"></circle></svg></div>
+                <div style="width:16px;height:16px;border-radius:50%;background:#2E7AB8;flex-shrink:0;"></div>
                 <div style="font-size:14px;font-weight:700;color:#2D2A3E;">교통</div>
               </div>
               <div style="padding:13px 14px;display:flex;align-items:center;gap:10px;border-bottom:1px solid #F1EEEE;">
-                <div style="width:30px;height:30px;border-radius:9px;background:#F0EEFF;display:flex;align-items:center;justify-content:center;flex-shrink:0;"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#6A5ECF" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="6" x2="10" y1="11" y2="11"></line><line x1="8" x2="8" y1="9" y2="13"></line><line x1="15" x2="15.01" y1="12" y2="12"></line><line x1="18" x2="18.01" y1="10" y2="10"></line><path d="M17.32 5H6.68a4 4 0 0 0-3.978 3.59c-.006.052-.01.101-.017.15C2.67 8.905 2 15.402 2 16.5c0 1.7 1.3 3 3 3 .95 0 1.5-.5 2-1l1.6-1.6a2.4 2.4 0 0 1 1.8-.9h3.2c.7 0 1.3.3 1.8.9l1.6 1.6c.5.5 1.05 1 2 1 1.7 0 3-1.3 3-3 0-1.098-.67-7.595-.685-7.76a1.174 1.174 0 0 0-.017-.15A4 4 0 0 0 17.32 5z"></path></svg></div>
+                <div style="width:16px;height:16px;border-radius:50%;background:#6A5ECF;flex-shrink:0;"></div>
                 <div style="font-size:14px;font-weight:700;color:#2D2A3E;">취미</div>
               </div>
               <div style="padding:13px 14px;display:flex;align-items:center;gap:10px;border-bottom:1px solid #F1EEEE;">
-                <div style="width:30px;height:30px;border-radius:9px;background:#FFF0F6;display:flex;align-items:center;justify-content:center;flex-shrink:0;"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#C24C77" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20.38 3.46 16 2a4 4 0 0 1-8 0L3.62 3.46a2 2 0 0 0-1.34 2.23l.58 3.47a1 1 0 0 0 .99.84H6v10c0 1.1.9 2 2 2h8a2 2 0 0 0 2-2V10h2.15a1 1 0 0 0 .99-.84l.58-3.47a2 2 0 0 0-1.34-2.23"></path></svg></div>
+                <div style="width:16px;height:16px;border-radius:50%;background:#C24C77;flex-shrink:0;"></div>
                 <div style="font-size:14px;font-weight:700;color:#2D2A3E;">의류</div>
               </div>
               <div style="padding:13px 14px;display:flex;align-items:center;gap:10px;">
-                <div style="width:30px;height:30px;border-radius:9px;background:#FFFBE8;display:flex;align-items:center;justify-content:center;flex-shrink:0;"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#8A6A12" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="1"></circle><circle cx="19" cy="12" r="1"></circle><circle cx="5" cy="12" r="1"></circle></svg></div>
+                <div style="width:16px;height:16px;border-radius:50%;background:#8A6A12;flex-shrink:0;"></div>
                 <div style="font-size:14px;font-weight:700;color:#2D2A3E;">기타</div>
               </div>
-            </div>
-            <div style="margin-top:10px;height:44px;border-radius:14px;border:1.5px dashed #C7BFB2;display:flex;align-items:center;justify-content:center;gap:6px;">
-              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#8B8378" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" x2="12" y1="5" y2="19"></line><line x1="5" x2="19" y1="12" y2="12"></line></svg>
-              <span style="font-size:13px;font-weight:700;color:#8B8378;">새 카테고리 추가</span>
             </div>
 
             <div style="font-size:12px;font-weight:800;color:#8B8378;margin:22px 0 8px;">알림</div>
@@ -464,38 +535,48 @@
                 <div style="width:42px;height:24px;border-radius:12px;background:#6A5ECF;position:relative;flex-shrink:0;"><div style="width:18px;height:18px;border-radius:50%;background:#fff;position:absolute;top:3px;left:21px;box-shadow:0 2px 5px rgba(0,0,0,0.2);"></div></div>
               </div>
               <div style="padding:14px;display:flex;align-items:center;gap:10px;border-bottom:1px solid #F1EEEE;">
-                <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="#6B6980" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><line x1="12" x2="12" y1="8" y2="12"></line><line x1="12" x2="12.01" y1="16" y2="16"></line></svg>
+                <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="#6B6980" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10.268 21a2 2 0 0 0 3.464 0"></path><path d="M3.262 15.326A1 1 0 0 0 4 17h16a1 1 0 0 0 .74-1.673C19.41 13.956 18 12.499 18 8A6 6 0 0 0 6 8c0 4.499-1.411 5.956-2.738 7.326"></path></svg>
                 <div style="flex:1;">
-                  <div style="font-size:14px;font-weight:700;color:#2D2A3E;">예산 초과 시 알림</div>
-                </div>
-                <div style="width:42px;height:24px;border-radius:12px;background:#D8D3C8;position:relative;flex-shrink:0;"><div style="width:18px;height:18px;border-radius:50%;background:#fff;position:absolute;top:3px;left:3px;box-shadow:0 2px 5px rgba(0,0,0,0.2);"></div></div>
-              </div>
-              <div style="padding:14px;display:flex;align-items:center;gap:10px;">
-                <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="#6B6980" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 5 6 9H2v6h4l5 4z"></path><path d="M15.54 8.46a5 5 0 0 1 0 7.07"></path></svg>
-                <div style="flex:1;">
-                  <div style="font-size:14px;font-weight:700;color:#2D2A3E;">알림음</div>
+                  <div style="font-size:14px;font-weight:700;color:#2D2A3E;">그룹원 기록 확인 알림</div>
+                  <div style="font-size:11px;color:#8B8378;margin-top:2px;">예: "민준 &amp; 서연 · 민준님이 기념일 비용을 저장하였어요"</div>
                 </div>
                 <div style="width:42px;height:24px;border-radius:12px;background:#6A5ECF;position:relative;flex-shrink:0;"><div style="width:18px;height:18px;border-radius:50%;background:#fff;position:absolute;top:3px;left:21px;box-shadow:0 2px 5px rgba(0,0,0,0.2);"></div></div>
               </div>
+              <div style="padding:14px;display:flex;align-items:center;gap:10px;">
+                <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="#6B6980" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10.268 21a2 2 0 0 0 3.464 0"></path><path d="M3.262 15.326A1 1 0 0 0 4 17h16a1 1 0 0 0 .74-1.673C19.41 13.956 18 12.499 18 8A6 6 0 0 0 6 8c0 4.499-1.411 5.956-2.738 7.326"></path></svg>
+                <div style="flex:1;">
+                  <div style="font-size:14px;font-weight:700;color:#2D2A3E;">저녁 리마인더</div>
+                  <div style="font-size:11px;color:#8B8378;margin-top:2px;">매일 저녁 8시, 오늘 지출을 안 기록했으면 알려드려요</div>
+                </div>
+                <div style="width:42px;height:24px;border-radius:12px;background:#D8D3C8;position:relative;flex-shrink:0;"><div style="width:18px;height:18px;border-radius:50%;background:#fff;position:absolute;top:3px;left:3px;box-shadow:0 2px 5px rgba(0,0,0,0.2);"></div></div>
+              </div>
             </div>
+
+            <div style="font-size:12px;font-weight:800;color:#8B8378;margin:22px 0 8px;">저금통 펫</div>
+            <a href="#monthly-goal-setting" style="background:#fff;border-radius:16px;border:1px solid #E8E4F4;padding:14px;display:flex;align-items:center;gap:10px;text-decoration:none;box-sizing:border-box;">
+              <span style="font-size:17px;">🪙</span>
+              <div style="flex:1;font-size:14px;font-weight:700;color:#2D2A3E;">월별 목표 설정</div>
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#A9A2B8" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m9 18 6-6-6-6"></path></svg>
+            </a>
+
+            <div style="font-size:12px;font-weight:800;color:#8B8378;margin:22px 0 8px;">정기 지출</div>
+            <a href="#recurring-expense-manage" style="background:#fff;border-radius:16px;border:1px solid #E8E4F4;padding:14px;display:flex;align-items:center;gap:10px;text-decoration:none;box-sizing:border-box;">
+              <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="#6B6980" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m17 2 4 4-4 4"></path><path d="M3 11v-1a4 4 0 0 1 4-4h14"></path><path d="m7 22-4-4 4-4"></path><path d="M21 13v1a4 4 0 0 1-4 4H3"></path></svg>
+              <div style="flex:1;font-size:14px;font-weight:700;color:#2D2A3E;">정기 지출 관리</div>
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#A9A2B8" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m9 18 6-6-6-6"></path></svg>
+            </a>
 
             <div style="font-size:12px;font-weight:800;color:#8B8378;margin:22px 0 8px;">앱 외형</div>
             <div style="background:#fff;border-radius:16px;border:1px solid #E8E4F4;padding:14px;">
-              <div style="display:flex;align-items:center;gap:10px;">
+              <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px;">
                 <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="#6B6980" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z"></path></svg>
                 <div style="flex:1;font-size:14px;font-weight:700;color:#2D2A3E;">다크 모드</div>
-                <div style="width:42px;height:24px;border-radius:12px;background:#D8D3C8;position:relative;flex-shrink:0;"><div style="width:18px;height:18px;border-radius:50%;background:#fff;position:absolute;top:3px;left:3px;box-shadow:0 2px 5px rgba(0,0,0,0.2);"></div></div>
               </div>
-              <div style="height:1px;background:#F1EEEE;margin:14px 0;"></div>
-              <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px;">
-                <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="#6B6980" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 7V4h16v3"></path><path d="M9 20h6"></path><path d="M12 4v16"></path></svg>
-                <div style="font-size:14px;font-weight:700;color:#2D2A3E;">글자 크기</div>
+              <div style="display:flex;gap:6px;">
+                <div style="flex:1;height:38px;border-radius:12px;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:800;background:#6A5ECF;color:#fff;">라이트</div>
+                <div style="flex:1;height:38px;border-radius:12px;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:800;background:#F0EEFF;color:#6B6980;">다크</div>
+                <div style="flex:1;height:38px;border-radius:12px;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:800;background:#F0EEFF;color:#6B6980;">시스템 설정</div>
               </div>
-              <select style="width:100%;box-sizing:border-box;height:42px;border-radius:10px;border:1.5px solid #E8E4F4;background:#fff;padding:0 12px;font-size:13px;font-weight:600;color:#2D2A3E;">
-                <option>중간</option>
-                <option>작게</option>
-                <option>크게</option>
-              </select>
             </div>
 
           </div>
@@ -653,7 +734,7 @@
     </div>
 
     <div style="display:flex;flex-direction:column;gap:14px;">
-      <div style="font-size:13px;font-weight:700;color:#6A5ECF;">3b-4. 이름 입력 — 룸메이트</div>
+      <div style="font-size:13px;font-weight:700;color:#6A5ECF;">3b-4. 이름 입력 — 친구</div>
       <x-import component-from-global-scope="IOSDevice" from="./ios-frame.jsx" width="{{ frameW }}" height="{{ frameH }}" hint-size="340,734">
         <div style="height:100%;box-sizing:border-box;padding:60px 24px 28px;background:#F6F5FC;display:flex;flex-direction:column;">
           <div style="display:flex;gap:6px;margin-bottom:14px;">
@@ -664,16 +745,16 @@
           <div style="font-size:21px;font-weight:800;color:#2D2A3E;">그룹 이름을 지어주세요</div>
           <div style="display:inline-flex;align-items:center;gap:7px;background:#F0EEFF;border-radius:10px;padding:6px 12px;margin-top:10px;width:fit-content;">
             <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#2E7AB8" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m3 9 9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path><polyline points="9 22 9 12 15 12 15 22"></polyline></svg>
-            <span style="font-size:12px;font-weight:800;color:#26689C;">룸메이트</span>
+            <span style="font-size:12px;font-weight:800;color:#26689C;">친구</span>
           </div>
           <div style="margin-top:40px;">
-            <input type="text" placeholder="전세 405호" style="width:100%;box-sizing:border-box;height:52px;border-radius:16px;border:2px solid #6A5ECF;background:#fff;padding:0 18px;font-size:16px;font-weight:800;color:#2D2A3E;text-align:center;">
+            <input type="text" placeholder="우리 넷이서" style="width:100%;box-sizing:border-box;height:52px;border-radius:16px;border:2px solid #6A5ECF;background:#fff;padding:0 18px;font-size:16px;font-weight:800;color:#2D2A3E;text-align:center;">
           </div>
           <div style="font-size:12px;color:#6B6980;font-weight:700;margin-top:16px;">이런 이름 어때요?</div>
           <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:8px;">
-            <div style="font-size:12px;font-weight:700;color:#2D2A3E;background:#F0EEFF;padding:6px 12px;border-radius:10px;">전세 405호</div>
-            <div style="font-size:12px;font-weight:700;color:#2D2A3E;background:#F0EEFF;padding:6px 12px;border-radius:10px;">우리 자취방</div>
-            <div style="font-size:12px;font-weight:700;color:#2D2A3E;background:#F0EEFF;padding:6px 12px;border-radius:10px;">생활비 정산</div>
+            <div style="font-size:12px;font-weight:700;color:#2D2A3E;background:#F0EEFF;padding:6px 12px;border-radius:10px;">우리 넷이서</div>
+            <div style="font-size:12px;font-weight:700;color:#2D2A3E;background:#F0EEFF;padding:6px 12px;border-radius:10px;">불금 모임</div>
+            <div style="font-size:12px;font-weight:700;color:#2D2A3E;background:#F0EEFF;padding:6px 12px;border-radius:10px;">여행 경비</div>
           </div>
           <div style="flex:1;"></div>
           <div style="height:50px;border-radius:16px;background:linear-gradient(135deg,#E3DFFB 0%,#BDB2F2 100%);color:#3F3480;display:flex;align-items:center;justify-content:center;font-size:15px;font-weight:800;box-shadow:0 8px 18px rgba(106,94,207,0.3);">그룹 만들기</div>
@@ -897,11 +978,54 @@
                   <div style="background:#fff;border-radius:16px;padding:12px 14px;display:flex;align-items:center;gap:12px;box-shadow:0 2px 8px rgba(45,42,62,0.05);">
                     <div style="width:38px;height:38px;border-radius:50%;background:{{ m.bg }};display:flex;align-items:center;justify-content:center;font-size:14px;font-weight:800;color:#2D2A3E;">{{ m.initial }}</div>
                     <div style="flex:1;">
-                      <div style="font-size:14px;font-weight:800;color:#2D2A3E;">{{ m.name }}</div>
+                      <div style="display:flex;align-items:center;gap:6px;">
+                        <div style="font-size:14px;font-weight:800;color:#2D2A3E;">{{ m.name }}</div>
+                        <sc-if value="{{ m.isOwner }}" hint-placeholder-val="{{ false }}">
+                          <span style="font-size:10px;font-weight:800;color:#8A6A12;background:#FFFBE8;padding:2px 7px;border-radius:8px;border:1px solid rgba(245,213,133,0.6);flex-shrink:0;">그룹장</span>
+                        </sc-if>
+                      </div>
                       <div style="font-size:12px;color:#6B6980;font-weight:600;">{{ m.role }}</div>
                     </div>
                   </div>
                 </sc-for>
+              </div>
+
+              <div style="font-size:13px;font-weight:800;color:#6B6980;margin:18px 0 10px;">이번 달 그룹원별 지출</div>
+              <div style="background:#fff;border-radius:16px;border:1px solid #E8E4F4;padding:14px 16px;margin-bottom:18px;display:flex;flex-direction:column;gap:10px;">
+                <div>
+                  <div style="display:flex;justify-content:space-between;font-size:12px;font-weight:700;color:#2D2A3E;margin-bottom:4px;"><span>민준</span><span>412,000원</span></div>
+                  <div style="height:6px;border-radius:4px;background:#ECE9E3;"><div style="width:100%;height:100%;border-radius:4px;background:#6A5ECF;"></div></div>
+                </div>
+                <div>
+                  <div style="display:flex;justify-content:space-between;font-size:12px;font-weight:700;color:#2D2A3E;margin-bottom:4px;"><span>서연</span><span>268,000원</span></div>
+                  <div style="height:6px;border-radius:4px;background:#ECE9E3;"><div style="width:65%;height:100%;border-radius:4px;background:#6A5ECF;"></div></div>
+                </div>
+              </div>
+
+              <div style="font-size:13px;font-weight:800;color:#6B6980;margin-bottom:10px;">이번 달 그룹 예산</div>
+              <a href="#group-goal-setting" style="background:#fff;border-radius:16px;border:1px solid #E8E4F4;padding:14px 16px;margin-bottom:18px;display:block;text-decoration:none;box-sizing:border-box;">
+                <div style="display:flex;align-items:center;gap:10px;">
+                  <div style="flex:1;min-width:0;">
+                    <div style="font-size:13px;font-weight:800;color:#2D2A3E;">식비 300,000원 · 생활 150,000원</div>
+                    <div style="font-size:11px;color:#6B6980;font-weight:600;margin-top:2px;">312,000원 / 450,000원</div>
+                  </div>
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#A9A2B8" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m9 18 6-6-6-6"></path></svg>
+                </div>
+                <div style="margin-top:10px;height:8px;border-radius:4px;background:#F0EEFF;overflow:hidden;"><div style="width:69%;height:100%;background:#6A5ECF;"></div></div>
+              </a>
+
+              <div style="display:flex;flex-direction:column;gap:8px;margin-bottom:12px;">
+                <select style="width:100%;box-sizing:border-box;height:40px;border-radius:12px;border:1.5px solid #E8E4F4;background:#fff;padding:0 12px;font-size:13px;font-weight:700;color:#2D2A3E;">
+                  <option>전체 카테고리</option>
+                  <option>식비</option>
+                  <option>생활</option>
+                  <option>저금</option>
+                </select>
+                <div style="display:flex;align-items:center;gap:8px;">
+                  <input type="date" style="flex:1;box-sizing:border-box;height:40px;border-radius:12px;border:1.5px solid #E8E4F4;background:#fff;padding:0 10px;font-size:12px;font-weight:600;color:#2D2A3E;">
+                  <span style="font-size:12px;color:#A9A2B8;font-weight:700;">~</span>
+                  <input type="date" style="flex:1;box-sizing:border-box;height:40px;border-radius:12px;border:1.5px solid #E8E4F4;background:#fff;padding:0 10px;font-size:12px;font-weight:600;color:#2D2A3E;">
+                </div>
               </div>
               <div style="margin-top:18px;background:#F5F3FF;border:2px dashed rgba(106,94,207,0.35);border-radius:18px;padding:16px;margin-bottom:18px;">
                 <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px;">
@@ -1161,8 +1285,9 @@
               <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m15 18-6-6 6-6"></path></svg>
             </div>
           </div>
-          <div style="width:100%;flex:1;border-radius:20px;border:2px dashed #8574EB80;display:flex;align-items:center;justify-content:center;position:relative;">
-            <div style="font-size:13px;color:rgba(255,255,255,0.5);font-weight:600;text-align:center;line-height:1.6;">영수증을 네모 안에<br>맞춰주세요</div>
+          <div style="width:100%;flex:1;border-radius:20px;border:2px dashed #8574EB80;display:flex;align-items:center;justify-content:center;position:relative;overflow:hidden;background:linear-gradient(160deg,#1A1A2E 0%,#0D0D1A 100%);">
+            <svg width="34" height="34" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.35)" stroke-width="1.5"><rect width="18" height="18" x="3" y="3" rx="2" ry="2"></rect><circle cx="9" cy="9" r="2"></circle><path d="m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21"></path></svg>
+            <div style="position:absolute;bottom:12px;font-size:12px;color:rgba(255,255,255,0.65);font-weight:600;text-align:center;pointer-events:none;">실시간 카메라 · 영수증을 네모 안에 맞춰주세요</div>
           </div>
           <div style="display:flex;align-items:center;justify-content:center;gap:28px;margin-top:20px;">
             <div style="width:46px;height:46px;border-radius:14px;background:rgba(255,255,255,0.1);display:flex;align-items:center;justify-content:center;">
@@ -1174,10 +1299,10 @@
               </div>
             </div>
             <div style="width:46px;height:46px;border-radius:14px;background:rgba(255,255,255,0.1);display:flex;align-items:center;justify-content:center;">
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.85)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8"></path><path d="M21 3v5h-5"></path><path d="M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16"></path><path d="M8 16H3v5"></path></svg>
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.85)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 4v5h-.582m0 0a8.001 8.001 0 0 0-15.356-2M4 20v-5h.581m0 0a8.003 8.003 0 0 0 15.357 2"></path><path d="m9 8-2 2 2 2"></path><path d="m15 16 2-2-2-2"></path></svg>
             </div>
           </div>
-          <div style="font-size:12px;color:rgba(255,255,255,0.4);margin-top:14px;font-weight:600;">촬영하거나 갤러리에서 선택하세요</div>
+          <div style="font-size:12px;color:rgba(255,255,255,0.4);margin-top:14px;font-weight:600;">촬영하거나 갤러리에서 선택하세요 · 오른쪽 버튼으로 전/후면 전환</div>
         </div>
       </x-import>
     </div>
@@ -1206,7 +1331,281 @@
     </div>
 
     <div style="display:flex;flex-direction:column;gap:14px;">
-      <div style="font-size:13px;font-weight:700;color:#6A5ECF;">10. 마이페이지</div>
+      <div id="pet-select" style="font-size:13px;font-weight:700;color:#6A5ECF;">9a. 펫 선택</div>
+      <x-import component-from-global-scope="IOSDevice" from="./ios-frame.jsx" width="{{ frameW }}" height="{{ frameH }}" hint-size="340,734">
+        <div style="height:100%;box-sizing:border-box;padding:60px 24px 28px;background:#F6F5FC;display:flex;flex-direction:column;">
+          <div style="width:18px;height:18px;display:flex;margin-bottom:14px;">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#2D2A3E" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m15 18-6-6 6-6"></path></svg>
+          </div>
+          <div style="font-size:21px;font-weight:800;color:#2D2A3E;">저금통 펫을 데려와요</div>
+          <div style="font-size:13px;color:#6B6980;margin-top:6px;font-weight:600;">지출을 아낄수록 함께 자라요. 색상은 나중에 꾸미기에서 바꿀 수 있어요</div>
+
+          <div style="display:flex;justify-content:center;margin-top:24px;">
+            <div style="width:127px;height:170px;overflow:hidden;position:relative;">
+              <img src="public/stage_0_egg.png" style="position:absolute;left:-3px;top:-112px;width:153px;height:339px;">
+            </div>
+          </div>
+
+          <div style="margin-top:24px;">
+            <div style="font-size:13px;font-weight:700;color:#2D2A3E;margin-bottom:8px;">이름(선택)</div>
+            <input type="text" placeholder="비워두면 기본 이름으로 시작해요" style="width:100%;box-sizing:border-box;height:48px;border-radius:14px;border:2px solid #E8E4F4;background:#fff;padding:0 16px;font-size:14px;font-weight:600;color:#2D2A3E;">
+          </div>
+
+          <div style="flex:1;"></div>
+          <div style="height:50px;border-radius:16px;background:linear-gradient(135deg,#E3DFFB 0%,#BDB2F2 100%);color:#3F3480;display:flex;align-items:center;justify-content:center;font-size:15px;font-weight:800;box-shadow:0 8px 18px rgba(106,94,207,0.3);">펫 데려오기</div>
+        </div>
+      </x-import>
+    </div>
+
+    <div style="display:flex;flex-direction:column;gap:14px;">
+      <div id="pet-detail" style="font-size:13px;font-weight:700;color:#6A5ECF;">9b. 펫 상세</div>
+      <x-import component-from-global-scope="IOSDevice" from="./ios-frame.jsx" width="{{ frameW }}" height="{{ frameH }}" hint-size="340,734">
+        <div style="height:100%;box-sizing:border-box;background:#F6F5FC;display:flex;flex-direction:column;">
+          <div style="padding:60px 20px 12px;flex-shrink:0;display:flex;align-items:center;gap:10px;">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#2D2A3E" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m15 18-6-6 6-6"></path></svg>
+            <div style="flex:1;font-size:18px;font-weight:800;color:#2D2A3E;">내 저금통 펫</div>
+            <a href="#pet-customize" style="font-size:12px;font-weight:700;color:#6A5ECF;">꾸미기</a>
+          </div>
+
+          <div style="flex:1;overflow:auto;padding:10px 24px 28px;display:flex;flex-direction:column;align-items:center;">
+            <div style="width:112px;height:170px;overflow:hidden;position:relative;margin-top:6px;">
+              <img src="public/stage_2_teen.png" style="position:absolute;left:-2px;top:-59px;width:126px;height:273px;">
+            </div>
+            <div style="font-size:18px;font-weight:800;color:#2D2A3E;margin-top:4px;">저금통이</div>
+            <div style="font-size:12px;color:#6B6980;font-weight:700;margin-top:2px;">청소년기</div>
+
+            <div style="display:flex;gap:8px;margin-top:18px;">
+              <div style="display:flex;flex-direction:column;align-items:center;gap:4px;">
+                <div style="width:34px;height:34px;border-radius:50%;background:#F0EEFF;display:flex;align-items:center;justify-content:center;font-size:14px;">🌱</div>
+                <div style="font-size:10px;font-weight:700;color:#2D2A3E;">알</div>
+              </div>
+              <div style="display:flex;flex-direction:column;align-items:center;gap:4px;">
+                <div style="width:34px;height:34px;border-radius:50%;background:#F0EEFF;display:flex;align-items:center;justify-content:center;font-size:14px;">🌱</div>
+                <div style="font-size:10px;font-weight:700;color:#2D2A3E;">유년기</div>
+              </div>
+              <div style="display:flex;flex-direction:column;align-items:center;gap:4px;">
+                <div style="width:34px;height:34px;border-radius:50%;background:#F0EEFF;display:flex;align-items:center;justify-content:center;font-size:14px;">🌱</div>
+                <div style="font-size:10px;font-weight:700;color:#2D2A3E;">청소년기</div>
+              </div>
+              <div style="display:flex;flex-direction:column;align-items:center;gap:4px;opacity:0.35;">
+                <div style="width:34px;height:34px;border-radius:50%;background:#ECE9E3;display:flex;align-items:center;justify-content:center;font-size:14px;">🔒</div>
+                <div style="font-size:10px;font-weight:700;color:#6B6980;">성체</div>
+              </div>
+            </div>
+
+            <div style="width:100%;margin-top:22px;">
+              <div style="display:flex;justify-content:space-between;font-size:12px;font-weight:700;color:#6B6980;margin-bottom:6px;"><span>XP</span><span>62 / 100</span></div>
+              <div style="height:10px;border-radius:6px;background:#ECE9E3;overflow:hidden;"><div style="height:100%;width:62%;background:#6A5ECF;border-radius:6px;"></div></div>
+            </div>
+
+            <div style="width:100%;margin-top:16px;background:#fff;border:1px solid #E8E4F4;border-radius:16px;padding:14px 16px;display:flex;align-items:center;justify-content:space-between;box-sizing:border-box;">
+              <div style="font-size:13px;font-weight:700;color:#6B6980;">저금통 코인</div>
+              <div style="font-size:16px;font-weight:800;color:#2D2A3E;">🪙 1,240</div>
+            </div>
+
+            <div style="width:100%;margin-top:16px;height:50px;border-radius:16px;background:linear-gradient(135deg,#E3DFFB 0%,#BDB2F2 100%);color:#3F3480;display:flex;align-items:center;justify-content:center;font-size:15px;font-weight:800;box-shadow:0 8px 18px rgba(106,94,207,0.3);box-sizing:border-box;">밥 주기</div>
+
+            <div style="display:flex;gap:8px;width:100%;margin-top:10px;box-sizing:border-box;">
+              <a href="#monthly-goal-report" style="flex:1;height:44px;border-radius:14px;border:1.5px solid #E8E4F4;display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:700;color:#2D2A3E;text-decoration:none;box-sizing:border-box;">이번 달 목표</a>
+              <a href="#my-badges" style="flex:1;height:44px;border-radius:14px;border:1.5px solid #E8E4F4;display:flex;align-items:center;justify-content:center;gap:6px;font-size:13px;font-weight:700;color:#2D2A3E;text-decoration:none;box-sizing:border-box;">나의 배지 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#6B6980" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m9 18 6-6-6-6"></path></svg></a>
+            </div>
+          </div>
+        </div>
+      </x-import>
+    </div>
+
+    <div style="display:flex;flex-direction:column;gap:14px;">
+      <div id="pet-customize" style="font-size:13px;font-weight:700;color:#6A5ECF;">9c. 캐릭터 커스텀</div>
+      <x-import component-from-global-scope="IOSDevice" from="./ios-frame.jsx" width="{{ frameW }}" height="{{ frameH }}" hint-size="340,734">
+        <div style="height:100%;box-sizing:border-box;background:#F6F5FC;display:flex;flex-direction:column;">
+          <div style="padding:60px 20px 12px;flex-shrink:0;display:flex;align-items:center;gap:10px;">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#2D2A3E" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m15 18-6-6 6-6"></path></svg>
+            <div style="font-size:18px;font-weight:800;color:#2D2A3E;">캐릭터 커스텀</div>
+          </div>
+
+          <div style="flex:1;overflow:auto;padding:10px 20px 24px;">
+            <div style="display:flex;justify-content:center;padding:6px 0 14px;">
+              <div style="width:146px;height:190px;overflow:hidden;position:relative;">
+                <img src="public/stage_3_adult.png" style="position:absolute;left:-2px;top:-19px;width:148px;height:247px;">
+              </div>
+            </div>
+
+            <div style="display:flex;justify-content:center;gap:6px;margin-bottom:18px;">
+              <div style="padding:6px 12px;border-radius:999px;font-size:12px;font-weight:700;background:#F0EEFF;color:#6B6980;">알</div>
+              <div style="padding:6px 12px;border-radius:999px;font-size:12px;font-weight:700;background:#F0EEFF;color:#6B6980;">유년기</div>
+              <div style="padding:6px 12px;border-radius:999px;font-size:12px;font-weight:700;background:#F0EEFF;color:#6B6980;">청소년기</div>
+              <div style="padding:6px 12px;border-radius:999px;font-size:12px;font-weight:700;background:#6A5ECF;color:#fff;">성체</div>
+            </div>
+
+            <div style="display:flex;flex-direction:column;gap:12px;">
+              <div style="background:#fff;border:1px solid #E8E4F4;border-radius:16px;padding:14px;">
+                <div style="font-size:13px;font-weight:800;color:#2D2A3E;margin-bottom:10px;">몸 색상</div>
+                <div style="display:flex;gap:8px;flex-wrap:wrap;">
+                  <div style="width:28px;height:28px;border-radius:50%;background:#8C81E0;box-sizing:border-box;border:3px solid #2D2A3E;"></div>
+                  <div style="width:28px;height:28px;border-radius:50%;background:#5FA8E0;box-sizing:border-box;border:2px solid #E8E4F4;"></div>
+                  <div style="width:28px;height:28px;border-radius:50%;background:#E07AAE;box-sizing:border-box;border:2px solid #E8E4F4;"></div>
+                  <div style="width:28px;height:28px;border-radius:50%;background:#5FBF9E;box-sizing:border-box;border:2px solid #E8E4F4;"></div>
+                  <div style="width:28px;height:28px;border-radius:50%;background:#E0C25F;box-sizing:border-box;border:2px solid #E8E4F4;"></div>
+                  <div style="width:28px;height:28px;border-radius:50%;background:#E08A5F;box-sizing:border-box;border:2px solid #E8E4F4;"></div>
+                  <div style="width:28px;height:28px;border-radius:50%;background:#8A8FA3;box-sizing:border-box;border:2px solid #E8E4F4;"></div>
+                </div>
+              </div>
+              <div style="background:#fff;border:1px solid #E8E4F4;border-radius:16px;padding:14px;">
+                <div style="font-size:13px;font-weight:800;color:#2D2A3E;margin-bottom:10px;">눈 색상</div>
+                <div style="display:flex;gap:8px;flex-wrap:wrap;">
+                  <div style="width:28px;height:28px;border-radius:50%;background:#8C81E0;box-sizing:border-box;border:2px solid #E8E4F4;"></div>
+                  <div style="width:28px;height:28px;border-radius:50%;background:#5FA8E0;box-sizing:border-box;border:2px solid #E8E4F4;"></div>
+                  <div style="width:28px;height:28px;border-radius:50%;background:#E07AAE;box-sizing:border-box;border:2px solid #E8E4F4;"></div>
+                  <div style="width:28px;height:28px;border-radius:50%;background:#5FBF9E;box-sizing:border-box;border:2px solid #E8E4F4;"></div>
+                  <div style="width:28px;height:28px;border-radius:50%;background:#E0C25F;box-sizing:border-box;border:2px solid #E8E4F4;"></div>
+                  <div style="width:28px;height:28px;border-radius:50%;background:#E08A5F;box-sizing:border-box;border:3px solid #2D2A3E;"></div>
+                  <div style="width:28px;height:28px;border-radius:50%;background:#8A8FA3;box-sizing:border-box;border:2px solid #E8E4F4;"></div>
+                </div>
+              </div>
+              <div style="background:#fff;border:1px solid #E8E4F4;border-radius:16px;padding:14px;">
+                <div style="font-size:13px;font-weight:800;color:#2D2A3E;margin-bottom:10px;">잎사귀 색상</div>
+                <div style="display:flex;gap:8px;flex-wrap:wrap;">
+                  <div style="width:28px;height:28px;border-radius:50%;background:#8C81E0;box-sizing:border-box;border:2px solid #E8E4F4;"></div>
+                  <div style="width:28px;height:28px;border-radius:50%;background:#5FA8E0;box-sizing:border-box;border:2px solid #E8E4F4;"></div>
+                  <div style="width:28px;height:28px;border-radius:50%;background:#E07AAE;box-sizing:border-box;border:2px solid #E8E4F4;"></div>
+                  <div style="width:28px;height:28px;border-radius:50%;background:#5FBF9E;box-sizing:border-box;border:3px solid #2D2A3E;"></div>
+                  <div style="width:28px;height:28px;border-radius:50%;background:#E0C25F;box-sizing:border-box;border:2px solid #E8E4F4;"></div>
+                  <div style="width:28px;height:28px;border-radius:50%;background:#E08A5F;box-sizing:border-box;border:2px solid #E8E4F4;"></div>
+                  <div style="width:28px;height:28px;border-radius:50%;background:#8A8FA3;box-sizing:border-box;border:2px solid #E8E4F4;"></div>
+                </div>
+              </div>
+              <div style="background:#fff;border:1px solid #E8E4F4;border-radius:16px;padding:14px;">
+                <div style="font-size:13px;font-weight:800;color:#2D2A3E;margin-bottom:10px;">가방 색상</div>
+                <div style="display:flex;gap:8px;flex-wrap:wrap;">
+                  <div style="width:28px;height:28px;border-radius:50%;background:#8C81E0;box-sizing:border-box;border:2px solid #E8E4F4;"></div>
+                  <div style="width:28px;height:28px;border-radius:50%;background:#5FA8E0;box-sizing:border-box;border:2px solid #E8E4F4;"></div>
+                  <div style="width:28px;height:28px;border-radius:50%;background:#E07AAE;box-sizing:border-box;border:2px solid #E8E4F4;"></div>
+                  <div style="width:28px;height:28px;border-radius:50%;background:#5FBF9E;box-sizing:border-box;border:2px solid #E8E4F4;"></div>
+                  <div style="width:28px;height:28px;border-radius:50%;background:#E0C25F;box-sizing:border-box;border:2px solid #E8E4F4;"></div>
+                  <div style="width:28px;height:28px;border-radius:50%;background:#E08A5F;box-sizing:border-box;border:2px solid #E8E4F4;"></div>
+                  <div style="width:28px;height:28px;border-radius:50%;background:#8A8FA3;box-sizing:border-box;border:3px solid #2D2A3E;"></div>
+                </div>
+              </div>
+            </div>
+
+            <div style="margin-top:20px;height:50px;border-radius:16px;background:linear-gradient(135deg,#E3DFFB 0%,#BDB2F2 100%);color:#3F3480;display:flex;align-items:center;justify-content:center;font-size:15px;font-weight:800;box-shadow:0 8px 18px rgba(106,94,207,0.3);">적용하기</div>
+          </div>
+        </div>
+      </x-import>
+    </div>
+
+    <div style="display:flex;flex-direction:column;gap:14px;">
+      <div id="my-badges" style="font-size:13px;font-weight:700;color:#6A5ECF;">9d. 나의 배지</div>
+      <x-import component-from-global-scope="IOSDevice" from="./ios-frame.jsx" width="{{ frameW }}" height="{{ frameH }}" hint-size="340,734">
+        <div style="height:100%;box-sizing:border-box;background:#F6F5FC;display:flex;flex-direction:column;">
+          <div style="padding:60px 20px 12px;flex-shrink:0;display:flex;align-items:center;gap:10px;">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#2D2A3E" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m15 18-6-6 6-6"></path></svg>
+            <div style="font-size:18px;font-weight:800;color:#2D2A3E;">나의 배지</div>
+          </div>
+          <div style="flex:1;overflow:auto;padding:10px 20px 24px;">
+            <div style="text-align:center;margin-bottom:18px;">
+              <div style="font-size:13px;font-weight:700;color:#6B6980;">획득한 배지</div>
+              <div style="font-size:24px;font-weight:800;color:#2D2A3E;margin-top:4px;">3 / 4</div>
+              <div style="height:10px;border-radius:6px;background:#ECE9E3;overflow:hidden;margin-top:10px;"><div style="height:100%;width:75%;background:#6A5ECF;border-radius:6px;"></div></div>
+            </div>
+            <div style="display:flex;flex-direction:column;gap:10px;">
+              <div style="background:#fff;border:1px solid #E8E4F4;border-radius:16px;padding:14px 16px;display:flex;align-items:center;gap:14px;">
+                <div style="width:44px;height:44px;border-radius:50%;background:#F0EEFF;display:flex;align-items:center;justify-content:center;font-size:20px;">🏅</div>
+                <div style="flex:1;"><div style="font-size:14px;font-weight:800;color:#2D2A3E;">알 배지</div><div style="font-size:11px;color:#6B6980;font-weight:600;margin-top:2px;">획득 완료</div></div>
+                <div style="font-size:13px;font-weight:800;color:#6A5ECF;">✓</div>
+              </div>
+              <div style="background:#fff;border:1px solid #E8E4F4;border-radius:16px;padding:14px 16px;display:flex;align-items:center;gap:14px;">
+                <div style="width:44px;height:44px;border-radius:50%;background:#F0EEFF;display:flex;align-items:center;justify-content:center;font-size:20px;">🏅</div>
+                <div style="flex:1;"><div style="font-size:14px;font-weight:800;color:#2D2A3E;">유년기 배지</div><div style="font-size:11px;color:#6B6980;font-weight:600;margin-top:2px;">획득 완료</div></div>
+                <div style="font-size:13px;font-weight:800;color:#6A5ECF;">✓</div>
+              </div>
+              <div style="background:#fff;border:1px solid #E8E4F4;border-radius:16px;padding:14px 16px;display:flex;align-items:center;gap:14px;">
+                <div style="width:44px;height:44px;border-radius:50%;background:#F0EEFF;display:flex;align-items:center;justify-content:center;font-size:20px;">🏅</div>
+                <div style="flex:1;"><div style="font-size:14px;font-weight:800;color:#2D2A3E;">청소년기 배지</div><div style="font-size:11px;color:#6B6980;font-weight:600;margin-top:2px;">획득 완료</div></div>
+                <div style="font-size:13px;font-weight:800;color:#6A5ECF;">✓</div>
+              </div>
+              <div style="background:#fff;border:1px solid #E8E4F4;border-radius:16px;padding:14px 16px;display:flex;align-items:center;gap:14px;opacity:0.6;">
+                <div style="width:44px;height:44px;border-radius:50%;background:#ECE9E3;display:flex;align-items:center;justify-content:center;font-size:20px;">🔒</div>
+                <div style="flex:1;"><div style="font-size:14px;font-weight:800;color:#2D2A3E;">성체 배지</div><div style="font-size:11px;color:#6B6980;font-weight:600;margin-top:2px;">아직 도달 전이에요</div></div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </x-import>
+    </div>
+
+    <div style="display:flex;flex-direction:column;gap:14px;">
+      <div id="monthly-goal-setting" style="font-size:13px;font-weight:700;color:#6A5ECF;">9e. 월별 목표 설정</div>
+      <x-import component-from-global-scope="IOSDevice" from="./ios-frame.jsx" width="{{ frameW }}" height="{{ frameH }}" hint-size="340,734">
+        <div style="height:100%;box-sizing:border-box;background:#F6F5FC;display:flex;flex-direction:column;">
+          <div style="padding:60px 20px 16px;text-align:center;background:#F0EEFF;flex-shrink:0;position:relative;">
+            <div style="position:absolute;top:60px;left:20px;"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#2D2A3E" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m15 18-6-6 6-6"></path></svg></div>
+            <div style="font-size:12px;font-weight:700;color:#6B6980;">이번 달 목표</div>
+            <div style="font-size:20px;font-weight:800;color:#2D2A3E;margin-top:4px;">월별 목표 설정</div>
+          </div>
+          <div style="flex:1;overflow:auto;padding:18px 20px 28px;">
+            <div style="font-size:13px;font-weight:700;color:#2D2A3E;margin-bottom:8px;">카테고리</div>
+            <div style="display:flex;flex-wrap:wrap;gap:8px;">
+              <div style="padding:9px 13px;border-radius:14px;font-size:13px;font-weight:800;background:#FFF2EC;color:#A15A1E;border:2px solid #F5A882;box-shadow:0 4px 12px rgba(245,168,130,0.3);">식비</div>
+              <div style="padding:9px 13px;border-radius:14px;font-size:13px;font-weight:800;background:#fff;color:#2E7AB8;border:2px solid #E8E4F4;">교통</div>
+              <div style="padding:9px 13px;border-radius:14px;font-size:13px;font-weight:800;background:#fff;color:#1D7A69;border:2px solid #E8E4F4;">생활용품</div>
+              <div style="padding:9px 13px;border-radius:14px;font-size:13px;font-weight:800;background:#fff;color:#8A6A12;border:2px solid #E8E4F4;">기타</div>
+            </div>
+            <div style="margin-top:18px;padding:14px 16px;border-radius:16px;background:#FFF2EC;border:1px solid rgba(245,168,130,0.4);">
+              <div style="font-size:12px;font-weight:700;color:#A15A1E;">지난 3개월 식비 평균 지출</div>
+              <div style="font-size:20px;font-weight:800;color:#A15A1E;margin-top:4px;">312,000원</div>
+              <div style="font-size:12px;color:#A15A1E;opacity:0.8;margin-top:6px;">평균의 90% · 추천 목표 <strong>281,000원</strong></div>
+              <div style="margin-top:10px;display:inline-flex;align-items:center;padding:7px 12px;border-radius:10px;background:#fff;color:#A15A1E;font-size:12px;font-weight:800;border:1.5px solid #F5A882;">추천 금액 적용하기</div>
+            </div>
+            <div style="margin-top:20px;">
+              <div style="font-size:13px;font-weight:700;color:#2D2A3E;margin-bottom:8px;">목표 금액</div>
+              <div style="display:flex;align-items:baseline;gap:4px;"><span style="font-size:18px;font-weight:800;color:#6B6980;">₩</span><span style="font-size:30px;font-weight:800;color:#2D2A3E;letter-spacing:-1px;">281,000</span></div>
+              <div style="height:6px;border-radius:3px;background:#E8E4F4;margin-top:14px;position:relative;"><div style="position:absolute;left:0;top:0;height:100%;width:33%;background:#F5A882;border-radius:3px;"></div></div>
+              <div style="display:flex;justify-content:space-between;font-size:11px;color:#6B6980;font-weight:600;margin-top:2px;"><span>0원</span><span>843,000원</span></div>
+            </div>
+            <div style="margin-top:18px;padding:14px 16px;border-radius:16px;background:#fff;border:1px solid #E8E4F4;">
+              <div style="font-size:13px;font-weight:700;color:#2D2A3E;">지난 3개월 평균보다 아낀 알찬 목표예요. 달성하면 저금통 펫에게 보상을 줄게요!</div>
+            </div>
+            <div style="margin-top:14px;height:50px;border-radius:16px;background:linear-gradient(135deg,#E3DFFB 0%,#BDB2F2 100%);color:#3F3480;display:flex;align-items:center;justify-content:center;font-size:15px;font-weight:800;box-shadow:0 8px 18px rgba(106,94,207,0.3);">목표 저장하기</div>
+          </div>
+        </div>
+      </x-import>
+    </div>
+
+    <div style="display:flex;flex-direction:column;gap:14px;">
+      <div id="monthly-goal-report" style="font-size:13px;font-weight:700;color:#6A5ECF;">9f. 이번 달 목표 리포트</div>
+      <x-import component-from-global-scope="IOSDevice" from="./ios-frame.jsx" width="{{ frameW }}" height="{{ frameH }}" hint-size="340,734">
+        <div style="height:100%;box-sizing:border-box;background:#F6F5FC;display:flex;flex-direction:column;">
+          <div style="padding:60px 20px 12px;flex-shrink:0;display:flex;align-items:center;gap:10px;">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#2D2A3E" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m15 18-6-6 6-6"></path></svg>
+            <div style="font-size:18px;font-weight:800;color:#2D2A3E;">이번 달 목표</div>
+          </div>
+          <div style="flex:1;overflow:auto;padding:10px 20px 24px;">
+            <div style="display:flex;gap:8px;">
+              <div style="flex:1;background:#F0EEFF;border-radius:16px;padding:16px;text-align:center;"><div style="font-size:22px;">🪙</div><div style="font-size:12px;font-weight:700;color:#6B6980;margin-top:4px;">받은 코인</div><div style="font-size:16px;font-weight:800;color:#2D2A3E;margin-top:2px;">+40</div></div>
+              <div style="flex:1;background:#F0EEFF;border-radius:16px;padding:16px;text-align:center;"><div style="font-size:22px;">✨</div><div style="font-size:12px;font-weight:700;color:#6B6980;margin-top:4px;">받은 XP</div><div style="font-size:16px;font-weight:800;color:#2D2A3E;margin-top:2px;">+90</div></div>
+            </div>
+            <div style="display:flex;flex-direction:column;gap:10px;margin-top:16px;">
+              <div style="background:#fff;border:1.5px solid #279E88;border-radius:16px;padding:14px;">
+                <div style="display:flex;align-items:center;justify-content:space-between;"><div style="font-size:13px;font-weight:800;color:#2D2A3E;">식비</div><div style="display:flex;align-items:center;gap:4px;font-size:11px;font-weight:800;color:#1D7A69;"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#1D7A69" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg> 달성</div></div>
+                <div style="font-size:12px;color:#6B6980;font-weight:600;margin-top:6px;">251,000원 / 281,000원</div>
+                <div style="height:8px;border-radius:5px;background:#ECE9E3;overflow:hidden;margin-top:8px;"><div style="height:100%;width:89%;background:#1D7A69;border-radius:5px;"></div></div>
+                <div style="font-size:11px;color:#1D7A69;font-weight:700;margin-top:6px;">퀘스트 보상: 코인 +10 · XP +30</div>
+              </div>
+              <div style="background:#fff;border:1.5px solid #E8E4F4;border-radius:16px;padding:14px;">
+                <div style="display:flex;align-items:center;justify-content:space-between;"><div style="font-size:13px;font-weight:800;color:#2D2A3E;">교통</div><div style="font-size:11px;font-weight:800;color:#6B6980;">미달성</div></div>
+                <div style="font-size:12px;color:#6B6980;font-weight:600;margin-top:6px;">98,000원 / 80,000원</div>
+                <div style="height:8px;border-radius:5px;background:#ECE9E3;overflow:hidden;margin-top:8px;"><div style="height:100%;width:100%;background:#B23B3B;border-radius:5px;"></div></div>
+              </div>
+            </div>
+            <a href="#pet-detail" style="margin-top:18px;height:50px;border-radius:16px;background:linear-gradient(135deg,#E3DFFB 0%,#BDB2F2 100%);color:#3F3480;display:flex;align-items:center;justify-content:center;font-size:15px;font-weight:800;box-shadow:0 8px 18px rgba(106,94,207,0.3);text-decoration:none;box-sizing:border-box;">펫 보러가기</a>
+          </div>
+        </div>
+      </x-import>
+    </div>
+
+    <div style="display:flex;flex-direction:column;gap:14px;">
+      <div id="mypage-10" style="font-size:13px;font-weight:700;color:#6A5ECF;">10. 마이페이지</div>
       <x-import component-from-global-scope="IOSDevice" from="./ios-frame.jsx" width="{{ frameW }}" height="{{ frameH }}" hint-size="340,734">
         <div style="height:100%;box-sizing:border-box;background:#F6F5FC;display:flex;flex-direction:column;">
           <div style="flex:1;overflow:auto;padding:60px 20px 20px;display:flex;flex-direction:column;">
@@ -1217,13 +1616,14 @@
             </a>
           </div>
 
-          <div style="margin-top:18px;background:#fff;border-radius:20px;padding:20px;display:flex;align-items:center;gap:14px;border:1px solid #E8E4F4;">
+          <a href="#my-info-edit" style="margin-top:18px;background:#fff;border-radius:20px;padding:20px;display:flex;align-items:center;gap:14px;border:1px solid #E8E4F4;text-decoration:none;">
             <div style="width:56px;height:56px;border-radius:50%;background:#F0EEFF;display:flex;align-items:center;justify-content:center;font-size:20px;font-weight:800;color:#6A5ECF;flex-shrink:0;">서</div>
             <div style="flex:1;min-width:0;">
               <div style="font-size:17px;font-weight:800;color:#2D2A3E;">김서연</div>
               <div style="font-size:13px;color:#6B6980;font-weight:600;margin-top:2px;">seoyeon@email.com</div>
             </div>
-          </div>
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#A9A2B8" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m9 18 6-6-6-6"></path></svg>
+          </a>
 
           <div style="margin-top:16px;background:#fff;border-radius:20px;border:1px solid #E8E4F4;overflow:hidden;">
             <div style="padding:16px 18px;display:flex;align-items:center;gap:12px;cursor:pointer;">
@@ -1235,9 +1635,46 @@
             </div>
           </div>
 
+          <a href="#monthly-goal-setting" style="margin-top:10px;background:#fff;border-radius:20px;border:1px solid #E8E4F4;padding:16px 18px;display:flex;align-items:center;gap:12px;text-decoration:none;">
+            <div style="width:34px;height:34px;border-radius:10px;background:#F0EEFF;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#6A5ECF" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z"></path><line x1="4" x2="4" y1="22" y2="15"></line></svg>
+            </div>
+            <div style="flex:1;min-width:0;font-size:14px;font-weight:800;color:#2D2A3E;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">월별 목표 설정</div>
+            <span style="font-size:10px;font-weight:800;color:#fff;background:#6A5ECF;border-radius:999px;padding:2px 8px;flex-shrink:0;">NEW</span>
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#A9A2B8" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;"><path d="m9 18 6-6-6-6"></path></svg>
+          </a>
+
+          <a href="#pet-detail" style="margin-top:16px;background:#fff;border-radius:20px;padding:18px;display:flex;align-items:center;gap:14px;border:1px solid #E8E4F4;text-decoration:none;">
+            <div style="width:44px;height:44px;border-radius:50%;background:#F0EEFF;display:flex;align-items:center;justify-content:center;font-size:20px;flex-shrink:0;">🐣</div>
+            <div style="flex:1;min-width:0;">
+              <div style="font-size:13px;font-weight:700;color:#6B6980;">저금통 코인</div>
+              <div style="font-size:16px;font-weight:800;color:#2D2A3E;margin-top:2px;">🪙 1,240</div>
+            </div>
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#A9A2B8" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m9 18 6-6-6-6"></path></svg>
+          </a>
+
+          <a href="#my-badges" style="margin-top:10px;background:#fff;border-radius:20px;padding:18px;display:flex;align-items:center;gap:14px;border:1px solid #E8E4F4;text-decoration:none;">
+            <div style="width:44px;height:44px;border-radius:50%;background:#F0EEFF;display:flex;align-items:center;justify-content:center;font-size:20px;flex-shrink:0;">🏅</div>
+            <div style="flex:1;min-width:0;">
+              <div style="font-size:13px;font-weight:700;color:#6B6980;">나의 배지</div>
+              <div style="font-size:16px;font-weight:800;color:#2D2A3E;margin-top:2px;">3 / 4</div>
+            </div>
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#A9A2B8" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m9 18 6-6-6-6"></path></svg>
+          </a>
+
+          <a href="#personal-ranking" style="margin-top:10px;background:#fff;border-radius:20px;padding:18px;display:flex;align-items:center;gap:14px;border:1px solid #E8E4F4;text-decoration:none;">
+            <div style="width:44px;height:44px;border-radius:50%;background:#F0EEFF;display:flex;align-items:center;justify-content:center;font-size:20px;flex-shrink:0;">🏆</div>
+            <div style="flex:1;min-width:0;">
+              <div style="font-size:13px;font-weight:700;color:#6B6980;">개인 랭킹</div>
+              <div style="font-size:16px;font-weight:800;color:#2D2A3E;margin-top:2px;">다른 사용자와 순위 겨루기</div>
+            </div>
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#A9A2B8" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m9 18 6-6-6-6"></path></svg>
+          </a>
+
           <div style="flex:1;"></div>
 
           <div style="height:48px;border-radius:16px;background:#fff;border:1.5px solid #E8B4B4;color:#B23B3B;display:flex;align-items:center;justify-content:center;font-size:14px;font-weight:800;">로그아웃</div>
+          <div style="margin-top:12px;text-align:center;font-size:12px;color:#6B6980;font-weight:700;">회원 탈퇴</div>
           </div>
 
           <div style="flex-shrink:0;padding:10px 12px 20px;background:#fff;border-top:1px solid #ECE9E3;display:flex;align-items:center;">
@@ -1268,6 +1705,43 @@
     </div>
 
     <div style="display:flex;flex-direction:column;gap:14px;">
+      <div id="my-info-edit" style="font-size:13px;font-weight:700;color:#6A5ECF;">10b. 내 정보 변경</div>
+      <x-import component-from-global-scope="IOSDevice" from="./ios-frame.jsx" width="{{ frameW }}" height="{{ frameH }}" hint-size="340,734">
+        <div style="height:100%;box-sizing:border-box;background:#F6F5FC;display:flex;flex-direction:column;">
+          <div style="padding:60px 20px 12px;flex-shrink:0;display:flex;align-items:center;gap:10px;">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#2D2A3E" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m15 18-6-6 6-6"></path></svg>
+            <div style="font-size:18px;font-weight:800;color:#2D2A3E;">내 정보 변경</div>
+          </div>
+          <div style="flex:1;overflow:auto;padding:10px 20px 24px;display:flex;flex-direction:column;">
+            <div style="display:flex;flex-direction:column;align-items:center;margin-top:10px;">
+              <div style="position:relative;width:84px;height:84px;">
+                <div style="width:84px;height:84px;border-radius:50%;background:#F0EEFF;display:flex;align-items:center;justify-content:center;font-size:28px;font-weight:800;color:#6A5ECF;">서</div>
+                <div style="position:absolute;bottom:0;right:0;width:30px;height:30px;border-radius:50%;background:#6A5ECF;border:2px solid #F6F5FC;display:flex;align-items:center;justify-content:center;">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14.5 4h-5L7 7H4a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-3l-2.5-3z"></path><circle cx="12" cy="13" r="3"></circle></svg>
+                </div>
+              </div>
+            </div>
+            <div style="margin-top:24px;">
+              <div style="font-size:13px;font-weight:700;color:#2D2A3E;margin-bottom:8px;">닉네임</div>
+              <input type="text" placeholder="닉네임을 입력해주세요" value="김서연" style="width:100%;box-sizing:border-box;height:48px;border-radius:14px;border:2px solid #E8E4F4;background:#fff;padding:0 16px;font-size:14px;font-weight:600;color:#2D2A3E;">
+            </div>
+            <div style="font-size:12px;font-weight:800;color:#8B8378;margin:22px 0 8px;">계정 정보</div>
+            <div>
+              <div style="font-size:13px;font-weight:700;color:#2D2A3E;margin-bottom:8px;">이메일</div>
+              <input type="email" placeholder="you@email.com" value="seoyeon@email.com" style="width:100%;box-sizing:border-box;height:48px;border-radius:14px;border:2px solid #E8E4F4;background:#fff;padding:0 16px;font-size:14px;font-weight:600;color:#2D2A3E;">
+            </div>
+            <div style="margin-top:14px;">
+              <div style="font-size:13px;font-weight:700;color:#2D2A3E;margin-bottom:8px;">비밀번호</div>
+              <input type="password" placeholder="바꾸려면 새 비밀번호 입력(안 바꾸면 비워두세요)" style="width:100%;box-sizing:border-box;height:48px;border-radius:14px;border:2px solid #E8E4F4;background:#fff;padding:0 16px;font-size:14px;font-weight:600;color:#2D2A3E;">
+            </div>
+            <div style="flex:1;"></div>
+            <div style="margin-top:14px;height:50px;border-radius:16px;background:linear-gradient(135deg,#E3DFFB 0%,#BDB2F2 100%);color:#3F3480;display:flex;align-items:center;justify-content:center;font-size:15px;font-weight:800;box-shadow:0 8px 18px rgba(106,94,207,0.3);">저장하기</div>
+          </div>
+        </div>
+      </x-import>
+    </div>
+
+    <div style="display:flex;flex-direction:column;gap:14px;">
       <div id="my-groups-manage" style="font-size:13px;font-weight:700;color:#6A5ECF;">10a. 내 그룹 관리</div>
       <x-import component-from-global-scope="IOSDevice" from="./ios-frame.jsx" width="{{ frameW }}" height="{{ frameH }}" hint-size="340,734">
         <div style="height:100%;box-sizing:border-box;background:#F6F5FC;display:flex;flex-direction:column;">
@@ -1290,10 +1764,10 @@
               </div>
               <div style="height:1px;background:#F1EEEE;margin:4px 0 12px;"></div>
               <div style="display:flex;flex-direction:column;gap:8px;">
-                <div style="height:42px;border-radius:12px;background:#fff;border:1.5px solid #E8E4F4;display:flex;align-items:center;justify-content:center;gap:8px;font-size:13px;font-weight:700;color:#2D2A3E;">
+                <a href="#delegate-select" style="height:42px;border-radius:12px;background:#fff;border:1.5px solid #E8E4F4;display:flex;align-items:center;justify-content:center;gap:8px;font-size:13px;font-weight:700;color:#2D2A3E;text-decoration:none;box-sizing:border-box;">
                   <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#2D2A3E" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle></svg>
                   그룹장 위임
-                </div>
+                </a>
                 <div style="height:42px;border-radius:12px;background:#fff;border:1.5px solid #E8B4B4;display:flex;align-items:center;justify-content:center;gap:8px;font-size:13px;font-weight:700;color:#B23B3B;">
                   <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#B23B3B" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path><polyline points="16 17 21 12 16 7"></polyline><line x1="21" x2="9" y1="12" y2="12"></line></svg>
                   그룹 나가기
@@ -1335,6 +1809,181 @@
               </div>
             </div>
 
+          </div>
+        </div>
+      </x-import>
+    </div>
+
+    <div style="display:flex;flex-direction:column;gap:14px;">
+      <div id="delegate-select" style="font-size:13px;font-weight:700;color:#6A5ECF;">10a-1. 그룹장 위임 대상 선택</div>
+      <x-import component-from-global-scope="IOSDevice" from="./ios-frame.jsx" width="{{ frameW }}" height="{{ frameH }}" hint-size="340,734">
+        <div style="height:100%;box-sizing:border-box;background:#F6F5FC;display:flex;flex-direction:column;">
+          <div style="padding:60px 20px 12px;flex-shrink:0;display:flex;align-items:center;gap:10px;">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#2D2A3E" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m15 18-6-6 6-6"></path></svg>
+            <div>
+              <div style="font-size:18px;font-weight:800;color:#2D2A3E;">그룹장 위임</div>
+              <div style="font-size:12px;color:#6B6980;font-weight:600;margin-top:2px;">"민준 &amp; 서연"의 새 그룹장을 골라주세요</div>
+            </div>
+          </div>
+          <div style="flex:1;overflow:auto;padding:10px 20px 24px;">
+            <div style="display:flex;flex-direction:column;gap:10px;">
+              <div style="background:#fff;border-radius:16px;padding:12px 14px;display:flex;align-items:center;gap:12px;box-shadow:0 2px 8px rgba(45,42,62,0.05);opacity:0.6;">
+                <div style="width:38px;height:38px;border-radius:50%;background:#FFF0F6;display:flex;align-items:center;justify-content:center;font-size:14px;font-weight:800;color:#2D2A3E;flex-shrink:0;">서</div>
+                <div style="flex:1;"><div style="font-size:14px;font-weight:800;color:#2D2A3E;">김서연</div><div style="font-size:12px;color:#6B6980;font-weight:600;">본인</div></div>
+              </div>
+              <div style="background:#fff;border-radius:16px;padding:12px 14px;display:flex;align-items:center;gap:12px;box-shadow:0 2px 8px rgba(45,42,62,0.05);">
+                <div style="width:38px;height:38px;border-radius:50%;background:#F0EEFF;display:flex;align-items:center;justify-content:center;font-size:14px;font-weight:800;color:#2D2A3E;flex-shrink:0;">민</div>
+                <div style="flex:1;"><div style="font-size:14px;font-weight:800;color:#2D2A3E;">이민준</div><div style="font-size:12px;color:#6B6980;font-weight:600;">파트너</div></div>
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#A9A2B8" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m9 18 6-6-6-6"></path></svg>
+              </div>
+            </div>
+          </div>
+        </div>
+      </x-import>
+    </div>
+
+    <div style="display:flex;flex-direction:column;gap:14px;">
+      <div id="group-goal-setting" style="font-size:13px;font-weight:700;color:#6A5ECF;">그룹 예산 설정</div>
+      <x-import component-from-global-scope="IOSDevice" from="./ios-frame.jsx" width="{{ frameW }}" height="{{ frameH }}" hint-size="340,734">
+        <div style="height:100%;box-sizing:border-box;background:#F6F5FC;display:flex;flex-direction:column;">
+          <div style="padding:60px 20px 16px;text-align:center;background:#F0EEFF;flex-shrink:0;position:relative;">
+            <div style="position:absolute;top:60px;left:20px;"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#2D2A3E" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m15 18-6-6 6-6"></path></svg></div>
+            <div style="font-size:12px;font-weight:700;color:#6B6980;">민준 &amp; 서연</div>
+            <div style="font-size:20px;font-weight:800;color:#2D2A3E;margin-top:4px;">그룹 예산 설정</div>
+          </div>
+          <div style="flex:1;overflow:auto;padding:18px 20px 28px;">
+            <div style="font-size:13px;font-weight:700;color:#2D2A3E;margin-bottom:8px;">카테고리</div>
+            <div style="display:flex;flex-wrap:wrap;gap:8px;">
+              <div style="padding:9px 13px;border-radius:14px;font-size:13px;font-weight:800;background:#FFF2EC;color:#A15A1E;border:2px solid #F5A882;position:relative;">식비 <span style="position:absolute;top:-3px;right:-3px;font-size:10px;">✓</span></div>
+              <div style="padding:9px 13px;border-radius:14px;font-size:13px;font-weight:800;background:#fff;color:#1D7A69;border:2px solid #E8E4F4;position:relative;">생활용품 <span style="position:absolute;top:-3px;right:-3px;font-size:10px;">✓</span></div>
+              <div style="padding:9px 13px;border-radius:14px;font-size:13px;font-weight:800;background:#fff;color:#2E7AB8;border:2px solid #E8E4F4;">교통</div>
+              <div style="padding:9px 13px;border-radius:14px;font-size:13px;font-weight:800;background:#fff;color:#8A6A12;border:2px solid #E8E4F4;">기타</div>
+            </div>
+            <div style="margin-top:18px;padding:14px 16px;border-radius:16px;background:#FFF2EC;border:1px solid rgba(245,168,130,0.4);">
+              <div style="font-size:12px;font-weight:700;color:#A15A1E;">이번 달 식비 그룹 지출</div>
+              <div style="font-size:20px;font-weight:800;color:#A15A1E;margin-top:4px;">212,000원</div>
+              <div style="font-size:12px;color:#A15A1E;opacity:0.8;margin-top:6px;">목표 300,000원 중 71% 사용</div>
+            </div>
+            <div style="margin-top:20px;">
+              <div style="font-size:13px;font-weight:700;color:#2D2A3E;margin-bottom:8px;">목표 금액</div>
+              <div style="display:flex;align-items:center;gap:6px;padding:12px 16px;border-radius:14px;border:2px solid #F5A882;background:#fff;">
+                <span style="font-size:20px;font-weight:800;color:#6B6980;">₩</span>
+                <span style="font-size:30px;font-weight:800;color:#2D2A3E;letter-spacing:-1px;">300,000</span>
+              </div>
+            </div>
+            <div style="margin-top:14px;height:50px;border-radius:16px;background:linear-gradient(135deg,#E3DFFB 0%,#BDB2F2 100%);color:#3F3480;display:flex;align-items:center;justify-content:center;font-size:15px;font-weight:800;box-shadow:0 8px 18px rgba(106,94,207,0.3);">예산 저장하기</div>
+            <div style="margin-top:10px;font-size:11px;color:#6B6980;font-weight:600;text-align:center;">그룹장만 예산을 정하고 고칠 수 있어요</div>
+          </div>
+        </div>
+      </x-import>
+    </div>
+
+    <div style="display:flex;flex-direction:column;gap:14px;">
+      <div id="recurring-expense-manage" style="font-size:13px;font-weight:700;color:#6A5ECF;">정기 지출 관리</div>
+      <x-import component-from-global-scope="IOSDevice" from="./ios-frame.jsx" width="{{ frameW }}" height="{{ frameH }}" hint-size="340,734">
+        <div style="height:100%;box-sizing:border-box;background:#F6F5FC;display:flex;flex-direction:column;">
+          <div style="padding:60px 20px 12px;flex-shrink:0;display:flex;align-items:center;gap:10px;">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#2D2A3E" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m15 18-6-6 6-6"></path></svg>
+            <div style="font-size:18px;font-weight:800;color:#2D2A3E;">정기 지출 관리</div>
+          </div>
+          <div style="flex:1;overflow:auto;padding:14px 20px 20px;">
+            <div style="display:flex;flex-direction:column;gap:8px;">
+              <div style="background:#fff;border-radius:16px;padding:12px 14px;display:flex;align-items:center;gap:12px;border:1px solid #E8E4F4;">
+                <div style="width:36px;height:36px;border-radius:12px;background:#6A5ECF;display:flex;align-items:center;justify-content:center;flex-shrink:0;"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 2 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4Z"></path><path d="M3 6h18"></path></svg></div>
+                <div style="flex:1;min-width:0;">
+                  <div style="font-size:14px;font-weight:800;color:#2D2A3E;">월세</div>
+                  <div style="font-size:12px;color:#6B6980;margin-top:2px;font-weight:600;">생활용품 · 개인 · 매달 1일</div>
+                </div>
+                <div style="font-size:15px;font-weight:800;color:#2D2A3E;">550,000원</div>
+                <div style="width:38px;height:22px;border-radius:11px;background:#6A5ECF;position:relative;flex-shrink:0;"><div style="width:16px;height:16px;border-radius:50%;background:#fff;position:absolute;top:3px;left:19px;box-shadow:0 2px 5px rgba(0,0,0,0.2);"></div></div>
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#A9A2B8" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"></path><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"></path></svg>
+              </div>
+              <div style="background:#fff;border-radius:16px;padding:12px 14px;display:flex;align-items:center;gap:12px;border:1px solid #E8E4F4;opacity:0.55;">
+                <div style="width:36px;height:36px;border-radius:12px;background:#6A5ECF;display:flex;align-items:center;justify-content:center;flex-shrink:0;"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="1"></circle><circle cx="19" cy="12" r="1"></circle><circle cx="5" cy="12" r="1"></circle></svg></div>
+                <div style="flex:1;min-width:0;">
+                  <div style="font-size:14px;font-weight:800;color:#2D2A3E;">넷플릭스</div>
+                  <div style="font-size:12px;color:#6B6980;margin-top:2px;font-weight:600;">기타 · 개인 · 매달 15일</div>
+                </div>
+                <div style="font-size:15px;font-weight:800;color:#2D2A3E;">17,000원</div>
+                <div style="width:38px;height:22px;border-radius:11px;background:#D8D3C8;position:relative;flex-shrink:0;"><div style="width:16px;height:16px;border-radius:50%;background:#fff;position:absolute;top:3px;left:3px;box-shadow:0 2px 5px rgba(0,0,0,0.2);"></div></div>
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#A9A2B8" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"></path><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"></path></svg>
+              </div>
+            </div>
+          </div>
+        </div>
+      </x-import>
+    </div>
+
+    <div style="display:flex;flex-direction:column;gap:14px;">
+      <div id="personal-ranking" style="font-size:13px;font-weight:700;color:#6A5ECF;">개인 랭킹</div>
+      <x-import component-from-global-scope="IOSDevice" from="./ios-frame.jsx" width="{{ frameW }}" height="{{ frameH }}" hint-size="340,734">
+        <div style="height:100%;box-sizing:border-box;background:#F6F5FC;display:flex;flex-direction:column;">
+          <div style="padding:60px 20px 12px;flex-shrink:0;display:flex;align-items:center;gap:10px;">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#2D2A3E" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m15 18-6-6 6-6"></path></svg>
+            <div style="font-size:18px;font-weight:800;color:#2D2A3E;">개인 랭킹</div>
+          </div>
+          <div style="flex:1;overflow:auto;padding:10px 20px 24px;">
+            <div style="font-size:12px;font-weight:700;color:#6B6980;margin-bottom:14px;">내 저금통 펫의 성장 단계로 다른 사용자들과 순위를 겨뤄보세요</div>
+            <div style="display:flex;flex-direction:column;gap:8px;">
+              <div style="background:#fff;border:1px solid #E8E4F4;border-radius:16px;padding:12px 14px;display:flex;align-items:center;gap:12px;">
+                <div style="width:28px;text-align:center;font-size:18px;flex-shrink:0;">🥇</div>
+                <div style="flex:1;min-width:0;"><div style="font-size:13px;font-weight:800;color:#2D2A3E;">민준</div><div style="font-size:11px;color:#6B6980;font-weight:600;margin-top:2px;">성체 · 🪙 3,240</div></div>
+              </div>
+              <div style="background:#F0EEFF;border:1.5px solid #6A5ECF;border-radius:16px;padding:12px 14px;display:flex;align-items:center;gap:12px;">
+                <div style="width:28px;text-align:center;font-size:18px;flex-shrink:0;">🥈</div>
+                <div style="flex:1;min-width:0;"><div style="font-size:13px;font-weight:800;color:#2D2A3E;">서연 <span style="color:#6A5ECF;">(나)</span></div><div style="font-size:11px;color:#6B6980;font-weight:600;margin-top:2px;">청소년기 · 🪙 1,240</div></div>
+              </div>
+              <div style="background:#fff;border:1px solid #E8E4F4;border-radius:16px;padding:12px 14px;display:flex;align-items:center;gap:12px;">
+                <div style="width:28px;text-align:center;font-size:18px;flex-shrink:0;">🥉</div>
+                <div style="flex:1;min-width:0;"><div style="font-size:13px;font-weight:800;color:#2D2A3E;">지훈</div><div style="font-size:11px;color:#6B6980;font-weight:600;margin-top:2px;">유년기 · 🪙 860</div></div>
+              </div>
+            </div>
+            <div style="margin-top:16px;text-align:center;font-size:12px;font-weight:700;color:#6B6980;">내 순위: 2위 / 3명</div>
+          </div>
+        </div>
+      </x-import>
+    </div>
+
+    <div style="display:flex;flex-direction:column;gap:14px;">
+      <div style="font-size:13px;font-weight:700;color:#6A5ECF;">온보딩 투어 (신규 가입 시)</div>
+      <x-import component-from-global-scope="IOSDevice" from="./ios-frame.jsx" width="{{ frameW }}" height="{{ frameH }}" hint-size="340,734">
+        <div style="height:100%;box-sizing:border-box;background:#F6F5FC;display:flex;flex-direction:column;position:relative;">
+          <div style="padding:60px 20px 0;flex-shrink:0;font-size:18px;font-weight:800;color:#2D2A3E;">민준님<br>안녕하세요</div>
+          <div style="position:absolute;inset:0;background:rgba(45,42,62,0.55);display:flex;align-items:center;justify-content:center;padding:32px;">
+            <div style="background:#fff;border-radius:24px;padding:28px;width:100%;text-align:center;">
+              <div style="width:64px;height:64px;border-radius:50%;background:#F0EEFF;display:flex;align-items:center;justify-content:center;margin:0 auto;">
+                <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#6A5ECF" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="18" x="3" y="3" rx="2" ry="2"></rect><circle cx="9" cy="9" r="2"></circle><path d="m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21"></path></svg>
+              </div>
+              <div style="font-size:17px;font-weight:800;color:#2D2A3E;margin-top:18px;">영수증만 찍으면 끝</div>
+              <div style="font-size:13px;color:#6B6980;margin-top:8px;font-weight:600;line-height:1.5;">카메라로 영수증을 찍으면 금액·가맹점을 자동으로 읽어서 지출로 기록해요.</div>
+              <div style="display:flex;justify-content:center;gap:6px;margin-top:20px;">
+                <div style="width:18px;height:6px;border-radius:3px;background:#6A5ECF;"></div>
+                <div style="width:6px;height:6px;border-radius:3px;background:#E8E4F4;"></div>
+                <div style="width:6px;height:6px;border-radius:3px;background:#E8E4F4;"></div>
+              </div>
+              <div style="display:flex;gap:8px;margin-top:22px;">
+                <div style="flex:1;height:48px;border-radius:16px;background:linear-gradient(135deg,#E3DFFB 0%,#BDB2F2 100%);color:#3F3480;display:flex;align-items:center;justify-content:center;font-size:14px;font-weight:800;">다음</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </x-import>
+    </div>
+
+    <div style="display:flex;flex-direction:column;gap:14px;">
+      <div style="font-size:13px;font-weight:700;color:#6A5ECF;">10c. 회원 탈퇴 확인</div>
+      <x-import component-from-global-scope="IOSDevice" from="./ios-frame.jsx" width="{{ frameW }}" height="{{ frameH }}" hint-size="340,734">
+        <div style="height:100%;box-sizing:border-box;background:#F6F5FC;display:flex;flex-direction:column;position:relative;">
+          <div style="padding:20px 20px 0;flex-shrink:0;font-size:22px;font-weight:800;color:#2D2A3E;">마이페이지</div>
+          <div style="position:absolute;inset:0;background:rgba(45,42,62,0.45);display:flex;align-items:center;justify-content:center;padding:32px;">
+            <div style="background:#fff;border-radius:20px;padding:22px;width:100%;text-align:center;">
+              <div style="font-size:16px;font-weight:800;color:#2D2A3E;">정말 탈퇴할까요?</div>
+              <div style="font-size:12px;color:#6B6980;margin-top:8px;font-weight:600;">그룹·지출·저금·펫 등 계정의 모든 데이터가 지워지고 되돌릴 수 없어요</div>
+              <div style="display:flex;gap:8px;margin-top:18px;">
+                <div style="flex:1;height:44px;border-radius:14px;border:1.5px solid #E8E4F4;display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:800;color:#2D2A3E;">취소</div>
+                <div style="flex:1;height:44px;border-radius:14px;background:#B23B3B;display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:800;color:#fff;">탈퇴</div>
+              </div>
+            </div>
           </div>
         </div>
       </x-import>
