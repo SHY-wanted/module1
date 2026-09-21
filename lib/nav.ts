@@ -41,8 +41,9 @@ export type StackScreen =
   | { id: "petSelect"; scope: CategoryScope }
   | { id: "petDetail"; scope: CategoryScope }
   | { id: "myBadges" }
-  // 개인 펫 색상 커스텀(참고 이미지 기반 신규) — 그룹 펫엔 없음.
-  | { id: "petCustomize" }
+  // 펫 색상 커스텀(참고 이미지 기반 신규). 2026-09-21 팀 요청으로 그룹 펫까지 확대 — 그전까지는
+  // 개인 펫 전용이었다(2026-09-15 "개인용 펫만" 확인). petDetail·petSelect와 같은 scope를 받는다.
+  | { id: "petCustomize"; scope: CategoryScope }
   // 목표(예산 대체, shooTbranch 통합) — 월별·카테고리별.
   | { id: "monthlyGoalSetting" }
   | { id: "monthlyGoalReport" }

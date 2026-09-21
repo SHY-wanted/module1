@@ -1,18 +1,20 @@
 "use client";
 // components/screens/PetCustomize.tsx — "캐릭터 커스텀"(디자인 파일 없음, 2026-09-15 사용자가 준 참고
-// 이미지 기반 신규 구현). 개인 펫 전용 — 그룹 펫은 커스텀 대상이 아니다(사용자 확인: "개인용 펫만").
+// 이미지 기반 신규 구현). 2026-09-21 팀 요청으로 그룹 펫까지 확대 — 그전까지는 개인 펫 전용이었다
+// ("개인용 펫만" 확인). scope로 어느 펫을 꾸밀지 받는다(petDetail·petSelect와 같은 CategoryScope).
 import { useState } from "react";
 import { useNav } from "../NavContext";
 import { useStore } from "@/lib/store";
-import { getPersonalPet } from "@/lib/selectors";
+import { getGroupPet, getPersonalPet } from "@/lib/selectors";
+import type { CategoryScope } from "@/lib/categories";
 import { PET_COLOR_PALETTE, PET_COLOR_PARTS, PET_STAGE_LABELS, colorPartsForStage, effectiveStageIndex, type PetColorPart } from "@/lib/pets";
 import PetMascot from "../PetMascot";
 import { ChevronLeftIcon } from "../icons";
 
-export default function PetCustomize() {
+export default function PetCustomize({ scope }: { scope: CategoryScope }) {
   const nav = useNav();
   const store = useStore();
-  const pet = getPersonalPet(store.pets, store.currentUserId);
+  const pet = scope.kind === "personal" ? getPersonalPet(store.pets, store.currentUserId) : getGroupPet(store.pets, scope.groupId);
 
   const [colors, setColors] = useState(() =>
     pet
@@ -37,7 +39,8 @@ export default function PetCustomize() {
     setSaving(true);
     await store.setPetColors(pet.id, colors, previewStage);
     setSaving(false);
-    store.showToast("펫을 꾸몄어요");
+    // 그룹 펫은 바꾼 색이 그룹원 모두에게 보이므로 토스트에서 그 점을 알린다.
+    store.showToast(scope.kind === "personal" ? "펫을 꾸몄어요" : "그룹 펫을 꾸몄어요 — 그룹원 모두에게 보여요");
     nav.back();
   }
 
@@ -50,7 +53,7 @@ export default function PetCustomize() {
           </div>
         </div>
         <div style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center", color: "var(--shoot-text-muted)", fontSize: 13, fontWeight: 600 }}>
-          아직 개인 펫이 없어요
+          {scope.kind === "personal" ? "아직 개인 펫이 없어요" : "아직 그룹 펫이 없어요"}
         </div>
       </div>
     );
@@ -62,7 +65,9 @@ export default function PetCustomize() {
         <div onClick={() => nav.back()} style={{ cursor: "pointer", display: "flex" }}>
           <ChevronLeftIcon size={18} color="var(--shoot-text)" />
         </div>
-        <div style={{ fontSize: 18, fontWeight: 800, color: "var(--shoot-text)" }}>캐릭터 커스텀</div>
+        <div style={{ fontSize: 18, fontWeight: 800, color: "var(--shoot-text)" }}>
+          {scope.kind === "personal" ? "캐릭터 커스텀" : "그룹 펫 커스텀"}
+        </div>
       </div>
 
       <div style={{ flex: 1, overflowY: "auto", padding: "10px 20px 24px" }}>
