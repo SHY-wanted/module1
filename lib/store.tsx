@@ -72,6 +72,19 @@ export function translateAuthError(message: string): string {
   return "요청을 처리하지 못했어요. 잠시 후 다시 시도해주세요";
 }
 
+// 그룹 예산(supabase/013_group_category_goals.sql) INSERT/UPDATE 실패 원인별 안내 — 2026-09-21 버그
+// 수정. 원인을 구분 안 하면 "테이블이 아직 없음"과 "권한 없음"이 똑같이 "그룹장이 아니다"로 보여서
+// 실제로는 그룹장인데 마이그레이션을 안 돌린 경우에도 헷갈렸다(사용자 제보).
+function translateGroupGoalError(error: { code?: string; message: string }): string {
+  if (error.code === "42P01" || error.message.includes("does not exist")) {
+    return "그룹 예산 기능이 아직 준비되지 않았어요 — supabase/013_group_category_goals.sql 마이그레이션을 먼저 실행해주세요";
+  }
+  if (error.code === "42501" || error.message.toLowerCase().includes("row-level security")) {
+    return "그룹장만 예산을 정할 수 있어요";
+  }
+  return `예산을 저장하지 못했어요 (${error.message})`;
+}
+
 interface StoreState {
   profiles: Profile[];
   // 06-data.md E1: profiles 테이블엔 email 컬럼이 없다(auth.users.email을 그대로 참조) — 이메일은
@@ -1068,14 +1081,24 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       },
 
       // 그룹 예산(신규) — category_goals와 같은 upsert 패턴. RLS(group_category_goals_insert_owner /
-      // _update_owner)가 그룹장이 아니면 막으므로, 실패를 "그룹장만 예산을 정할 수 있어요"로 매핑한다.
+      // _update_owner)가 그룹장이 아니면 막는다 — 2026-09-21 버그 수정: 예전엔 어떤 에러든 무조건
+      // "그룹장만 예산을 정할 수 있어요"로 뭉개버려서, 실제로는 그룹장인데도 마이그레이션
+      // (supabase/013_group_category_goals.sql)을 아직 안 돌려 테이블 자체가 없는 경우("relation
+      // ... does not exist", 42P01)에도 똑같이 "그룹장이 아니다"라고 나와 원인 파악이 안 됐다.
+      // 이제 원인별로 다른 메시지를 준다 — translateGroupGoalError 참고.
       async setGroupCategoryGoal(groupId: string, category: string, month: string, amount: number): Promise<MutationResult<GroupCategoryGoal>> {
         if (!session) return { ok: false, error: "로그인이 필요해요" };
         const nowIso = new Date().toISOString();
         const existing = groupCategoryGoals.find((g) => g.group_id === groupId && g.category === category && g.month === month);
         if (existing) {
-          const { error } = await supabase.from("group_category_goals").update({ goal_amount: amount, updated_at: nowIso }).eq("id", existing.id);
-          if (error) return { ok: false, error: "그룹장만 예산을 정할 수 있어요" };
+          const { error, count } = await supabase
+            .from("group_category_goals")
+            .update({ goal_amount: amount, updated_at: nowIso }, { count: "exact" })
+            .eq("id", existing.id);
+          if (error) return { ok: false, error: translateGroupGoalError(error) };
+          // RLS(_update_owner)의 USING절은 조건에 안 맞는 행을 에러 없이 조용히 0건으로 걸러낸다 —
+          // count가 0이면 실제로는 "권한 없음"인데 error가 안 나는 경우라 여기서 직접 잡아준다.
+          if (!count) return { ok: false, error: "그룹장만 예산을 고칠 수 있어요" };
           const updated: GroupCategoryGoal = { ...existing, goal_amount: amount, updated_at: nowIso };
           setGroupCategoryGoals((prev) => prev.map((g) => (g.id === existing.id ? updated : g)));
           return { ok: true, data: updated };
@@ -1091,7 +1114,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
           updated_at: nowIso,
         };
         const { error } = await supabase.from("group_category_goals").insert(newGoal);
-        if (error) return { ok: false, error: "그룹장만 예산을 정할 수 있어요" };
+        if (error) return { ok: false, error: translateGroupGoalError(error) };
         setGroupCategoryGoals((prev) => [...prev, newGoal]);
         return { ok: true, data: newGoal };
       },
