@@ -15,24 +15,52 @@ export const MAX_STAGE_INDEX = 4;
 // 스펙이 제시한 기본값(15)을 그대로 쓴다. 개인 펫 "밥 주기" 1회당 XP.
 export const FEED_XP_DEFAULT = 15;
 
-// 2026-09-18 사용자 요청: "하루 한 번" 제한이 너무 느리다 — 대신 코인이 있는 만큼 계속 먹일 수
-// 있게 바꿨다(코인이 다하면 못 먹인다). 값은 사용자 확인(출석체크 보상 5코인으로 5번 먹일 수 있는 수준).
-export const FEED_COIN_COST = 1;
+// 2026-09-21 사용자 요청: 밥 한 번에 코인 5개 — 예전 1개는 출석 코인(하루 5개)만으로도 하루에
+// 여러 번 먹일 수 있어서 너무 헐렁했다. 이제 출석만으론 하루 한 번 겨우 먹이는 수준이고, 아래
+// 지출 기록 코인까지 더해야 여유가 생긴다.
+export const FEED_COIN_COST = 5;
 
-// XP → 단계 승급: 100 넘으면 stage_index+1, 초과분 이월. 최대 단계는 XP만 누적.
+// 2026-09-21 사용자 요청: 단계가 올라갈수록 다음 단계까지 필요한 XP도 늘어나야 한다("갈수록 더
+// 받아야 함") — 그 증가폭은 균일해야 한다("차이는 균일하게"). 그래서 등차수열로 정한다.
+// [알→유년기, 유년기→청소년기, 청소년기→성체] = [100, 150, 200] — 매 단계 +50씩 늘어난다.
+export const STAGE_XP_REQUIREMENTS = [100, 150, 200];
+
+// 지금 단계에서 다음 단계로 가는 데 필요한 총 XP. 최대 단계(더 이상 오를 데가 없음)면 null.
+export function stageXpRequirement(stageIndex: number): number | null {
+  if (stageIndex >= MAX_STAGE_INDEX) return null;
+  return STAGE_XP_REQUIREMENTS[stageIndex - 1];
+}
+
+// XP → 단계 승급: 그 단계의 필요량(stageXpRequirement)을 넘으면 stage_index+1, 초과분 이월.
+// 최대 단계는 XP만 계속 쌓인다(더 이상 승급 없음).
 export function applyXpGain(stageIndex: number, xpProgress: number, xpGained: number): { stageIndex: number; xpProgress: number } {
   if (stageIndex >= MAX_STAGE_INDEX) {
     return { stageIndex, xpProgress: xpProgress + xpGained };
   }
   let nextStage = stageIndex;
   let nextXp = xpProgress + xpGained;
-  while (nextXp >= 100 && nextStage < MAX_STAGE_INDEX) {
-    nextXp -= 100;
+  while (nextStage < MAX_STAGE_INDEX) {
+    const needed = STAGE_XP_REQUIREMENTS[nextStage - 1];
+    if (nextXp < needed) break;
+    nextXp -= needed;
     nextStage += 1;
   }
-  if (nextStage >= MAX_STAGE_INDEX) nextStage = MAX_STAGE_INDEX;
   return { stageIndex: nextStage, xpProgress: nextXp };
 }
+
+// 2026-09-21 사용자 요청: 그룹 펫도 이제 수동으로 먹일 수 있다(그룹원 각자 하루 한 번씩,
+// pet_feedings 유니크 제약이 실제로 막아준다 — 015 마이그레이션). 다만 그룹원이 많을수록 하루에
+// 먹일 수 있는 횟수도 늘어나서, 그대로 두면 인원 많은 그룹이 개인보다 훨씬 빠르게 자라 형평성 문제가
+// 생긴다("개인이 키울 때랑 너무 차이나면 안 됨"). 그래서 한 번 먹일 때 주는 XP를 그룹원 수로 나눠,
+// "그룹원 전체가 하루치를 다 먹여도" 개인 1회(FEED_XP_DEFAULT)와 비슷한 총량이 되게 맞춘다.
+export function groupFeedXp(memberCount: number): number {
+  return Math.max(1, Math.round(FEED_XP_DEFAULT / Math.max(memberCount, 1)));
+}
+
+// 2026-09-21 사용자 요청: 코인 수급을 출석체크 하나에만 의존하지 않게, 지출을 기록할 때도
+// 코인을 준다 — 개인 지출은 내 개인 펫에, 공유(그룹) 지출은 그 그룹 펫에 쌓인다.
+export const PERSONAL_EXPENSE_COIN_REWARD = 1;
+export const GROUP_EXPENSE_COIN_REWARD = 1;
 
 // ============================================================
 // 마스코트 색상 커스텀 — docs/08-pet-feature-spec.md엔 없던 신규 요청(2026-09-15, 참고 이미지 기반).

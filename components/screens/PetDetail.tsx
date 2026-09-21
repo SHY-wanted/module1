@@ -1,12 +1,13 @@
 "use client";
 // components/screens/PetDetail.tsx — P2. 펫 상세·성장(디자인 파일 없음, docs/08-pet-feature-spec.md §2 근거,
-// 2026-09-15 신규 구현 → 같은 날 mg·hybranch·shooTbranch 통합: 마스코트+색상, 그룹 펫은 참여도 기반
-// 자동 성장(수동 밥주기 없음)·시무룩 상태, "리포트"는 월별 목표로 교체).
+// 2026-09-15 신규 구현 → 같은 날 mg·hybranch·shooTbranch 통합: 마스코트+색상·시무룩 상태, "리포트"는
+// 월별 목표로 교체. 2026-09-21: 그룹 펫도 참여도 기반 자동 성장에 더해 그룹원 각자 하루 한 번씩
+// 수동으로 먹일 수 있게 됐다(형평성을 위해 XP는 그룹원 수로 나눠 받는다 — lib/pets.ts groupFeedXp).
 import { useNav } from "../NavContext";
 import { useStore } from "@/lib/store";
 import type { CategoryScope } from "@/lib/categories";
 import { getGroupPet, getPersonalPet } from "@/lib/selectors";
-import { FEED_COIN_COST, GROUP_SULK_AFTER_DAYS, MAX_STAGE_INDEX, PERSONAL_SULK_AFTER_DAYS, PET_STAGE_LABELS, daysBetween } from "@/lib/pets";
+import { FEED_COIN_COST, GROUP_SULK_AFTER_DAYS, PERSONAL_SULK_AFTER_DAYS, PET_STAGE_LABELS, daysBetween, stageXpRequirement } from "@/lib/pets";
 import { TODAY_DATE } from "@/lib/mock";
 import PetMascot, { petMascotSize } from "../PetMascot";
 import { useState } from "react";
@@ -41,9 +42,12 @@ export default function PetDetail({ scope }: { scope: CategoryScope }) {
   }
 
   const displayName = pet.pet_name?.trim() || (scope.kind === "personal" ? "저금통이" : "우리 펫");
-  // 2026-09-21 사용자 요청: "하루 한 번" 제한을 되살렸다(store.feedPet이 실제로 막는다) — 여기서도
-  // 버튼을 미리 비활성화해서, 눌러보고서야 "오늘은 이미 줬어요" 에러를 보는 대신 바로 알 수 있게 한다.
-  const alreadyFedToday = pet.last_fed_date === TODAY_DATE;
+  // "오늘 이미 먹였는지"는 개인 펫만 여기서 미리 알 수 있다 — 개인 펫은 먹일 사람이 나 하나뿐이라
+  // last_fed_date가 곧 "내가 오늘 먹였는지"와 같다. 그룹 펫은 last_fed_date가 "그룹원 중 누군가
+  // 오늘 먹였는지"만 알려줄 뿐 "내가" 먹였는지는 알 수 없다(그룹원마다 하루 한 번씩 따로 허용되므로,
+  // 다른 사람이 먼저 먹였어도 나는 아직 먹일 수 있다) — 그래서 그룹은 버튼을 미리 막지 않고, 실제
+  // 시도했을 때 서버(pet_feedings 유니크 제약)가 돌려주는 결과로만 판단한다.
+  const alreadyFedToday = scope.kind === "personal" && pet.last_fed_date === TODAY_DATE;
   const canAffordFeed = !alreadyFedToday && pet.total_coins >= FEED_COIN_COST;
 
   // 방치 시 "시무룩"(hybranch F22) — 단계는 안 내려가고 화면 표시만 바뀐다.
@@ -116,52 +120,56 @@ export default function PetDetail({ scope }: { scope: CategoryScope }) {
           })}
         </div>
 
-        {/* XP 진행 바 */}
-        <div style={{ width: "100%", marginTop: 22 }}>
-          <div style={{ display: "flex", justifyContent: "space-between", fontSize: 12, fontWeight: 700, color: "var(--shoot-text-muted)", marginBottom: 6 }}>
-            <span>XP</span>
-            <span>{pet.stage_index >= MAX_STAGE_INDEX ? `${Math.round(pet.xp_progress)} (최대 단계)` : `${Math.round(pet.xp_progress)} / 100`}</span>
-          </div>
-          <div style={{ height: 10, borderRadius: 6, background: "var(--shoot-divider)", overflow: "hidden" }}>
-            <div style={{ height: "100%", width: `${Math.min(100, pet.xp_progress)}%`, background: "var(--shoot-accent)", borderRadius: 6 }} />
-          </div>
+        {/* XP 진행 바 — 단계마다 다음 단계까지 필요한 양이 다르다(갈수록 늘어남, lib/pets.ts
+            STAGE_XP_REQUIREMENTS 참고) — 100 고정이 아니라 그 단계의 실제 필요량을 기준으로 그린다. */}
+        {(() => {
+          const needed = stageXpRequirement(pet.stage_index);
+          return (
+            <div style={{ width: "100%", marginTop: 22 }}>
+              <div style={{ display: "flex", justifyContent: "space-between", fontSize: 12, fontWeight: 700, color: "var(--shoot-text-muted)", marginBottom: 6 }}>
+                <span>XP</span>
+                <span>{needed === null ? `${Math.round(pet.xp_progress)} (최대 단계)` : `${Math.round(pet.xp_progress)} / ${needed}`}</span>
+              </div>
+              <div style={{ height: 10, borderRadius: 6, background: "var(--shoot-divider)", overflow: "hidden" }}>
+                <div style={{ height: "100%", width: `${Math.min(100, needed === null ? 100 : (pet.xp_progress / needed) * 100)}%`, background: "var(--shoot-accent)", borderRadius: 6 }} />
+              </div>
+            </div>
+          );
+        })()}
+
+        {/* 2026-09-21부터 그룹 펫도 코인·먹이기 대상이라(그룹원 각자 하루 한 번씩) 이 카드를
+            개인·그룹 공통으로 보여준다. 코인은 지출 기록(개인 지출→내 펫, 공유 지출→그룹 펫)과
+            개인은 출석체크로도 쌓인다. */}
+        <div style={{ width: "100%", marginTop: 16, background: "var(--shoot-surface)", border: "1px solid var(--shoot-border)", borderRadius: 16, padding: "14px 16px", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+          <div style={{ fontSize: 13, fontWeight: 700, color: "var(--shoot-text-muted)" }}>저금통 코인</div>
+          <div style={{ fontSize: 16, fontWeight: 800, color: "var(--shoot-text)" }}>🪙 {pet.total_coins.toLocaleString("ko-KR")}</div>
         </div>
 
-        {scope.kind === "personal" && (
-          <div style={{ width: "100%", marginTop: 16, background: "var(--shoot-surface)", border: "1px solid var(--shoot-border)", borderRadius: 16, padding: "14px 16px", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-            <div style={{ fontSize: 13, fontWeight: 700, color: "var(--shoot-text-muted)" }}>저금통 코인</div>
-            <div style={{ fontSize: 16, fontWeight: 800, color: "var(--shoot-text)" }}>🪙 {pet.total_coins.toLocaleString("ko-KR")}</div>
-          </div>
-        )}
-
-        {/* 그룹 펫은 수동 밥주기가 없다(hybranch F22 통합 — 참여도로 자동 성장) */}
-        {scope.kind === "personal" ? (
-          <>
-            {feedMessage && <div style={{ marginTop: 16, fontSize: 13, fontWeight: 700, color: "var(--shoot-accent)", textAlign: "center" }}>{feedMessage}</div>}
-            <div
-              onClick={handleFeed}
-              style={{
-                width: "100%",
-                marginTop: 16,
-                height: 50,
-                borderRadius: 16,
-                background: canAffordFeed ? "linear-gradient(135deg,#E3DFFB 0%,#BDB2F2 100%)" : "var(--shoot-surface-alt)",
-                color: canAffordFeed ? "#3F3480" : "var(--shoot-text-muted)",
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-                fontSize: 15,
-                fontWeight: 800,
-                cursor: canAffordFeed ? "pointer" : "default",
-                opacity: feeding ? 0.6 : 1,
-              }}
-            >
-              {canAffordFeed ? `밥 주기 (🪙${FEED_COIN_COST})` : alreadyFedToday ? "오늘은 이미 밥을 줬어요" : "코인이 부족해요"}
-            </div>
-          </>
-        ) : (
-          <div style={{ width: "100%", marginTop: 16, fontSize: 11, color: "var(--shoot-text-muted)", textAlign: "center", lineHeight: 1.5 }}>
-            그룹원들이 지출을 골고루 기록하면 저절로 자라요 — 한 명만 계속 기록하면 절반만 자라요.
+        {feedMessage && <div style={{ marginTop: 16, fontSize: 13, fontWeight: 700, color: "var(--shoot-accent)", textAlign: "center" }}>{feedMessage}</div>}
+        <div
+          onClick={handleFeed}
+          style={{
+            width: "100%",
+            marginTop: 16,
+            height: 50,
+            borderRadius: 16,
+            background: canAffordFeed ? "linear-gradient(135deg,#E3DFFB 0%,#BDB2F2 100%)" : "var(--shoot-surface-alt)",
+            color: canAffordFeed ? "#3F3480" : "var(--shoot-text-muted)",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            fontSize: 15,
+            fontWeight: 800,
+            cursor: canAffordFeed ? "pointer" : "default",
+            opacity: feeding ? 0.6 : 1,
+          }}
+        >
+          {canAffordFeed ? `밥 주기 (🪙${FEED_COIN_COST})` : alreadyFedToday ? "오늘은 이미 밥을 줬어요" : "코인이 부족해요"}
+        </div>
+        {scope.kind === "group" && (
+          <div style={{ width: "100%", marginTop: 8, fontSize: 11, color: "var(--shoot-text-muted)", textAlign: "center", lineHeight: 1.5 }}>
+            그룹원 각자 하루 한 번씩 먹일 수 있어요. 공유 지출을 골고루 기록해도 저절로 자라요 —
+            한 명만 계속 기록하면 그건 절반만 자라요.
           </div>
         )}
 
