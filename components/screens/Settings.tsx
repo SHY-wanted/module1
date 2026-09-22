@@ -10,7 +10,7 @@ import { useNav } from "../NavContext";
 import { useStore } from "@/lib/store";
 import type { CategoryScope } from "@/lib/categories";
 import { getGroupsForUser } from "@/lib/selectors";
-import { BellIcon, ChevronLeftIcon, ChevronRightIcon, MoonIcon, MoreHorizontalIcon, RepeatIcon, ThreeLinesIcon } from "../icons";
+import { BellIcon, ChevronLeftIcon, ChevronRightIcon, MoonIcon, MoreHorizontalIcon, RepeatIcon, ThreeLinesIcon, TrashIcon } from "../icons";
 
 function Toggle({ on, onClick }: { on: boolean; onClick: () => void }) {
   return (
@@ -41,8 +41,10 @@ export default function Settings() {
   const [scope, setScope] = useState<CategoryScope>({ kind: "personal" });
   const [menuOpen, setMenuOpen] = useState(false);
   const [editMode, setEditMode] = useState(false);
-  const [renamingId, setRenamingId] = useState<string | null>(null);
-  const [renameValue, setRenameValue] = useState("");
+  // 2026-09-22 사용자 요청: "..." 누르면 이름 바꾸기 대신 삭제 버튼이 나오게 — revealedId는 어느 행의
+  // "..."를 눌러 삭제 버튼을 펼쳤는지, confirmDeleteId는 그 삭제 버튼까지 눌러 확인 팝업이 뜬 카테고리.
+  const [revealedId, setRevealedId] = useState<string | null>(null);
+  const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
 
   // 버그 수정(2026-09-22 사용자 요청): 카테고리 목록이 지금 고른 scope(개인/그룹)의 프리셋을
   // 전부 보여줘서, 실제로 그 scope에서 지출을 한 번도 안 한 카테고리까지 섞여 보였다 — 지금까지
@@ -60,23 +62,18 @@ export default function Settings() {
   const categories = store.getCategoriesForScope(scope).filter((c) => usedCategoryLabels.has(c.label));
 
   function resetRowEditing() {
-    setRenamingId(null);
-    setRenameValue("");
+    setRevealedId(null);
+    setConfirmDeleteId(null);
   }
 
-  function startRename(id: string, currentLabel: string) {
-    setRenamingId(id);
-    setRenameValue(currentLabel);
-  }
-
-  function confirmRename() {
-    if (renamingId) store.renameCategoryInScope(scope, renamingId, renameValue);
-    setRenamingId(null);
-    setRenameValue("");
+  function handleDeleteConfirmed() {
+    if (confirmDeleteId) store.deleteCategoryInScope(scope, confirmDeleteId);
+    setConfirmDeleteId(null);
+    setRevealedId(null);
   }
 
   return (
-    <div style={{ height: "100%", width: "100%", boxSizing: "border-box", background: "var(--shoot-bg)", display: "flex", flexDirection: "column" }}>
+    <div style={{ height: "100%", width: "100%", boxSizing: "border-box", background: "var(--shoot-bg)", display: "flex", flexDirection: "column", position: "relative" }}>
       <div style={{ padding: "20px 20px 12px", flexShrink: 0, display: "flex", alignItems: "center", gap: 10 }}>
         <div onClick={() => nav.back()} style={{ cursor: "pointer", display: "flex" }}>
           <ChevronLeftIcon size={18} color="var(--shoot-text)" />
@@ -173,27 +170,27 @@ export default function Settings() {
             >
               {/* 2026-09-17 팀 결정: 아이콘 제거, 색으로만 구별(칠해진 원). */}
               <div style={{ width: 16, height: 16, borderRadius: "50%", background: cat.ink, flexShrink: 0 }} />
-              {renamingId === cat.id ? (
-                <input
-                  type="text"
-                  autoFocus
-                  value={renameValue}
-                  onChange={(e) => setRenameValue(e.target.value)}
-                  onKeyDown={(e) => {
-                    if (e.key === "Enter") confirmRename();
-                  }}
-                  style={{ flex: 1, boxSizing: "border-box", height: 32, borderRadius: 8, border: "2px solid var(--shoot-accent)", background: "var(--shoot-surface)", padding: "0 10px", fontSize: 13, fontWeight: 700, color: "var(--shoot-text)" }}
-                />
-              ) : (
-                <div style={{ flex: 1, fontSize: 14, fontWeight: 700, color: "var(--shoot-text)" }}>{cat.label}</div>
-              )}
+              <div style={{ flex: 1, fontSize: 14, fontWeight: 700, color: "var(--shoot-text)" }}>{cat.label}</div>
               {editMode &&
-                (renamingId === cat.id ? (
-                  <div onClick={confirmRename} style={{ fontSize: 12, fontWeight: 800, color: "var(--shoot-accent)", cursor: "pointer", flexShrink: 0, padding: "4px 8px" }}>
-                    완료
+                (revealedId === cat.id ? (
+                  <div
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setConfirmDeleteId(cat.id);
+                    }}
+                    style={{ display: "flex", alignItems: "center", gap: 4, cursor: "pointer", flexShrink: 0, padding: "4px 8px" }}
+                  >
+                    <TrashIcon size={14} color="#B23B3B" />
+                    <span style={{ fontSize: 12, fontWeight: 800, color: "#B23B3B" }}>삭제</span>
                   </div>
                 ) : (
-                  <div onClick={() => startRename(cat.id, cat.label)} style={{ cursor: "pointer", display: "flex", flexShrink: 0, padding: "4px 6px" }}>
+                  <div
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setRevealedId(cat.id);
+                    }}
+                    style={{ cursor: "pointer", display: "flex", flexShrink: 0, padding: "4px 6px" }}
+                  >
                     <MoreHorizontalIcon size={17} color="var(--shoot-text-muted)" />
                   </div>
                 ))}
@@ -301,6 +298,30 @@ export default function Settings() {
           </div>
         </div>
       </div>
+
+      {/* 2026-09-22 사용자 요청: 카테고리 삭제 확인 팝업 — 다른 삭제 확인 팝업(7·9c 등)과 같은 패턴. */}
+      {confirmDeleteId && (
+        <div style={{ position: "absolute", inset: 0, background: "rgba(45,42,62,0.45)", display: "flex", alignItems: "center", justifyContent: "center", padding: 32, zIndex: 20 }}>
+          <div style={{ background: "var(--shoot-surface)", borderRadius: 20, padding: 22, width: "100%", textAlign: "center" }}>
+            <div style={{ fontSize: 16, fontWeight: 800, color: "var(--shoot-text)" }}>이 카테고리를 삭제할까요?</div>
+            <div style={{ fontSize: 12, color: "var(--shoot-text-muted)", marginTop: 8, fontWeight: 600 }}>이미 이 카테고리로 기록한 지출은 그대로 남아요</div>
+            <div style={{ display: "flex", gap: 8, marginTop: 18 }}>
+              <div
+                onClick={() => setConfirmDeleteId(null)}
+                style={{ flex: 1, height: 44, borderRadius: 14, border: "1.5px solid var(--shoot-border)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 13, fontWeight: 800, color: "var(--shoot-text)", cursor: "pointer" }}
+              >
+                취소
+              </div>
+              <div
+                onClick={handleDeleteConfirmed}
+                style={{ flex: 1, height: 44, borderRadius: 14, background: "#B23B3B", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 13, fontWeight: 800, color: "#fff", cursor: "pointer" }}
+              >
+                삭제
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

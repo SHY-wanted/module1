@@ -200,8 +200,10 @@ interface StoreValue extends StoreState {
   deleteIncome: (id: string) => Promise<boolean>;
   // 2c/6 카테고리 — scope(개인 또는 특정 그룹)의 카테고리 목록을 읽는다(없으면 그룹 프리셋으로 폴백).
   getCategoriesForScope: (scope: CategoryScope) => CategoryDef[];
-  // 2c "카테고리 편집" — "..." 버튼으로 고른 카테고리의 이름만 바꾼다(그 scope 안에서만).
-  renameCategoryInScope: (scope: CategoryScope, id: string, newLabel: string) => void;
+  // 2c "카테고리 편집" — "..." 버튼으로 고른 카테고리를 목록에서 지운다(그 scope 안에서만).
+  // 2026-09-22 사용자 요청으로 이름 바꾸기 대신 삭제로 교체 — 실제 지출 기록(category는 자유 텍스트)은
+  // 안 건드리므로, 지워도 예전에 그 카테고리로 기록한 지출은 그대로 남는다(카테고리 선택지에서만 빠짐).
+  deleteCategoryInScope: (scope: CategoryScope, id: string) => void;
   // 2c "카테고리 추가"(편집 모드에서만 보임) · 6 "직접 입력"으로 저장 시 — 그 scope에 새 카테고리를 더한다.
   // 이미 같은 이름이 있으면 새로 안 만들고 그대로 둔다.
   addCategoryInScope: (scope: CategoryScope, label: string) => void;
@@ -895,18 +897,16 @@ export function StoreProvider({ children }: { children: ReactNode }) {
         return groupCategoriesById[scope.groupId] ?? groupToCats(groups.find((g) => g.id === scope.groupId)?.group_type ?? null);
       },
 
-      // 2c "카테고리 편집" — 이름만 바꾼다(scope 안에서만). 빈 값이면 무시.
-      renameCategoryInScope(scope: CategoryScope, id: string, newLabel: string) {
-        const trimmed = newLabel.trim();
-        if (trimmed.length === 0) return;
+      // 2c "카테고리 편집" — "..."로 고른 카테고리를 scope 목록에서 지운다(이름 바꾸기 대신, 2026-09-22 사용자 요청).
+      deleteCategoryInScope(scope: CategoryScope, id: string) {
         if (scope.kind === "personal") {
-          setPersonalCategories((prev) => prev.map((c) => (c.id === id ? { ...c, label: trimmed } : c)));
+          setPersonalCategories((prev) => prev.filter((c) => c.id !== id));
           return;
         }
         const { groupId } = scope;
         setGroupCategoriesById((prev) => {
           const current = prev[groupId] ?? groupToCats(groups.find((g) => g.id === groupId)?.group_type ?? null);
-          return { ...prev, [groupId]: current.map((c) => (c.id === id ? { ...c, label: trimmed } : c)) };
+          return { ...prev, [groupId]: current.filter((c) => c.id !== id) };
         });
       },
 
