@@ -2,15 +2,17 @@
 // components/screens/Settings.tsx — 2c. 설정(design/shoot/Settings.dc.html)
 // 2026-09-17 팀 결정(1차): 카테고리는 "추가"를 없애고 "편집(이름 변경)"만 남긴다. 아이콘 제거, 색으로만 구별.
 //   "예산 초과 시 알림" 삭제. "알림음" → "그룹원 기록 확인 알림"으로 대체.
-// 2026-09-17 팀 결정(2차, 이 파일의 현재 버전): "카테고리 추가"를 다시 만들되 "카테고리 편집" 모드에서만
-//   보이게 한다. 그리고 "개인 카테고리"와 "그룹 카테고리"를 차별화한다 — 6(지출 입력)의 "어느 그룹과
-//   공유할까요?"와 짝을 맞춰, 그룹마다 서로 다른 카테고리 목록을 따로 관리한다(store.getCategoriesForScope).
+// 2026-09-17 팀 결정(2차): "카테고리 추가"를 다시 만들되 "카테고리 편집" 모드에서만 보이게 한다.
+//   그리고 "개인 카테고리"와 "그룹 카테고리"를 차별화한다 — 6(지출 입력)의 "어느 그룹과 공유할까요?"와
+//   짝을 맞춰, 그룹마다 서로 다른 카테고리 목록을 따로 관리한다(store.getCategoriesForScope).
+// 2026-09-22 사용자 요청(이 파일의 현재 버전): 카테고리 편집(이름 변경 → 삭제로 바뀌었다가) 기능을
+//   아예 없앴다 — 이 화면에서는 이제 보기만 가능하다. "개인/그룹별로 다른 카테고리 목록"은 그대로 유지.
 import { useMemo, useState } from "react";
 import { useNav } from "../NavContext";
 import { useStore } from "@/lib/store";
 import type { CategoryScope } from "@/lib/categories";
 import { getGroupsForUser } from "@/lib/selectors";
-import { BellIcon, ChevronLeftIcon, ChevronRightIcon, MoonIcon, MoreHorizontalIcon, RepeatIcon, ThreeLinesIcon, TrashIcon } from "../icons";
+import { BellIcon, ChevronLeftIcon, ChevronRightIcon, MoonIcon, RepeatIcon } from "../icons";
 
 function Toggle({ on, onClick }: { on: boolean; onClick: () => void }) {
   return (
@@ -37,14 +39,8 @@ export default function Settings() {
   const store = useStore();
   const myGroups = getGroupsForUser(store.groups, store.groupMembers, store.currentUserId);
 
-  // 2026-09-17 팀 결정: 개인/그룹마다 카테고리 목록이 다르므로, 지금 편집 중인 scope를 select로 고른다.
+  // 2026-09-17 팀 결정: 개인/그룹마다 카테고리 목록이 다르므로, 지금 보는 scope를 select로 고른다.
   const [scope, setScope] = useState<CategoryScope>({ kind: "personal" });
-  const [menuOpen, setMenuOpen] = useState(false);
-  const [editMode, setEditMode] = useState(false);
-  // 2026-09-22 사용자 요청: "..." 누르면 이름 바꾸기 대신 삭제 버튼이 나오게 — revealedId는 어느 행의
-  // "..."를 눌러 삭제 버튼을 펼쳤는지, confirmDeleteId는 그 삭제 버튼까지 눌러 확인 팝업이 뜬 카테고리.
-  const [revealedId, setRevealedId] = useState<string | null>(null);
-  const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
 
   // 버그 수정(2026-09-22 사용자 요청): 카테고리 목록이 지금 고른 scope(개인/그룹)의 프리셋을
   // 전부 보여줘서, 실제로 그 scope에서 지출을 한 번도 안 한 카테고리까지 섞여 보였다 — 지금까지
@@ -61,17 +57,6 @@ export default function Settings() {
   }, [store.expenses, store.currentUserId, scope]);
   const categories = store.getCategoriesForScope(scope).filter((c) => usedCategoryLabels.has(c.label));
 
-  function resetRowEditing() {
-    setRevealedId(null);
-    setConfirmDeleteId(null);
-  }
-
-  function handleDeleteConfirmed() {
-    if (confirmDeleteId) store.deleteCategoryInScope(scope, confirmDeleteId);
-    setConfirmDeleteId(null);
-    setRevealedId(null);
-  }
-
   return (
     <div style={{ height: "100%", width: "100%", boxSizing: "border-box", background: "var(--shoot-bg)", display: "flex", flexDirection: "column", position: "relative" }}>
       <div style={{ padding: "20px 20px 12px", flexShrink: 0, display: "flex", alignItems: "center", gap: 10 }}>
@@ -82,61 +67,16 @@ export default function Settings() {
       </div>
 
       <div style={{ flex: 1, overflowY: "auto", padding: "6px 20px 20px" }}>
-        <div
-          onClick={() => setMenuOpen((v) => !v)}
-          style={{ display: "flex", alignItems: "center", justifyContent: "space-between", margin: "14px 0 8px", cursor: "pointer" }}
-        >
-          {/* 2026-09-19 팀 요청: "카테고리" 눌러도 반응이 없었다 — 줄 전체(라벨 포함)를 눌러도
-              오른쪽 3줄 버튼과 똑같이 편집 메뉴가 열리도록 클릭 영역을 넓혔다. */}
+        {/* 2026-09-22 사용자 요청: 카테고리 편집(이름 변경·삭제) 기능을 아예 없애고 보기 전용으로 바꿨다. */}
+        <div style={{ margin: "14px 0 8px" }}>
           <div style={{ fontSize: 12, fontWeight: 800, color: "var(--shoot-text-muted)" }}>카테고리</div>
-          {/* 2026-09-17 팀 결정: "3개짜리 줄" 버튼 → "카테고리 편집" 메뉴 → 각 칸 "..."로 이름 변경 + 추가 버튼. */}
-          <div style={{ position: "relative" }}>
-            <div
-              style={{ width: 28, height: 28, borderRadius: 8, display: "flex", alignItems: "center", justifyContent: "center" }}
-            >
-              <ThreeLinesIcon size={17} color="var(--shoot-text-muted)" />
-            </div>
-            {menuOpen && (
-              <div
-                onClick={(e) => {
-                  // 이 항목이 바깥 줄(카테고리 라벨 전체) 안에 있어서, stopPropagation 없이는 클릭이
-                  // 버블링돼 바깥 onClick(메뉴 토글)이 또 실행되어 메뉴가 다시 열려버린다.
-                  e.stopPropagation();
-                  setEditMode((v) => !v);
-                  setMenuOpen(false);
-                  resetRowEditing();
-                }}
-                style={{
-                  position: "absolute",
-                  top: 32,
-                  right: 0,
-                  background: "var(--shoot-surface)",
-                  border: "1px solid var(--shoot-border)",
-                  borderRadius: 12,
-                  padding: "10px 14px",
-                  fontSize: 13,
-                  fontWeight: 700,
-                  color: "var(--shoot-text)",
-                  whiteSpace: "nowrap",
-                  boxShadow: "0 8px 20px rgba(45,42,62,0.12)",
-                  cursor: "pointer",
-                  zIndex: 10,
-                }}
-              >
-                {editMode ? "편집 완료" : "카테고리 편집"}
-              </div>
-            )}
-          </div>
         </div>
 
-        {/* 2026-09-17 팀 결정(개인·그룹 카테고리 차별화): 어느 카테고리 목록을 보고/고칠지 먼저 고른다 —
+        {/* 2026-09-17 팀 결정(개인·그룹 카테고리 차별화): 어느 카테고리 목록을 볼지 먼저 고른다 —
             6(지출 입력)의 "어느 그룹과 공유할까요?"와 같은 구분(개인 vs 그룹별)을 그대로 따른다. */}
         <select
           value={scopeToValue(scope)}
-          onChange={(e) => {
-            setScope(valueToScope(e.target.value));
-            resetRowEditing();
-          }}
+          onChange={(e) => setScope(valueToScope(e.target.value))}
           style={{ width: "100%", boxSizing: "border-box", height: 40, borderRadius: 12, border: "1.5px solid var(--shoot-border)", background: "var(--shoot-surface)", padding: "0 12px", fontSize: 13, fontWeight: 700, color: "var(--shoot-text)", marginBottom: 8 }}
         >
           <option value={PERSONAL_VALUE}>개인 카테고리</option>
@@ -156,44 +96,20 @@ export default function Settings() {
           {categories.map((cat, idx) => (
             <div
               key={cat.id}
-              // 2026-09-19 팀 요청: 편집 모드가 아닐 땐 카테고리를 누르면 그 카테고리로 필터링된
-              // 지출 목록(7)이 뜬다 — 편집 모드에선 원래대로 "..."로 이름만 바꾼다.
-              onClick={!editMode ? () => nav.push({ id: "categoryExpenses", category: cat.label, scope }) : undefined}
+              // 카테고리를 누르면 그 카테고리로 필터링된 지출 목록(7)이 뜬다 — 보기 전용이라 이게 유일한 동작.
+              onClick={() => nav.push({ id: "categoryExpenses", category: cat.label, scope })}
               style={{
                 padding: "13px 14px",
                 display: "flex",
                 alignItems: "center",
                 gap: 10,
                 borderBottom: idx < categories.length - 1 ? "1px solid var(--shoot-divider)" : "none",
-                cursor: !editMode ? "pointer" : "default",
+                cursor: "pointer",
               }}
             >
               {/* 2026-09-17 팀 결정: 아이콘 제거, 색으로만 구별(칠해진 원). */}
               <div style={{ width: 16, height: 16, borderRadius: "50%", background: cat.ink, flexShrink: 0 }} />
               <div style={{ flex: 1, fontSize: 14, fontWeight: 700, color: "var(--shoot-text)" }}>{cat.label}</div>
-              {editMode &&
-                (revealedId === cat.id ? (
-                  <div
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      setConfirmDeleteId(cat.id);
-                    }}
-                    style={{ display: "flex", alignItems: "center", gap: 4, cursor: "pointer", flexShrink: 0, padding: "4px 8px" }}
-                  >
-                    <TrashIcon size={14} color="#B23B3B" />
-                    <span style={{ fontSize: 12, fontWeight: 800, color: "#B23B3B" }}>삭제</span>
-                  </div>
-                ) : (
-                  <div
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      setRevealedId(cat.id);
-                    }}
-                    style={{ cursor: "pointer", display: "flex", flexShrink: 0, padding: "4px 6px" }}
-                  >
-                    <MoreHorizontalIcon size={17} color="var(--shoot-text-muted)" />
-                  </div>
-                ))}
             </div>
           ))}
         </div>
@@ -298,30 +214,6 @@ export default function Settings() {
           </div>
         </div>
       </div>
-
-      {/* 2026-09-22 사용자 요청: 카테고리 삭제 확인 팝업 — 다른 삭제 확인 팝업(7·9c 등)과 같은 패턴. */}
-      {confirmDeleteId && (
-        <div style={{ position: "absolute", inset: 0, background: "rgba(45,42,62,0.45)", display: "flex", alignItems: "center", justifyContent: "center", padding: 32, zIndex: 20 }}>
-          <div style={{ background: "var(--shoot-surface)", borderRadius: 20, padding: 22, width: "100%", textAlign: "center" }}>
-            <div style={{ fontSize: 16, fontWeight: 800, color: "var(--shoot-text)" }}>이 카테고리를 삭제할까요?</div>
-            <div style={{ fontSize: 12, color: "var(--shoot-text-muted)", marginTop: 8, fontWeight: 600 }}>이미 이 카테고리로 기록한 지출은 그대로 남아요</div>
-            <div style={{ display: "flex", gap: 8, marginTop: 18 }}>
-              <div
-                onClick={() => setConfirmDeleteId(null)}
-                style={{ flex: 1, height: 44, borderRadius: 14, border: "1.5px solid var(--shoot-border)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 13, fontWeight: 800, color: "var(--shoot-text)", cursor: "pointer" }}
-              >
-                취소
-              </div>
-              <div
-                onClick={handleDeleteConfirmed}
-                style={{ flex: 1, height: 44, borderRadius: 14, background: "#B23B3B", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 13, fontWeight: 800, color: "#fff", cursor: "pointer" }}
-              >
-                삭제
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
     </div>
   );
 }
