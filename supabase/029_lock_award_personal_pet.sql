@@ -1,5 +1,5 @@
--- supabase/023_lock_award_personal_pet.sql
--- 2026-09-22 — 021에서 출석체크·목표 정산을 각자 전용 RPC(check_in_today·settle_goal_rewards)로
+-- supabase/029_lock_award_personal_pet.sql
+-- 2026-09-22 — 027에서 출석체크·목표 정산을 각자 전용 RPC(check_in_today·settle_goal_rewards)로
 -- 옮기면서, award_personal_pet()의 남은 합법적인 용도는 "지출 기록 시 하루 한 번 코인"(lib/store.tsx
 -- awardPetCoins) 하나뿐이다. 그런데 이 함수는 p_coins·p_xp를 호출자가 보내는 그대로 믿고, p_check_
 -- expense_date=false를 보내면 하루 제한도 우회할 수 있었다 — 로그인한 클라이언트가

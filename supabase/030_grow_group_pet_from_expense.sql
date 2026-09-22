@@ -1,4 +1,4 @@
--- supabase/024_grow_group_pet_from_expense.sql
+-- supabase/030_grow_group_pet_from_expense.sql
 -- 2026-09-22 — grow_group_pet(group_id, xp_delta, award_coins)도 award_personal_pet과 같은 구멍이
 -- 있었다: xp_delta·award_coins를 호출자가 보내는 그대로 믿어서,
 --   supabase.rpc('grow_group_pet', {p_group_id: 내그룹, p_xp_delta: 999999, p_award_coins: true})

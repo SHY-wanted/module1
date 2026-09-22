@@ -1,8 +1,8 @@
--- supabase/022_pets_insert_lockdown.sql
--- 2026-09-22 — 020에서 pets UPDATE는 컬럼 권한으로 막았지만, INSERT는 새 행을 한 번에 통째로 넣어야
+-- supabase/028_pets_insert_lockdown.sql
+-- 2026-09-22 — 026에서 pets UPDATE는 컬럼 권한으로 막았지만, INSERT는 새 행을 한 번에 통째로 넣어야
 -- 해서 그때는 손대지 않았다. 하지만 pets_insert_own_or_group_member도 소유권만 확인하고 값은 안 보므로
 --   POST /rest/v1/pets { user_id: 나, group_id: null, total_coins: 999999999, stage_index: 4, xp_progress: 0 }
--- 를 직접 호출하면(아직 펫을 안 만든 사용자 기준) 그대로 통과했다 — UPDATE 구멍(020)과 같은 종류다.
+-- 를 직접 호출하면(아직 펫을 안 만든 사용자 기준) 그대로 통과했다 — UPDATE 구멍(026)과 같은 종류다.
 -- INSERT는 항상 0/1단계/0xp로만 들어가게 강제하고, lib/store.tsx createPet이 실제로 계산한 과거 이력
 -- 백필(출석·지출·목표 보상)은 별도 RPC로 그 직후에 한 번만 적용한다(total_coins=0인 동안만 호출
 -- 가능하게 해서 두 번 부르는 것도 막는다).

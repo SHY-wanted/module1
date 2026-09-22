@@ -376,7 +376,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
   // (pets.last_expense_coin_date === 오늘) 몇 번을 더 기록해도 코인을 추가로 안 준다.
   // 버그 수정(2026-09-22, 최종 점검): 이 함수·checkInToday·getOrCreateGoalRewardsForMonth가 전부
   // 같은 개인 펫 행을 클라이언트가 계산한 최종값으로 덮어써서, 지출 기록 직후 바로 출석체크를 누르는
-  // 것처럼 세 경로가 거의 동시에 실행되면 한쪽 지급이 사라질 수 있었다(잃어버린 갱신) — 019 마이그
+  // 것처럼 세 경로가 거의 동시에 실행되면 한쪽 지급이 사라질 수 있었다(잃어버린 갱신) — 025 마이그
   // 레이션의 award_personal_pet() RPC가 행을 잠그고 원자적으로 더하도록 통일한다.
   const awardPetCoins = useCallback(
     async (pet: Pet | undefined, amount: number) => {
@@ -414,7 +414,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
   // grow_group_pet() RPC가 행을 잠그고 원자적으로 처리한다.
   // 보안 수정(2026-09-22): xp_delta·award_coins를 클라이언트가 계산해서 그대로 보내던 걸(RPC를 직접
   // 호출하면 값을 조작해 무제한 성장시킬 수 있었다), 지출 id 하나만 넘기고 참여도·코인 여부를 전부
-  // 서버가 그 지출 행을 직접 조회해서 계산하도록 바꿨다(024 마이그레이션). pet_growth_applied 컬럼으로
+  // 서버가 그 지출 행을 직접 조회해서 계산하도록 바꿨다(030 마이그레이션). pet_growth_applied 컬럼으로
   // 같은 지출에 두 번 적용되는 것도 막는다.
   const growGroupPetFromSharedExpense = useCallback(
     async (expenseId: string, groupId: string) => {
@@ -1152,7 +1152,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
         // 보안 수정(2026-09-22): pets_insert_own_or_group_member 정책이 소유권만 확인하고 값은 안 봐서,
         // 예전엔 total_coins·stage_index·xp_progress를 계산한 값 그대로 insert했다 — REST로 직접
         // 호출하면 이 컬럼들에 임의의 큰 값을 넣어 새 펫을 만렙으로 시작시킬 수 있었다. 이제 INSERT
-        // 정책(022)이 0/1단계/0xp로만 들어가게 강제하므로, 항상 0으로 넣고 이어서 backfill_new_pet()
+        // 정책(028)이 0/1단계/0xp로만 들어가게 강제하므로, 항상 0으로 넣고 이어서 backfill_new_pet()
         // RPC로 위에서 계산한 이력 기반 시작값을 원자적으로(그리고 딱 한 번만) 적용한다.
         const newPet: Pet = {
           id: crypto.randomUUID(),
@@ -1391,7 +1391,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
         // 1) 지난 달 이전 목표 중 아직 정산 안 된 것 — 여기서만 실제로 코인·XP가 나간다.
         // 보안 수정(2026-09-22): coins_earned·xp_gained를 클라이언트가 계산해서 그대로 insert하던 걸
         // (goal_rewards_insert_own 정책이 값 자체는 검사하지 않아, REST로 직접 호출하면 카테고리·월을
-        // 바꿔가며 임의의 coins_earned를 무한정 심을 수 있었다) settle_goal_rewards() RPC(021)로 옮겨
+        // 바꿔가며 임의의 coins_earned를 무한정 심을 수 있었다) settle_goal_rewards() RPC(027)로 옮겨
         // 서버가 실제 지출 데이터로 직접 계산·저장하고 펫 코인·XP 지급까지 원자적으로 처리하게 했다.
         const { data: settleData, error: settleError } = await supabase.rpc("settle_goal_rewards");
         if (settleError) return { ok: false, error: settleError.message };
@@ -1481,7 +1481,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       // streak_day가 이어지고 7일째면 코인이 2배(CHECKIN_STREAK_BONUS_MULTIPLIER) 지급된 뒤 리셋된다.
       // 보안 수정(2026-09-22): streak_day·coins_earned를 클라이언트가 계산해서 그대로 insert하던 걸
       // (attendance_checkins_insert_own 정책이 값 자체는 검사하지 않아, REST로 직접 호출하면 임의의
-      // coins_earned를 넣을 수 있었다) check_in_today() RPC(021)로 옮겨 서버가 직접 계산·저장하고
+      // coins_earned를 넣을 수 있었다) check_in_today() RPC(027)로 옮겨 서버가 직접 계산·저장하고
       // 펫 코인 지급까지 같은 트랜잭션에서 원자적으로 처리하도록 바꿨다.
       async checkInToday(): Promise<MutationResult<AttendanceCheckin>> {
         if (!session) return { ok: false, error: "로그인이 필요해요" };

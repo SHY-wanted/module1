@@ -1,4 +1,4 @@
--- supabase/020_security_hardening.sql
+-- supabase/026_security_hardening.sql
 -- 2026-09-22 — 보안 감사(REST/RPC 직접 호출 시나리오)에서 발견한 두 구멍을 막는다. 둘 다 "정상 UI로는
 -- 절대 안 보이지만, 로그인한 채로 Supabase REST/RPC를 직접 호출하면 그대로 통과하는" 유형이다.
 
@@ -22,8 +22,8 @@ create policy members_insert_self on group_members for insert
 --    RLS는 행 단위 검사라 "바꾸기 전 값과 바꾼 후 값을 비교"하는 방식으로는 막기 어려우므로, 컬럼별
 --    권한(GRANT)으로 economy 컬럼(total_coins·xp_progress·stage_index·last_fed_date·
 --    last_expense_coin_date)은 아예 authenticated 롤의 UPDATE 대상에서 빼고, 커스터마이즈 컬럼만
---    허용한다 — economy 값 변경은 이제 SECURITY DEFINER RPC(018·019, 021)를 통해서만 가능하다.
+--    허용한다 — economy 값 변경은 이제 SECURITY DEFINER RPC(018·025·027)를 통해서만 가능하다.
 --    INSERT는 새 행 전체를 한 번에 넣어야 하므로 컬럼 단위로 못 좁히니 그대로 두되, economy 시작값을
---    실제로 신뢰하지 않도록 021에서 별도로 고친다(생성 직후 0/1/0으로 강제하고 RPC로 백필).
+--    실제로 신뢰하지 않도록 028에서 별도로 고친다(생성 직후 0/1/0으로 강제하고 RPC로 백필).
 revoke update on pets from authenticated;
 grant update (body_color, ledger_color, bag_color, eye_color, leaf_color, display_stage_index) on pets to authenticated;

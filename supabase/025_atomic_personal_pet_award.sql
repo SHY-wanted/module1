@@ -1,4 +1,4 @@
--- supabase/019_atomic_personal_pet_award.sql
+-- supabase/025_atomic_personal_pet_award.sql
 -- 2026-09-22 — 버그 수정(최종 점검 감사에서 발견): 018에서 그룹 펫만 원자적으로 고쳤고, 개인 펫은
 -- "혼자만 건드리는 펫이라 레이스가 안 난다"고 판단해 그대로 뒀다. 하지만 같은 사람이 지출 기록
 -- (awardPetCoins), 출석체크(checkInToday), 목표 정산(getOrCreateGoalRewardsForMonth)을 거의 동시에

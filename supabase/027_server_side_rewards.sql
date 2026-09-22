@@ -1,10 +1,10 @@
--- supabase/021_server_side_rewards.sql
+-- supabase/027_server_side_rewards.sql
 -- 2026-09-22 — 보안 감사에서 발견한 세 번째 구멍: goal_rewards_insert_own·attendance_checkins_insert_own
 -- 정책이 user_id만 확인하고 coins_earned·xp_gained·streak_day·achieved 같은 값은 전혀 검사하지 않는다.
 -- 즉 로그인한 클라이언트가 REST로 직접
 --   POST /rest/v1/goal_rewards { user_id: 나, category: "식비", month: "2020-01", coins_earned: 999999, ... }
 -- 를 호출하면(카테고리·월을 바꿔가며 반복하면 무한정) 그대로 통과했다 — 심지어 이 값은 나중에 새 펫을
--- 만들 때 백필(lib/store.tsx createPet)에서 그대로 더해지므로 pets 테이블 자체를 잠가도(020) 소용없다.
+-- 만들 때 백필(lib/store.tsx createPet)에서 그대로 더해지므로 pets 테이블 자체를 잠가도(026) 소용없다.
 -- 근본 원인은 "보상 계산을 클라이언트가 하고 결과값만 믿고 저장한다"이므로, 계산과 저장을 전부 이
 -- SECURITY DEFINER 함수 안으로 옮기고 클라이언트의 직접 INSERT 권한을 없앤다.
 
