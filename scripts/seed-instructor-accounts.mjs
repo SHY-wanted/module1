@@ -163,6 +163,39 @@ async function seed() {
   console.log("그룹 초대 코드:", INVITE_CODE, `(${GROUP_NAME})`);
 }
 
+// 시연을 다시 돌리기 위한 초기화 — 계정·그룹·지출은 그대로 두고 "하루 한 번" 제한만 푼다.
+// 밥주기는 서버에서 pet_feedings(pet_id, user_id, fed_date) 유니크 제약으로, 출석체크는
+// attendance_checkins(user_id, checkin_date)로 하루 1회가 강제된다 — 제품 규칙이라 그대로 두고,
+// 오늘 기록만 지워서 다시 누를 수 있게 한다. 코인도 100개로 채운다(밥값 5코인 = 20번 분량).
+async function demoReset() {
+  let users = [];
+  for (let p = 1; p <= 10; p++) {
+    const { data } = await admin.auth.admin.listUsers({ page: p, perPage: 200 });
+    users.push(...data.users);
+    if (data.users.length < 200) break;
+  }
+  for (const a of ACCOUNTS) {
+    const u = users.find((x) => x.email === a.email);
+    if (!u) { console.log("없음(건너뜀):", a.email); continue; }
+
+    await admin.from("profiles").update({ onboarding_seen: false }).eq("id", u.id); // 온보딩 투어 다시 뜨게
+    const { data: checks } = await admin.from("attendance_checkins").delete().eq("user_id", u.id).select();
+
+    const pet = (await admin.from("pets").select("id").eq("user_id", u.id).maybeSingle()).data;
+    let feeds = [];
+    if (pet) {
+      feeds = (await admin.from("pet_feedings").delete().eq("pet_id", pet.id).select()).data ?? [];
+      await admin.from("pets").update({ total_coins: 100, last_fed_date: null }).eq("id", pet.id);
+    }
+    console.log(
+      `${a.email.padEnd(20)} 온보딩 초기화 · 출석 ${(checks ?? []).length}건 삭제 · ` +
+        (pet ? `밥기록 ${feeds.length}건 삭제 · 코인 100개` : "펫 없음")
+    );
+  }
+  console.log("\n이제 세 계정 모두 출석체크·밥주기를 다시 누를 수 있고, 온보딩 투어도 다시 뜬다.");
+}
+
 if (process.argv.includes("--delete")) await remove();
+else if (process.argv.includes("--demo-reset")) await demoReset();
 else await seed();
 process.exit(0);

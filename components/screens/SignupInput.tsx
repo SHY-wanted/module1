@@ -10,6 +10,13 @@ import { MailPlusIcon } from "../icons";
 // 2026-09-14에 실제로 구현). 완벽한 RFC 검증이 아니라 "무언가@무언가.무언가" 정도의 단순 형식 체크다.
 const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
+// 2026-09-22 버그 수정: 입력칸에 "8자 이상"이라고 써 있는데 실제로 검사하는 곳이 아무 데도 없어서
+// 7자 비밀번호로도 가입이 됐다(Supabase 기본 최소 길이는 6자다). 이메일 형식과 같은 방식으로 입력칸
+// 밑 인라인 오류를 띄워 막는다. 서버 쪽 최소 길이는 Supabase 대시보드(Authentication > Providers >
+// Email > Minimum password length)에서 8로 올려야 완전히 막힌다 — 화면 검사만으로는 REST를 직접
+// 호출하는 경우를 막지 못한다.
+const PASSWORD_MIN_LENGTH = 8;
+
 export default function SignupInput() {
   const nav = useNav();
   const store = useStore();
@@ -17,6 +24,7 @@ export default function SignupInput() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [emailError, setEmailError] = useState<string | null>(null);
+  const [passwordError, setPasswordError] = useState<string | null>(null);
   // 2026-09-18 추가: 이메일 형식은 emailError(인라인)로, 그 외 실제 signUp 실패(이미 가입된 이메일 등)는
   // 이 전체 오류 문구로 따로 보여준다.
   const [formError, setFormError] = useState<string | null>(null);
@@ -67,13 +75,18 @@ export default function SignupInput() {
               type="password"
               placeholder="8자 이상"
               value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              style={{ width: "100%", boxSizing: "border-box", height: 48, borderRadius: 14, border: "2px solid var(--shoot-border)", background: "var(--shoot-surface)", padding: "0 16px", fontSize: 14, fontWeight: 600, color: "var(--shoot-text)" }}
+              onChange={(e) => {
+                setPassword(e.target.value);
+                if (passwordError) setPasswordError(null); // 고치는 중에는 오류를 지운다(이메일 칸과 같은 감각)
+              }}
+              style={{ width: "100%", boxSizing: "border-box", height: 48, borderRadius: 14, border: `2px solid ${passwordError ? "#E8B4B4" : "var(--shoot-border)"}`, background: "var(--shoot-surface)", padding: "0 16px", fontSize: 14, fontWeight: 600, color: "var(--shoot-text)" }}
             />
+            {passwordError && <div style={{ fontSize: 12, fontWeight: 700, color: "#B23B3B", marginTop: 6 }}>{passwordError}</div>}
           </div>
         </div>
-        {/* 예외: [?] 07-screens.md "1/1b 회원가입 — 비밀번호 8자 미만 검증 실패 화면이 디자인에 없다".
-            비밀번호 쪽 형식 검증은 없고, Supabase 자체 최소 길이(기본 6자) 실패만 formError로 보여준다. */}
+        {/* 07-screens.md "1/1b 회원가입 — 비밀번호 8자 미만 검증 실패 화면이 디자인에 없다"였던 자리 —
+            2026-09-22에 이메일 형식과 같은 인라인 오류 방식으로 채웠다. 그 외 실패(이미 가입된 이메일 등)는
+            계속 formError로 보여준다. */}
         {formError && (
           <div style={{ marginTop: 14, fontSize: 12, fontWeight: 700, color: "#B23B3B", textAlign: "center" }}>{formError}</div>
         )}
@@ -84,6 +97,11 @@ export default function SignupInput() {
               setEmailError("이메일 형식이 올바르지 않아요");
               return;
             }
+            if (password.length < PASSWORD_MIN_LENGTH) {
+              setPasswordError(`비밀번호는 ${PASSWORD_MIN_LENGTH}자 이상이어야 해요`);
+              return;
+            }
+            setPasswordError(null);
             setFormError(null);
             setSubmitting(true);
             // 2026-09-18 추가: 실제 Supabase Auth로 회원가입 — name은 handle_new_user() 트리거가
