@@ -26,16 +26,16 @@ if (!url || !serviceKey) throw new Error(".env.local에 NEXT_PUBLIC_SUPABASE_URL
 
 const admin = createClient(url, serviceKey, { auth: { autoRefreshToken: false, persistSession: false } });
 
-const PASSWORD = "ShooT2026!";
+const PASSWORD = "test123"; // 강사 요청으로 통일(로그인 화면은 길이 검사를 하지 않는다 — 가입 화면의 8자 이상 규칙은 signUp에만 적용)
 const GROUP_NAME = "강사 평가용 그룹";
 const INVITE_CODE = "TEST01";
 
 // 이 앱의 권한은 "그룹 안에서의 역할"만 있다(member_role: OWNER | MEMBER).
 // 앱 전체를 관리하는 관리자 역할은 없다 — 아래 세 계정이 실제로 구분 가능한 전부다.
 const ACCOUNTS = [
-  { key: "owner", email: "instructor.owner@shoottest.com", name: "강사-그룹장", role: "OWNER" },
-  { key: "member", email: "instructor.member@shoottest.com", name: "강사-그룹원", role: "MEMBER" },
-  { key: "solo", email: "instructor.solo@shoottest.com", name: "강사-일반사용자", role: null }, // 그룹 미소속
+  { key: "owner", email: "test123@test.com", name: "팀장(그룹장)", role: "OWNER" },
+  { key: "member", email: "test1234@test.com", name: "팀원(그룹원)", role: "MEMBER" },
+  { key: "solo", email: "test12345@test.com", name: "일반 사용자", role: null }, // 그룹 미소속
 ];
 
 const TODAY = new Date().toISOString().slice(0, 10);
