@@ -384,16 +384,31 @@ export function StoreProvider({ children }: { children: ReactNode }) {
   // 그룹 펫에 쌓인다. 펫을 아직 안 만들었으면(pet이 undefined) 조용히 건너뛴다.
   // 2026-09-21 수정: "기록할 때마다"가 아니라 "하루에 한 번만" 받게 한다 — 그날 이미 받았으면
   // (pets.last_expense_coin_date === 오늘) 몇 번을 더 기록해도 코인을 추가로 안 준다.
+  // 버그 수정(2026-09-22, 최종 점검): 이 함수·checkInToday·getOrCreateGoalRewardsForMonth가 전부
+  // 같은 개인 펫 행을 클라이언트가 계산한 최종값으로 덮어써서, 지출 기록 직후 바로 출석체크를 누르는
+  // 것처럼 세 경로가 거의 동시에 실행되면 한쪽 지급이 사라질 수 있었다(잃어버린 갱신) — 019 마이그
+  // 레이션의 award_personal_pet() RPC가 행을 잠그고 원자적으로 더하도록 통일한다.
   const awardPetCoins = useCallback(
     async (pet: Pet | undefined, amount: number) => {
-      if (!pet || pet.last_expense_coin_date === TODAY_DATE) return;
-      const newTotalCoins = pet.total_coins + amount;
-      const { error } = await supabase
-        .from("pets")
-        .update({ total_coins: newTotalCoins, last_expense_coin_date: TODAY_DATE })
-        .eq("id", pet.id);
-      if (!error) {
-        setPets((prev) => prev.map((p) => (p.id === pet.id ? { ...p, total_coins: newTotalCoins, last_expense_coin_date: TODAY_DATE } : p)));
+      if (!pet) return;
+      const { data, error } = await supabase
+        .rpc("award_personal_pet", { p_pet_id: pet.id, p_coins: amount, p_xp: 0, p_check_expense_date: true })
+        .maybeSingle();
+      if (!error && data) {
+        const result = data as { total_coins: number; xp_progress: number; stage_index: number; coins_awarded: number };
+        setPets((prev) =>
+          prev.map((p) =>
+            p.id === pet.id
+              ? {
+                  ...p,
+                  total_coins: result.total_coins,
+                  xp_progress: result.xp_progress,
+                  stage_index: result.stage_index,
+                  last_expense_coin_date: result.coins_awarded > 0 ? TODAY_DATE : p.last_expense_coin_date,
+                }
+              : p
+          )
+        );
       }
     },
     [supabase]
@@ -1363,7 +1378,9 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       // DB에 저장하지도 코인을 주지도 않는다 — 달이 넘어가야 다음 방문 때 그때 비로소 정산된다.
       async getOrCreateGoalRewardsForMonth(): Promise<MutationResult<GoalReward[]>> {
         if (!session) return { ok: false, error: "로그인이 필요해요" };
-        const currentMonth = currentMonthString(TODAY_DATE);
+        // 버그 수정(2026-09-22): TODAY_DATE는 모듈 로드 시 한 번만 고정되므로, 자정을 넘겨 계속 켜둔
+        // 탭에서는 지난달 목표가 계속 "이번 달"로 취급돼 정산이 지연됐다 — 매번 새로 계산한다.
+        const currentMonth = currentMonthString(computeTodayDateKST());
 
         function spentFor(category: string, month: string): number {
           return expenses
@@ -1406,14 +1423,23 @@ export function StoreProvider({ children }: { children: ReactNode }) {
         }
 
         // 보상 대상은 개인 펫이다(§4 "코인 지급과 동시에 펫 XP도 함께 지급"과 같은 원칙).
+        // 버그 수정(2026-09-22): 클라이언트가 계산한 최종값 대신 award_personal_pet() RPC로 행을 잠그고
+        // 원자적으로 더한다(awardPetCoins·checkInToday와 동시에 실행돼도 갱신이 사라지지 않도록).
         const personalPet = pets.find((p) => p.user_id === currentUserId);
         if (personalPet && (totalCoins > 0 || totalXp > 0)) {
-          const { stageIndex, xpProgress } = applyXpGain(personalPet.stage_index, personalPet.xp_progress, totalXp);
-          const newTotalCoins = personalPet.total_coins + totalCoins;
-          await supabase.from("pets").update({ stage_index: stageIndex, xp_progress: xpProgress, total_coins: newTotalCoins }).eq("id", personalPet.id);
-          setPets((prev) =>
-            prev.map((p) => (p.id === personalPet.id ? { ...p, stage_index: stageIndex, xp_progress: xpProgress, total_coins: newTotalCoins } : p))
-          );
+          const { data } = await supabase
+            .rpc("award_personal_pet", { p_pet_id: personalPet.id, p_coins: totalCoins, p_xp: totalXp, p_check_expense_date: false })
+            .maybeSingle();
+          if (data) {
+            const result = data as { total_coins: number; xp_progress: number; stage_index: number };
+            setPets((prev) =>
+              prev.map((p) =>
+                p.id === personalPet.id
+                  ? { ...p, total_coins: result.total_coins, xp_progress: result.xp_progress, stage_index: result.stage_index }
+                  : p
+              )
+            );
+          }
         }
 
         // 2) 이번 달 목표 — 화면에 진행 상황만 보여주기 위한 미리보기. DB에 저장하지 않고 매번
@@ -1497,15 +1523,26 @@ export function StoreProvider({ children }: { children: ReactNode }) {
         // 먼저 하는 동작이라 흔하다), 여기서 쓰던 로컬 pets 배열이 아직 비어 있어서 personalPet을
         // 못 찾고 코인 지급을 조용히 건너뛰었다 — 그 출석체크는 이미 저장돼서 다시 할 수도 없으니
         // 그날 코인을 영영 못 받았다. 로컬 상태를 믿는 대신 DB에서 직접 최신 펫을 다시 읽어온다.
+        // 버그 수정(2026-09-22): 펫을 찾은 뒤에도 클라이언트가 계산한 최종값으로 덮어쓰면 awardPetCoins·
+        // 목표 정산과 거의 동시에 실행될 때 한쪽 지급이 사라질 수 있어, award_personal_pet() RPC로
+        // 원자적으로 더하도록 통일한다.
         const { data: freshPet } = await supabase.from("pets").select("*").eq("user_id", currentUserId).maybeSingle();
         if (freshPet) {
-          const newTotalCoins = freshPet.total_coins + coinsEarned;
-          await supabase.from("pets").update({ total_coins: newTotalCoins }).eq("id", freshPet.id);
-          setPets((prev) =>
-            prev.some((p) => p.id === freshPet.id)
-              ? prev.map((p) => (p.id === freshPet.id ? { ...p, total_coins: newTotalCoins } : p))
-              : [...prev, { ...freshPet, total_coins: newTotalCoins }]
-          );
+          const { data } = await supabase
+            .rpc("award_personal_pet", { p_pet_id: freshPet.id, p_coins: coinsEarned, p_xp: 0, p_check_expense_date: false })
+            .maybeSingle();
+          if (data) {
+            const result = data as { total_coins: number; xp_progress: number; stage_index: number };
+            setPets((prev) =>
+              prev.some((p) => p.id === freshPet.id)
+                ? prev.map((p) =>
+                    p.id === freshPet.id
+                      ? { ...p, total_coins: result.total_coins, xp_progress: result.xp_progress, stage_index: result.stage_index }
+                      : p
+                  )
+                : [...prev, { ...freshPet, total_coins: result.total_coins, xp_progress: result.xp_progress, stage_index: result.stage_index }]
+            );
+          }
         }
         return { ok: true, data: newCheckin };
       },
