@@ -11,6 +11,7 @@ import { useStore } from "@/lib/store";
 import { TODAY_DATE } from "@/lib/mock";
 import type { ParsedReceipt } from "@/lib/receiptOcr";
 import { fileToCompressedDataUrl } from "@/lib/image";
+import { createClient } from "@/lib/supabase/client";
 import { CheckIcon, ChevronLeftIcon } from "../icons";
 
 // OCR이 실제로 끝난 뒤에도 "인식 완료" 카드를 잠깐 보여주고 넘어간다(원래 디자인의 딜레이 느낌 유지).
@@ -32,9 +33,19 @@ export default function ReceiptProcessing() {
 
       if (image) {
         try {
+          // 보안 수정(2026-09-22): 이 라우트는 로그인 여부를 확인하지 않아서, 계정 없이도 이미지를
+          // 무한정 보내 유료 CLOVA OCR 호출을 계속 발생시킬 수 있었다(과금·쿼터 소진 DoS) — 세션
+          // 토큰을 같이 보내고 서버에서 검증하도록 바꿨다.
+          const {
+            data: { session },
+          } = await createClient().auth.getSession();
           const formData = new FormData();
           formData.append("image", image, image.name || "receipt.jpg");
-          const res = await fetch("/api/receipt-ocr", { method: "POST", body: formData });
+          const res = await fetch("/api/receipt-ocr", {
+            method: "POST",
+            headers: session ? { Authorization: `Bearer ${session.access_token}` } : undefined,
+            body: formData,
+          });
           if (res.ok) {
             const parsed: ParsedReceipt = await res.json();
             if (parsed.amount !== null) amount = parsed.amount;
