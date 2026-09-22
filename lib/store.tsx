@@ -39,7 +39,6 @@ import { sortPersonalRanking, type PersonalRankingEntry } from "./ranking";
 import {
   DEFAULT_PET_COLORS,
   FEED_COIN_COST,
-  GROUP_EXPENSE_COIN_REWARD,
   PERSONAL_EXPENSE_COIN_REWARD,
   currentMonthString,
   type PetColorPart,
@@ -528,8 +527,9 @@ export function StoreProvider({ children }: { children: ReactNode }) {
         );
         const due = recurringRes.data.filter((r) => r.active && r.day_of_month <= todayDay && !alreadyGeneratedIds.has(r.id));
         if (due.length > 0) {
-          const nowIso = new Date().toISOString();
-          const newRows: Expense[] = due.map((r) => ({
+          // created_at은 보내지 않는다 — DB default now()가 채운다. 031에서 클라이언트의 created_at
+          // INSERT 권한을 없앴다(기록 시각을 위조하면 새 펫 백필 코인을 부풀릴 수 있었다).
+          const newRows: Omit<Expense, "created_at">[] = due.map((r) => ({
             id: crypto.randomUUID(),
             user_id: session.user.id,
             group_id: r.group_id,
@@ -540,7 +540,6 @@ export function StoreProvider({ children }: { children: ReactNode }) {
             source_type: "MANUAL",
             image_url: null,
             is_shared: r.is_shared,
-            created_at: nowIso,
             recurring_expense_id: r.id,
           }));
           // 버그 수정(2026-09-21): 탭 두 개·빠른 재로그인이면 이 효과가 거의 동시에 두 번 돌아
@@ -1119,41 +1118,15 @@ export function StoreProvider({ children }: { children: ReactNode }) {
         // 달성 보상(코인+XP, goal_rewards엔 이미 각 보상이 행으로 남아있다)을 전부 합쳐서 시작값으로
         // 넣어준다. 그룹 펫도 마찬가지로, 만들기 전에 이미 기록된 공유 지출이 있으면 그만큼 넣어준다
         // (목표 보상은 "개인 펫 대상"이라 그룹 쪽엔 없다).
-        let startingCoins = 0;
-        let startingXp = 0;
-        if (scope.kind === "personal") {
-          const { data: pastCheckins } = await supabase.from("attendance_checkins").select("coins_earned").eq("user_id", session.user.id);
-          startingCoins += (pastCheckins ?? []).reduce((sum, c) => sum + c.coins_earned, 0);
-
-          const { data: pastExpenses } = await supabase
-            .from("expenses")
-            .select("date, is_shared, group_id")
-            .eq("user_id", session.user.id);
-          const personalDates = new Set(
-            (pastExpenses ?? []).filter((e) => !(e.is_shared && e.group_id)).map((e) => e.date)
-          );
-          startingCoins += personalDates.size * PERSONAL_EXPENSE_COIN_REWARD;
-
-          const { data: pastGoalRewards } = await supabase.from("goal_rewards").select("coins_earned, xp_gained").eq("user_id", session.user.id);
-          for (const r of pastGoalRewards ?? []) {
-            startingCoins += r.coins_earned;
-            startingXp += r.xp_gained;
-          }
-        } else {
-          const { data: pastGroupExpenses } = await supabase
-            .from("expenses")
-            .select("date")
-            .eq("group_id", scope.groupId)
-            .eq("is_shared", true);
-          const groupDates = new Set((pastGroupExpenses ?? []).map((e) => e.date));
-          startingCoins += groupDates.size * GROUP_EXPENSE_COIN_REWARD;
-        }
+        // 보안 수정(2026-09-22): 이 합산을 클라이언트가 해서 금액을 RPC로 넘겼는데, 그러면 펫을 만든
+        // 직후 임의의 금액으로 한 번 호출하는 걸 막을 방법이 없었다 — 집계를 backfill_new_pet() RPC
+        // 안으로 옮겨(031) 서버가 DB에서 직접 계산하게 했다. 여기선 호출만 한다.
         const trimmed = name.trim();
         // 보안 수정(2026-09-22): pets_insert_own_or_group_member 정책이 소유권만 확인하고 값은 안 봐서,
         // 예전엔 total_coins·stage_index·xp_progress를 계산한 값 그대로 insert했다 — REST로 직접
         // 호출하면 이 컬럼들에 임의의 큰 값을 넣어 새 펫을 만렙으로 시작시킬 수 있었다. 이제 INSERT
         // 정책(028)이 0/1단계/0xp로만 들어가게 강제하므로, 항상 0으로 넣고 이어서 backfill_new_pet()
-        // RPC로 위에서 계산한 이력 기반 시작값을 원자적으로(그리고 딱 한 번만) 적용한다.
+        // RPC가 이력 기반 시작값을 원자적으로(그리고 딱 한 번만) 적용한다.
         const newPet: Pet = {
           id: crypto.randomUUID(),
           user_id: scope.kind === "personal" ? session.user.id : null,
@@ -1174,16 +1147,12 @@ export function StoreProvider({ children }: { children: ReactNode }) {
         };
         const { error } = await supabase.from("pets").insert(newPet);
         if (error) return { ok: false, error: error.message };
-        if (startingCoins > 0 || startingXp > 0) {
-          const { data: backfillData } = await supabase
-            .rpc("backfill_new_pet", { p_pet_id: newPet.id, p_coins: startingCoins, p_xp: startingXp })
-            .maybeSingle();
-          if (backfillData) {
-            const result = backfillData as { total_coins: number; xp_progress: number; stage_index: number };
-            newPet.total_coins = result.total_coins;
-            newPet.xp_progress = result.xp_progress;
-            newPet.stage_index = result.stage_index;
-          }
+        const { data: backfillData } = await supabase.rpc("backfill_new_pet", { p_pet_id: newPet.id }).maybeSingle();
+        if (backfillData) {
+          const result = backfillData as { total_coins: number; xp_progress: number; stage_index: number };
+          newPet.total_coins = result.total_coins;
+          newPet.xp_progress = result.xp_progress;
+          newPet.stage_index = result.stage_index;
         }
         setPets((prev) => [...prev, newPet]);
         return { ok: true, data: newPet };
