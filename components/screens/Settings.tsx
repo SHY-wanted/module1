@@ -154,7 +154,7 @@ export default function Settings() {
               key={cat.id}
               // 2026-09-19 팀 요청: 편집 모드가 아닐 땐 카테고리를 누르면 그 카테고리로 필터링된
               // 지출 목록(7)이 뜬다 — 편집 모드에선 원래대로 "..."로 이름만 바꾼다.
-              onClick={!editMode ? () => nav.push({ id: "categoryExpenses", category: cat.label }) : undefined}
+              onClick={!editMode ? () => nav.push({ id: "categoryExpenses", category: cat.label, scope }) : undefined}
               style={{
                 padding: "13px 14px",
                 display: "flex",

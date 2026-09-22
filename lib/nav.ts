@@ -33,8 +33,10 @@ export type StackScreen =
   | { id: "receiptCapture" }
   | { id: "receiptProcessing" }
   // 2c "카테고리" 항목 클릭(디자인 파일 없음, 2026-09-19 팀 요청으로 신규) — 7(지출 목록)을
-  // 그 카테고리로 미리 필터링해서 재사용한다.
-  | { id: "categoryExpenses"; category: string }
+  // 그 카테고리로 미리 필터링해서 재사용한다. scope(2026-09-22 버그 수정 추가) — 2c는 개인·그룹마다
+  // 카테고리 목록이 다른데(예: 개인 "식비"와 가족 그룹 "식비"는 같은 라벨이라도 서로 다른 카테고리),
+  // scope 없이 category 라벨만 넘기면 이름이 같은 다른 scope의 지출까지 전부 섞여 보였다.
+  | { id: "categoryExpenses"; category: string; scope: CategoryScope }
   // 저금통 펫 키우기 v2(docs/08-pet-feature-spec.md, 디자인 파일 없음, 2026-09-15 구현 →
   // 같은 날 mg·hybranch·shooTbranch 통합). P1·P2는 scope(개인 또는 특정 그룹)를 받는다.
   // P6(그룹 랭킹)은 그룹 펫 XP 산정 방식이 팀 미정이라 뺐다.
