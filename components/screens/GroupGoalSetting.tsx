@@ -84,7 +84,6 @@ export default function GroupGoalSetting({ groupId }: { groupId: string }) {
         <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
           {categories.map((cat) => {
             const sel = selectedCategoryId === cat.id;
-            const hasGoal = store.groupCategoryGoals.some((g) => g.group_id === groupId && g.category === cat.label && g.month === month);
             return (
               <div
                 key={cat.id}
@@ -102,12 +101,10 @@ export default function GroupGoalSetting({ groupId }: { groupId: string }) {
                   alignItems: "center",
                   gap: 6,
                   boxShadow: sel ? `0 4px 12px ${cat.accent}55` : "none",
-                  position: "relative",
                 }}
               >
                 <CategoryIcon icon={cat.icon as CategoryIconKey} size={15} color={cat.ink} />
                 {cat.label}
-                {hasGoal && <span style={{ position: "absolute", top: -3, right: -3, fontSize: 10 }}>✓</span>}
               </div>
             );
           })}
