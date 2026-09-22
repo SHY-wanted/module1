@@ -159,7 +159,17 @@ export default function MonthlyGoalReport() {
                         }}
                       />
                     </div>
-                    {r.achieved && <div style={{ fontSize: 11, color: "#1D7A69", fontWeight: 700, marginTop: 6 }}>퀘스트 보상: 코인 +{r.coins_earned} · XP +{r.xp_gained}</div>}
+                    {/* 버그 수정(2026-09-21 사용자 신고): 이번 달이 끝나기도 전에 "달성"되자마자
+                        코인이 나간 것처럼 보였다 — 이제 이번 달 목표는 store에서 코인·XP를 0으로
+                        돌려주고(실제로는 아직 안 줌), 달이 끝나야 정산된다. 그래서 달성했어도
+                        coins_earned·xp_gained가 0이면 "정산 예정"으로, 실제로 받은 지난 달
+                        기록(둘 중 하나라도 0보다 큼)만 "받았다"고 보여준다. */}
+                    {r.achieved && (r.coins_earned > 0 || r.xp_gained > 0) && (
+                      <div style={{ fontSize: 11, color: "#1D7A69", fontWeight: 700, marginTop: 6 }}>퀘스트 보상: 코인 +{r.coins_earned} · XP +{r.xp_gained}</div>
+                    )}
+                    {r.achieved && r.coins_earned === 0 && r.xp_gained === 0 && (
+                      <div style={{ fontSize: 11, color: "var(--shoot-text-muted)", fontWeight: 700, marginTop: 6 }}>이번 달이 끝나면 정산돼요</div>
+                    )}
                     {showPaceWarning && (
                       <div style={{ fontSize: 11, color: "#B23B3B", fontWeight: 700, marginTop: 6 }}>
                         ⚠ 이 속도면 이번 달 약 {formatWon(projected)}까지 쓸 것 같아요
