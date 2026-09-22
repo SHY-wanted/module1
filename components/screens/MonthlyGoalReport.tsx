@@ -7,7 +7,7 @@ import { useEffect, useState } from "react";
 import { useNav } from "../NavContext";
 import { useStore } from "@/lib/store";
 import type { GoalReward } from "@/lib/mock";
-import { TODAY_DATE } from "@/lib/mock";
+import { computeTodayDateKST } from "@/lib/mock";
 import { currentMonthString } from "@/lib/pets";
 import { getCategoryVisual } from "@/lib/categories";
 import { formatWon } from "@/lib/format";
@@ -37,7 +37,10 @@ export default function MonthlyGoalReport() {
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [deletingCategory, setDeletingCategory] = useState<string | null>(null);
-  const month = currentMonthString(TODAY_DATE);
+  // 버그 수정(2026-09-22): TODAY_DATE는 모듈 로드 시 고정이라 자정을 넘겨 켜둔 탭에서는 지난달을
+  // 계속 "이번 달"로 표시했다 — store 쪽 정산 판단과 맞춰 매번 새로 계산한다.
+  const today = computeTodayDateKST();
+  const month = currentMonthString(today);
 
   useEffect(() => {
     let active = true;
@@ -121,7 +124,7 @@ export default function MonthlyGoalReport() {
             <div style={{ display: "flex", flexDirection: "column", gap: 10, marginTop: 16 }}>
               {rewards.map((r) => {
                 const visual = getCategoryVisual(r.category);
-                const projected = projectedMonthTotal(r.spent_amount, month, TODAY_DATE);
+                const projected = projectedMonthTotal(r.spent_amount, month, today);
                 const showPaceWarning = !r.achieved && r.goal_amount > 0 && projected > r.goal_amount * PACE_WARNING_THRESHOLD;
                 return (
                   <div key={r.category} style={{ background: "var(--shoot-surface)", border: `1.5px solid ${r.achieved ? visual.accent : "var(--shoot-border)"}`, borderRadius: 16, padding: 14, opacity: deletingCategory === r.category ? 0.5 : 1 }}>
