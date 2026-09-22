@@ -5,7 +5,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { useNav } from "../NavContext";
 import { useStore } from "@/lib/store";
 import { getOwnExpenses, groupExpensesByMonth } from "@/lib/selectors";
-import { getCategoryVisual } from "@/lib/categories";
+import { getCategoryVisual, type CategoryScope } from "@/lib/categories";
 import { formatRelativeTime, formatWon } from "@/lib/format";
 import { CategoryIcon, ChevronLeftIcon, PlusIcon, TrashIcon } from "../icons";
 import type { CategoryIconKey } from "../icons";
@@ -16,7 +16,11 @@ const UNDO_WINDOW_MS = 5000;
 // 2026-09-19 팀 요청: 2c(설정) "카테고리" 항목을 누르면 그 카테고리로 미리 필터링된 이 화면을
 // 스택에 쌓아 보여준다 — 지출내역 탭(7)과 완전히 같은 화면을 재사용하되, initialCategoryFilter로
 // 시작 필터를 지정하고 pushed일 땐 뒤로가기가 탭 전환이 아니라 스택 pop(nav.back())이 되게 한다.
-export default function ExpenseList({ initialCategoryFilter, pushed }: { initialCategoryFilter?: string; pushed?: boolean } = {}) {
+// scope(2026-09-22 버그 수정): 2c(설정)에서 카테고리를 눌러 들어올 때만 넘어온다 — 개인·그룹마다
+// 카테고리 목록이 따로 있어서(예: 개인 "식비"와 가족 그룹 "식비"는 이름은 같아도 다른 카테고리),
+// scope 없이 category 라벨만으로 거르면 이름이 같은 다른 scope의 지출까지 섞여 보였다. 탭 루트로
+// 쓰일 땐(지출내역 탭) scope가 없어 지금처럼 전체(개인+모든 그룹)를 다 보여준다 — 그대로 유지.
+export default function ExpenseList({ initialCategoryFilter, scope, pushed }: { initialCategoryFilter?: string; scope?: CategoryScope; pushed?: boolean } = {}) {
   const nav = useNav();
   const store = useStore();
 
@@ -81,7 +85,12 @@ export default function ExpenseList({ initialCategoryFilter, pushed }: { initial
     setPendingDeleteId(null);
   }
 
-  const ownExpenses = getOwnExpenses(store.expenses, store.currentUserId).filter((e) => e.id !== pendingDeleteId);
+  const ownExpenses = getOwnExpenses(store.expenses, store.currentUserId)
+    .filter((e) => e.id !== pendingDeleteId)
+    .filter((e) => {
+      if (!scope) return true;
+      return scope.kind === "personal" ? !e.group_id : e.group_id === scope.groupId;
+    });
   const categoryOptions = useMemo(() => {
     const set = new Set(ownExpenses.map((e) => e.category));
     return Array.from(set);

@@ -85,7 +85,7 @@ function renderScreen(screen: StackScreen) {
     case "receiptProcessing":
       return <ReceiptProcessing />;
     case "categoryExpenses":
-      return <ExpenseList initialCategoryFilter={screen.category} pushed />;
+      return <ExpenseList initialCategoryFilter={screen.category} scope={screen.scope} pushed />;
     case "petSelect":
       return <PetSelect scope={screen.scope} />;
     case "petDetail":

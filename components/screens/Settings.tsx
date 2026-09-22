@@ -5,7 +5,7 @@
 // 2026-09-17 팀 결정(2차, 이 파일의 현재 버전): "카테고리 추가"를 다시 만들되 "카테고리 편집" 모드에서만
 //   보이게 한다. 그리고 "개인 카테고리"와 "그룹 카테고리"를 차별화한다 — 6(지출 입력)의 "어느 그룹과
 //   공유할까요?"와 짝을 맞춰, 그룹마다 서로 다른 카테고리 목록을 따로 관리한다(store.getCategoriesForScope).
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { useNav } from "../NavContext";
 import { useStore } from "@/lib/store";
 import type { CategoryScope } from "@/lib/categories";
@@ -46,7 +46,20 @@ export default function Settings() {
   const [showAddInput, setShowAddInput] = useState(false);
   const [newCategoryLabel, setNewCategoryLabel] = useState("");
 
-  const categories = store.getCategoriesForScope(scope);
+  // 버그 수정(2026-09-22 사용자 요청): 카테고리 목록이 지금 고른 scope(개인/그룹)의 프리셋을
+  // 전부 보여줘서, 실제로 그 scope에서 지출을 한 번도 안 한 카테고리까지 섞여 보였다 — 지금까지
+  // 실제로 지출을 입력한 카테고리만 이 화면에 남긴다(6의 카테고리 선택 칩 등 다른 화면은 그대로
+  // 전체 프리셋을 보여줘야 해서, store.getCategoriesForScope 자체는 건드리지 않는다).
+  const usedCategoryLabels = useMemo(() => {
+    const set = new Set<string>();
+    for (const e of store.expenses) {
+      if (e.user_id !== store.currentUserId) continue;
+      const inScope = scope.kind === "personal" ? !e.group_id : e.group_id === scope.groupId;
+      if (inScope) set.add(e.category);
+    }
+    return set;
+  }, [store.expenses, store.currentUserId, scope]);
+  const categories = store.getCategoriesForScope(scope).filter((c) => usedCategoryLabels.has(c.label));
 
   function resetRowEditing() {
     setRenamingId(null);
@@ -148,13 +161,18 @@ export default function Settings() {
           ))}
         </select>
 
+        {categories.length === 0 && (
+          <div style={{ textAlign: "center", color: "var(--shoot-text-muted)", fontSize: 12, fontWeight: 600, padding: "16px 0" }}>
+            아직 이 카테고리로 지출을 입력한 적이 없어요
+          </div>
+        )}
         <div style={{ background: "var(--shoot-surface)", borderRadius: 16, border: "1px solid var(--shoot-border)", overflow: "hidden" }}>
           {categories.map((cat, idx) => (
             <div
               key={cat.id}
               // 2026-09-19 팀 요청: 편집 모드가 아닐 땐 카테고리를 누르면 그 카테고리로 필터링된
               // 지출 목록(7)이 뜬다 — 편집 모드에선 원래대로 "..."로 이름만 바꾼다.
-              onClick={!editMode ? () => nav.push({ id: "categoryExpenses", category: cat.label }) : undefined}
+              onClick={!editMode ? () => nav.push({ id: "categoryExpenses", category: cat.label, scope }) : undefined}
               style={{
                 padding: "13px 14px",
                 display: "flex",
