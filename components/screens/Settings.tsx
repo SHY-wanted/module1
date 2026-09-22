@@ -10,7 +10,7 @@ import { useNav } from "../NavContext";
 import { useStore } from "@/lib/store";
 import type { CategoryScope } from "@/lib/categories";
 import { getGroupsForUser } from "@/lib/selectors";
-import { BellIcon, ChevronLeftIcon, ChevronRightIcon, MoonIcon, MoreHorizontalIcon, PlusIcon, RepeatIcon, ThreeLinesIcon } from "../icons";
+import { BellIcon, ChevronLeftIcon, ChevronRightIcon, MoonIcon, MoreHorizontalIcon, RepeatIcon, ThreeLinesIcon } from "../icons";
 
 function Toggle({ on, onClick }: { on: boolean; onClick: () => void }) {
   return (
@@ -43,8 +43,6 @@ export default function Settings() {
   const [editMode, setEditMode] = useState(false);
   const [renamingId, setRenamingId] = useState<string | null>(null);
   const [renameValue, setRenameValue] = useState("");
-  const [showAddInput, setShowAddInput] = useState(false);
-  const [newCategoryLabel, setNewCategoryLabel] = useState("");
 
   // 버그 수정(2026-09-22 사용자 요청): 카테고리 목록이 지금 고른 scope(개인/그룹)의 프리셋을
   // 전부 보여줘서, 실제로 그 scope에서 지출을 한 번도 안 한 카테고리까지 섞여 보였다 — 지금까지
@@ -64,8 +62,6 @@ export default function Settings() {
   function resetRowEditing() {
     setRenamingId(null);
     setRenameValue("");
-    setShowAddInput(false);
-    setNewCategoryLabel("");
   }
 
   function startRename(id: string, currentLabel: string) {
@@ -77,13 +73,6 @@ export default function Settings() {
     if (renamingId) store.renameCategoryInScope(scope, renamingId, renameValue);
     setRenamingId(null);
     setRenameValue("");
-  }
-
-  function confirmAddCategory() {
-    if (newCategoryLabel.trim().length === 0) return;
-    store.addCategoryInScope(scope, newCategoryLabel);
-    setNewCategoryLabel("");
-    setShowAddInput(false);
   }
 
   return (
@@ -211,38 +200,6 @@ export default function Settings() {
             </div>
           ))}
         </div>
-
-        {/* 2026-09-17 팀 결정: "카테고리 추가"는 편집 모드에서만 보인다 — 지금 고른 scope(개인 또는 그 그룹)에 더해진다. */}
-        {editMode &&
-          (showAddInput ? (
-            <div style={{ marginTop: 10, display: "flex", gap: 8 }}>
-              <input
-                type="text"
-                autoFocus
-                placeholder="카테고리 이름"
-                value={newCategoryLabel}
-                onChange={(e) => setNewCategoryLabel(e.target.value)}
-                onKeyDown={(e) => {
-                  if (e.key === "Enter") confirmAddCategory();
-                }}
-                style={{ flex: 1, boxSizing: "border-box", height: 44, borderRadius: 14, border: "2px solid var(--shoot-accent)", background: "var(--shoot-surface)", padding: "0 14px", fontSize: 13, fontWeight: 600, color: "var(--shoot-text)" }}
-              />
-              <div
-                onClick={confirmAddCategory}
-                style={{ height: 44, padding: "0 16px", borderRadius: 14, background: "var(--shoot-accent)", color: "#fff", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 13, fontWeight: 800, cursor: "pointer" }}
-              >
-                추가
-              </div>
-            </div>
-          ) : (
-            <div
-              onClick={() => setShowAddInput(true)}
-              style={{ marginTop: 10, height: 44, borderRadius: 14, border: "1.5px dashed #C7BFB2", display: "flex", alignItems: "center", justifyContent: "center", gap: 6, cursor: "pointer" }}
-            >
-              <PlusIcon size={15} color="var(--shoot-text-muted)" />
-              <span style={{ fontSize: 13, fontWeight: 700, color: "var(--shoot-text-muted)" }}>카테고리 추가</span>
-            </div>
-          ))}
 
         <div style={{ fontSize: 12, fontWeight: 800, color: "var(--shoot-text-muted)", margin: "22px 0 8px" }}>알림</div>
         <div style={{ background: "var(--shoot-surface)", borderRadius: 16, border: "1px solid var(--shoot-border)", overflow: "hidden" }}>
